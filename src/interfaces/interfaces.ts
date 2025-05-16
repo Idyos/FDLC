@@ -1,3 +1,5 @@
+import { ParticipatingPenya } from "@/pages/admin/createProva/createProvaData";
+
 //#region Penyes
 export interface PenyaInfo {
   penyaId: string;
@@ -20,24 +22,23 @@ export interface PenyaProvaSummary {
   position: number;
   points: number;
   resultsDate: Date;
+  participates: boolean;
   imageUrl?: string;
 }
 
 //#endregion
 
 //#region Proves
-export enum WinDirection {
-  ASC = "ASC",
-  DESC = "DESC",
-}
+export const winDirections = ["NONE", "ASC", "DESC"] as const;
+export type WinDirection = (typeof winDirections)[number];
 
 export type Ubication = {
-  lat: number;
-  lng: number;
-  name?: string;
+  lat: number | null;
+  lng: number | null;
+  name: string | null;
 };
 
-export const provaTypes = ["Ninguna", "Participació", "Temps", "Punts", "Rondes", "MultiProva"] as const;
+export const provaTypes = ["Participació", "Temps", "Punts", "Rondes", "MultiProva"] as const;
 export type ProvaType = (typeof provaTypes)[number];
 
 export type PointsRange = {
@@ -62,47 +63,37 @@ let points = [
 ];
 
 export abstract class BaseChallenge {
+  imageUrl?: string;
   name: string;
-  description: string;
+  description?: string;
   startDate: Date;
-  finishDate: Date;
-  type: ProvaType = "Ninguna";
-  location: Ubication | null;
-  points: PointsRange[];
-  penyes: Array<PenyaInfo>;
+  finishDate?: Date;
+  challengeType: ProvaType = "Participació";
+  location?: Ubication | null;
+  pointsRange: PointsRange[];
+  penyes: Array<ParticipatingPenya>;
   reference: string | null;
   winDirection: WinDirection;
 
-  constructor(
-    name: string,
-    creationDate: Date,
-    points: PointsRange[],
-    description: string,
-    endingDate: Date,
-    location?: Ubication,
-    winDirection: WinDirection = WinDirection.DESC
-  ) {
-    this.name = name;
-    this.startDate = creationDate;
-    this.points = points;
-    this.description = description;
-    this.finishDate = endingDate;
-    this.location = location || null;
+  constructor() {
+    this.name = "";
+    this.startDate = new Date();
+    this.pointsRange = points;
     this.penyes = [];
-    this.reference = "";
-    this.winDirection = winDirection;
+    this.reference = null;
+    this.winDirection = "NONE";
   }
 
   isFinished(): boolean {
     return this.finishDate ? new Date() > this.finishDate : false;
   }
 
-  addTeam(penya: PenyaInfo): void {
+  addTeam(penya: ParticipatingPenya): void {
     this.penyes.push(penya);
   }
 
   getPointsForPosition(position: number): number {
-    const range = this.points.find(
+    const range = this.pointsRange.find(
       (r) => position >= r.from && position <= r.to
     );
     return range ? range.points : 0;
@@ -112,7 +103,7 @@ export abstract class BaseChallenge {
 }
 
 export class ChallengeByParticipation extends BaseChallenge {
-  type: ProvaType = "Participació";
+  challengeType: ProvaType = "Participació";
   resultados: {
     penyaId: string;
     participation: boolean;
@@ -132,7 +123,7 @@ export class ChallengeByParticipation extends BaseChallenge {
 }
 
 export class ChallengeByTime extends BaseChallenge {
-  type: ProvaType = "Temps";
+  challengeType: ProvaType = "Temps";
   resultados: {
     penyaId: string;
     tiempo: number;
@@ -140,7 +131,7 @@ export class ChallengeByTime extends BaseChallenge {
 
   getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {
     const sorted = [...this.resultados].sort((a, b) =>
-      this.winDirection === WinDirection.ASC
+      this.winDirection === "ASC"
         ? b.tiempo - a.tiempo
         : a.tiempo - b.tiempo
     );
@@ -158,7 +149,7 @@ export class ChallengeByTime extends BaseChallenge {
 }
 
 export class ChallengeByPoints extends BaseChallenge {
-  type: ProvaType = "Punts";
+  challengeType: ProvaType = "Punts";
   resultados: {
     penyaId: string;
     puntos: number;
@@ -166,7 +157,7 @@ export class ChallengeByPoints extends BaseChallenge {
 
   getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {
     const sorted = [...this.resultados].sort((a, b) =>
-      this.winDirection === WinDirection.ASC
+      this.winDirection === "ASC"
         ? b.puntos - a.puntos
         : a.puntos - b.puntos
     );
@@ -184,7 +175,7 @@ export class ChallengeByPoints extends BaseChallenge {
 }
 
 export class ChallengeByDiscalification extends BaseChallenge {
-  type: ProvaType = "Rondes";
+  challengeType: ProvaType = "Rondes";
   fases: {
     ronda: number;
     partidos: {
@@ -200,7 +191,7 @@ export class ChallengeByDiscalification extends BaseChallenge {
 }
 
 export class MultiChallenge extends BaseChallenge {
-  type: ProvaType = "MultiProva";
+  challengeType: ProvaType = "MultiProva";
   subpruebas: BaseChallenge[] = [];
 
   getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {

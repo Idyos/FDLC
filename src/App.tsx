@@ -13,7 +13,7 @@ import Dashboard from './pages/admin/Dashboard';
 import Penyes from './pages/admin/Penyes';
 import Proves from './pages/admin/Proves';
 import { YearProvider } from './components/shared/YearContext';
-import CreateProva from './pages/admin/CreateProva';
+import CreateProva from './pages/admin/createProva/createProva';
 
 // Protección de rutas
 // import { AdminRoutes } from './routes/admin/AdminRoutes';
@@ -23,7 +23,6 @@ export default function App() {
   const isAdminRoute = location.pathname.startsWith('/admin');
 
   return (
-    
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <YearProvider>
       <ModeToggle />

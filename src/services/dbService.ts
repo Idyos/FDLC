@@ -1,8 +1,66 @@
 // src/services/dbService.js
-import { PenyaInfo, PenyaProvaSummary, PenyaRankingSummary } from "@/interfaces/interfaces";
+import { BaseChallenge, PenyaInfo, PenyaProvaSummary, PenyaRankingSummary } from "@/interfaces/interfaces";
 import { db } from "../firebase/firebase";
-import { collection, getDocs, query, onSnapshot, orderBy, where, doc, updateDoc, writeBatch } from "firebase/firestore";
+import { collection, getDocs, query, onSnapshot, orderBy, where, doc, updateDoc, writeBatch, collectionGroup } from "firebase/firestore";
 import { toast } from "sonner";
+import { addImageToChallenges } from "./storageService";
+
+export const createProva = async (
+  year: number,
+  data: BaseChallenge,
+  image: File | null,
+  onSuccess: (data: number[]) => void,
+  onError?: (error: unknown) => void
+) => {
+  const provaRef = doc(db, `Circuit/${year}/Proves/${data.name}`);
+  const batch = writeBatch(db);
+
+      try {
+        const url = await addImageToChallenges(image, year, data.name)
+        batch.set(provaRef, {
+          imageUrl: url ?? null,
+          name: data.name ?? "",
+          description: data.description ?? "",
+          startDate: data.startDate ?? null,
+          finishDate: data.finishDate ?? null,
+          challengeType: data.challengeType,
+          location: data.location ?? null,
+          pointsRange: data.pointsRange,
+          winDirection: data.winDirection ?? null,
+        });
+
+        data.penyes.forEach((penyaInfo) => {
+          if (penyaInfo.participates) {
+            const participantRef = doc(
+              db,
+              `Circuit/${year}/Proves/${data.name}/Participants/${penyaInfo.penya.penyaId}`
+            );
+
+            batch.set(participantRef, {
+              penyaId: penyaInfo.penya.penyaId,
+              penyaName: penyaInfo.penya.name,
+              participates: penyaInfo.participates,
+              points: null,
+              time: null,
+            });
+          }
+        });
+      } catch (error) {
+        // manejar error
+        console.error("Error al pujar la imatge:", error);
+        toast.error("Error al pujar la imatge: " + error);
+      }
+
+
+
+  try {
+    await batch.commit();
+    onSuccess([year]);
+  } catch (error) {
+    console.error("Error creant la prova:", error);
+    if (onError) onError(error);
+  }
+};
 
 export const getYears = async (
   onSuccess: (data: number[]) => void,
@@ -135,27 +193,44 @@ export const getPenyaInfoRealTime = (year: number, penyaId: string, callback: (d
   });
 };
 
-export const getPenyaProvesRealTime = (year: number, penyaId: string, callback: (data: PenyaProvaSummary[]) => void) => {
-  const penyaRef = doc(db, `Circuit/${year}/Penyes`, penyaId);
+export const getPenyaProvesRealTime = (
+  year: number,
+  penyaId: string,
+  callback: (data: PenyaProvaSummary[]) => void
+) => {
+  const provesRef = collection(db, `Circuit/${year}/Proves`);
 
-  const resultsRef = collection(db, `Circuit/${year}/Results`);
+  getDocs(provesRef).then((snapshot) => {
+    const unsubscribes: (() => void)[] = [];
+    const provisionalResults: Record<string, PenyaProvaSummary> = {};
 
-  const q = query(
-    resultsRef,
-    where("penyaReference", "==", penyaRef),
-    orderBy("resultsDate", "desc")
-  );
+    snapshot.docs.forEach((provaDoc) => {
+      const provaId = provaDoc.id;
+      const provaData = provaDoc.data();
+      const participantRef = doc(db, `Circuit/${year}/Proves/${provaId}/Participants/${penyaId}`);
 
-  return onSnapshot(q, (snapshot) => {
-    const data = snapshot.docs.map((doc) => ({
-      provaId: doc.id,
-      provaReference: doc.data().provaReference.path,
-      name: doc.data().name || doc.id,
-      position: doc.data().position || 0,
-      points: doc.data().points || 0,
-      resultsDate: doc.data().resultsDate.toDate() || new Date(),
-    }));
+      const unsubscribe = onSnapshot(participantRef, (participantSnap) => {
+        if (!participantSnap.exists()) return;
 
-    callback(data);
+        const p = participantSnap.data();
+
+        provisionalResults[provaId] = {
+          provaId,
+          provaReference: provaDoc.ref.path,
+          name: provaData.name || provaId,
+          position: p.position ?? null,
+          points: p.points ?? null,
+          participates: p.participates ?? false,
+          resultsDate: p.resultsDate?.toDate?.() ?? null,
+        };
+
+        callback(Object.values(provisionalResults));
+      });
+
+      unsubscribes.push(unsubscribe);
+    });
+
+    // Devuelve función para desuscribirse de todos
+    return () => unsubscribes.forEach((unsub) => unsub());
   });
-}
+};
