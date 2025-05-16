@@ -1,3 +1,4 @@
+import YearSelector from "@/components/public/yearSelector";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   NavigationMenu,
@@ -29,6 +30,7 @@ export default function Dashboard() {
 
   return (
     <>
+      <YearSelector />
       <NavigationMenu>
         <NavigationMenuList>
           <NavigationMenuItem className="hover: cursor-pointer">
