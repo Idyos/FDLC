@@ -1,7 +1,7 @@
 // src/services/dbService.js
-import { BaseChallenge, PenyaInfo, PenyaProvaSummary, PenyaRankingSummary } from "@/interfaces/interfaces";
+import { BaseChallenge, PenyaInfo, PenyaProvaSummary, ProvaSummary, PenyaRankingSummary } from "@/interfaces/interfaces";
 import { db } from "../firebase/firebase";
-import { collection, getDocs, query, onSnapshot, orderBy, where, doc, updateDoc, writeBatch, collectionGroup } from "firebase/firestore";
+import { collection, getDocs, query, onSnapshot, orderBy, doc, updateDoc, writeBatch } from "firebase/firestore";
 import { toast } from "sonner";
 import { addImageToChallenges } from "./storageService";
 
@@ -172,6 +172,24 @@ export const getRankingRealTime = (year: number, callback: (data: PenyaRankingSu
   });
 };
 
+export const getProvesRealTime = (year: number, callback: (data: ProvaSummary[]) => void) => {
+  const provesRef = collection(db, `Circuit/${year}/Proves`);
+  const q = query(provesRef, orderBy("startDate", "desc"));
+
+  return onSnapshot(q, (snapshot) => {
+    const data = snapshot.docs.map((doc) => ({
+      provaId: doc.id,
+      imageUrl: doc.data().imageUrl || undefined,
+      name: doc.data().name || doc.id,
+      description: doc.data().description || undefined,
+      startDate: doc.data().startDate?.toDate?.() ?? null,
+      finishDate: doc.data().finishDate?.toDate?.() ?? null,
+    }));
+
+    callback(data);
+  });
+};
+
 export const getPenyaInfoRealTime = (year: number, penyaId: string, callback: (data: PenyaInfo | null) => void) => {
   const penyaRef = doc(db, `Circuit/${year}/Penyes`, penyaId);
 
@@ -216,12 +234,14 @@ export const getPenyaProvesRealTime = (
 
         provisionalResults[provaId] = {
           provaId,
-          provaReference: provaDoc.ref.path,
+          imageUrl: provaData.imageUrl,
           name: provaData.name || provaId,
+          startDate: provaData.startDate?.toDate?.() ?? null,
+          finishDate: provaData.finishDate?.toDate?.() ?? null,
+          provaReference: provaDoc.ref.path,
           position: p.position ?? null,
           points: p.points ?? null,
           participates: p.participates ?? false,
-          resultsDate: p.resultsDate?.toDate?.() ?? null,
         };
 
         callback(Object.values(provisionalResults));

@@ -15,15 +15,20 @@ export interface PenyaRankingSummary extends PenyaInfo {
   directionChange: "up" | "down" | "same" | null;
 }
 
-export interface PenyaProvaSummary {
+export interface ProvaSummary {
   provaId: string;
-  name: string;
-  provaReference: string;
-  position: number;
-  points: number;
-  resultsDate: Date;
-  participates: boolean;
   imageUrl?: string;
+  name: string;
+  description?: string;
+  startDate: Date;
+  finishDate?: Date;
+}
+
+export interface PenyaProvaSummary extends ProvaSummary {
+  provaReference: string;
+  position?: number;
+  points?: number;
+  participates?: boolean;
 }
 
 //#endregion
@@ -186,6 +191,7 @@ export class ChallengeByDiscalification extends BaseChallenge {
   }[] = [];
 
   getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {
+    console.log(penyesInfo);
     return [];
   }
 }
@@ -195,6 +201,7 @@ export class MultiChallenge extends BaseChallenge {
   subpruebas: BaseChallenge[] = [];
 
   getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {
+    console.log(penyesInfo);
     return [];
   }
 }

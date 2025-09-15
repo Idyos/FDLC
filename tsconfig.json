@@ -6,6 +6,8 @@
   ],
   "compilerOptions": {
     "noEmitOnError": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

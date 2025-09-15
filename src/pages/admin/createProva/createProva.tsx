@@ -17,9 +17,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { LocationSelector } from "@/components/admin/locationSelector";
 import { CreateChallenge, createChallengeSchema, fieldStepMap, ParticipatingPenya } from "./createProvaData";
-import { BaseChallenge, ChallengeByDiscalification, ChallengeByParticipation, ChallengeByPoints, ChallengeByTime, MultiChallenge, PenyaInfo, ProvaType, provaTypes, Ubication, WinDirection } from "@/interfaces/interfaces";
+import { BaseChallenge, ChallengeByDiscalification, ChallengeByParticipation, ChallengeByPoints, ChallengeByTime, MultiChallenge, PenyaInfo, ProvaType, provaTypes, Ubication } from "@/interfaces/interfaces";
 import { toast } from "sonner";
-import { addImageToChallenges } from "@/services/storageService";
 import { useYear } from "@/components/shared/YearContext";
 import { TooltipProvider } from "@radix-ui/react-tooltip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -172,7 +171,7 @@ export default function CreateProva() {
         <>
         <FormField
             name="image"
-            render={({ field }) => (
+            render={() => (
               <FormItem>
                 <TooltipProvider>
                 <Tooltip delayDuration={250} >
@@ -239,7 +238,7 @@ export default function CreateProva() {
             <FormField
             control={form.control}
             name="location"
-            render={({ field }) => (
+            render={() => (
               <FormItem>
                 <FormLabel>Ubicació:</FormLabel>
                 <FormControl>

@@ -1,15 +1,33 @@
 import PageTitle from "@/components/public/pageTitle";
+import ProvaSummary from "@/components/public/penyaPage/provaSummary";
 import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/YearContext";
-import { PenyaInfo } from "@/interfaces/interfaces";
+import { PenyaInfo, PenyaProvaSummary } from "@/interfaces/interfaces";
 import { getPenyaInfoRealTime, getPenyaProvesRealTime } from "@/services/dbService";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function PenyaPage() {
-    const { selectedYear } = useYear();
+    const { previousSelectedYear, selectedYear, setSelectedYear } = useYear();
+    
+    const [noPenyaAlert, setNoPenyaAlert] = useState(false);
+
     const penyaInfo = useRef<PenyaInfo>({ name: "", description: "", penyaId: "", totalPoints: 0, position: 0 })
+    const [penyaProves, setPenyaProves] = useState<PenyaProvaSummary[]>([]);
+
     const [isPenyaLoading, setIsPenyaLoading] = useState(true);
+
+
     const [isProvesLoading, setIsProvesLoading] = useState(true);
     const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
@@ -23,18 +41,35 @@ export default function PenyaPage() {
             if(penyaInfoResult!=null){
                 penyaInfo.current = penyaInfoResult;
                 getPenyaProvesRealTime(selectedYear, penyaId, (data) => {
-                    console.log("Proves data:", data, selectedYear);
+                    setPenyaProves(data);
                     setIsProvesLoading(false);
                 });
             }
+            else {
+                setNoPenyaAlert(true);
+            }
             setIsPenyaLoading(false);
-        });
+        }, );
 
         return () => unsubscribe();
     }, [selectedYear]);
 
     return ( 
         <>
+        <AlertDialog open={noPenyaAlert} onOpenChange={setNoPenyaAlert}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>No s'ha trobat aquesta penya.</AlertDialogTitle>
+                <AlertDialogDescription>
+                    No s'ha trobat cap penya amb el nom de {penyaInfo.current.name} al any {selectedYear}. Si us plau, torna a intentar-ho o contacta amb l'administrador.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                <AlertDialogCancel>D'acord</AlertDialogCancel>
+                {selectedYear == previousSelectedYear ? null : <AlertDialogAction onClick={() => setSelectedYear(previousSelectedYear)}>Tornar a l'any anterior</AlertDialogAction>}
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
             <YearSelector />
             <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
               <PageTitle title={isPenyaLoading ? "Carregant..." : penyaInfo.current.name} image="" />
@@ -42,7 +77,11 @@ export default function PenyaPage() {
               {isProvesLoading ? (
               <p className="text-gray-500 dark:text-gray-400">Carregant...</p>
               ) : (
-                <p> JA TENIM LA INFO!!</p>
+                penyaProves.length > 0 ? (
+                    penyaProves.map((provaSummary) => (
+                      <ProvaSummary key={provaSummary.provaId} provaSummary={provaSummary} />
+                    ))
+                ) : (<p>No s'han trobat proves per a aquesta penya.</p>)
               )}
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { PenyaInfo, ProvaType, provaTypes, WinDirection } from "@/interfaces/interfaces";
+import { ProvaType, provaTypes, WinDirection } from "@/interfaces/interfaces";
 import { z } from "zod";
 
 export interface ParticipatingPenya {

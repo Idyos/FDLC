@@ -25,6 +25,7 @@ export default function LoginForm({ auth, setIsLogin, onClick }: LoginFormProps)
     });
 
     const onTryLogin = (data: LoginFormValues) => {
+      console.log("Intentant iniciar sessió amb:", data);
         setPersistence(auth, browserLocalPersistence)
           .then(() => {
             return signInWithEmailAndPassword(auth, data.email, data.password);

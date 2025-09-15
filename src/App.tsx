@@ -1,11 +1,10 @@
 import './App.css';
 import { ThemeProvider } from './components/Theme/theme-provider';
 import { ModeToggle } from './components/Theme/mode-toggle';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 
 // Páginas públicas
 import PenyaPage from './pages/public/PenyaPage/penyaPage';
-import RankingPage from './pages/public/Ranking/rankingPage';
 
 // Páginas admin
 import Login from './pages/admin/Login';
@@ -14,13 +13,15 @@ import Penyes from './pages/admin/Penyes';
 import Proves from './pages/admin/Proves';
 import { YearProvider } from './components/shared/YearContext';
 import CreateProva from './pages/admin/createProva/createProva';
+import BracketTest from './pages/public/BracketTestPackage/BracketTest';
+import MainPage from './pages/public/MainPage/mainPage';
 
 // Protección de rutas
 // import { AdminRoutes } from './routes/admin/AdminRoutes';
 
 export default function App() {
-  const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin');
+  // const location = useLocation();
+  // const isAdminRoute = location.pathname.startsWith('/admin');
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
@@ -28,8 +29,9 @@ export default function App() {
       <ModeToggle />
       <Routes>
         {/* Public */}
-        <Route path="/" element={<RankingPage />} />
+        <Route path="/" element={<MainPage />} />
         <Route path="/penya" element={<PenyaPage />} />
+        <Route path="/bracket" element={<BracketTest />} />
 
         {/* Admin */}
         <Route path="/admin/login" element={<Login />} />
