@@ -73,9 +73,11 @@ export default function MainPage() {
     unsubscribeRef.current?.();
     unsubscribeRef.current = null;
     setIsLoading(true);
-
+    
+    //Ranking
     if (selectedTab === 0) {
-      // RANKING
+      document.title = `Ranking ${year}`;
+
       const unsubscribe = getRankingRealTime(year, (data) => {
         const newData = data.map((item, index) => {
           const newPosition = index + 1;
@@ -96,13 +98,18 @@ export default function MainPage() {
       });
       unsubscribeRef.current = unsubscribe;
     }
-
-    if (selectedTab === 1) {
+    //Proves
+    else if (selectedTab === 1) {
+      document.title = `Proves ${year}`;
       const unsubscribe = getProvesRealTime(year, (data) => {
         setProves(data);
         setIsLoading(false);
       });
       unsubscribeRef.current = unsubscribe;
+    }
+    //Comunicats
+    else if(selectedTab === 2) { 
+      document.title = `Comunicats ${year}`;
     }
 
     return () => {
