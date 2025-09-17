@@ -14,8 +14,6 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
   const { theme } = useTheme();
   const navigate = useNavigate();
 
-  provaSummary.startDate.toLocaleTimeString
-
   // position y points solo existen si es PenyaProvaSummary
   const isPenya = ("provaReference" in provaSummary);
   const position = isPenya ? (provaSummary as PenyaProvaSummary).position : undefined;
