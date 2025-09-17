@@ -5,7 +5,7 @@ import { useYear } from "@/components/shared/YearContext";
 import { PenyaInfo, PenyaProvaSummary } from "@/interfaces/interfaces";
 import { getPenyaInfoRealTime, getPenyaProvesRealTime } from "@/services/dbService";
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function PenyaPage() {
+    const navigate = useNavigate();
+
     const { previousSelectedYear, selectedYear, setSelectedYear } = useYear();
     
     const [noPenyaAlert, setNoPenyaAlert] = useState(false);
@@ -39,7 +41,12 @@ export default function PenyaPage() {
 
         const unsubscribe = getPenyaInfoRealTime(selectedYear, penyaId, (penyaInfoResult) => {
             if(penyaInfoResult!=null){
+                if(penyaInfoResult.isSecret){
+                    navigate("/");
+                    return;
+                }
                 penyaInfo.current = penyaInfoResult;
+                document.title = `${penyaInfo.current.name} ${selectedYear}`;
                 getPenyaProvesRealTime(selectedYear, penyaId, (data) => {
                     setPenyaProves(data);
                     setIsProvesLoading(false);

@@ -14,6 +14,8 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
   const { theme } = useTheme();
   const navigate = useNavigate();
 
+  provaSummary.startDate.toLocaleTimeString
+
   // position y points solo existen si es PenyaProvaSummary
   const isPenya = ("provaReference" in provaSummary);
   const position = isPenya ? (provaSummary as PenyaProvaSummary).position : undefined;
@@ -60,8 +62,12 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
           {/* ejemplo: fechas si las tienes */}
           {provaSummary.startDate && (
             <p className="text-sm opacity-70">
-              {provaSummary.startDate.toLocaleDateString()}
-              {provaSummary.finishDate ? ` – ${provaSummary.finishDate.toLocaleDateString()}` : ""}
+              {provaSummary.startDate.toLocaleDateString()} | {provaSummary.startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {provaSummary.finishDate 
+              ? provaSummary.startDate.toLocaleDateString() == provaSummary.finishDate.toLocaleDateString()
+                ? " - " + provaSummary.finishDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : ` – ${provaSummary.finishDate.toLocaleDateString()} | ${provaSummary.finishDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+              : ""}
             </p>
           )}
         </div>

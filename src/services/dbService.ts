@@ -205,6 +205,9 @@ export const getPenyaInfoRealTime = (year: number, penyaId: string, callback: (d
       name: snapshot.data().name || snapshot.id,
       totalPoints: snapshot.data().totalPoints || 0,
       position: 0,
+      isSecret: snapshot.data().isSecret || false,
+      imageUrl: snapshot.data().imageUrl || undefined,
+      description: snapshot.data().description || undefined,
     };
 
     callback(data);
