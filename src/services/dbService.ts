@@ -1,7 +1,7 @@
 // src/services/dbService.js
-import { BaseChallenge, PenyaInfo, PenyaProvaSummary, ProvaSummary, PenyaRankingSummary, SingleProvaResultData, ProvaInfo } from "@/interfaces/interfaces";
+import { BaseChallenge, PenyaInfo, PenyaProvaSummary, ProvaSummary, PenyaRankingSummary, SingleProvaResultData, ProvaInfo, ProvaType, WinDirection } from "@/interfaces/interfaces";
 import { db } from "../firebase/firebase";
-import { collection, getDocs, query, onSnapshot, orderBy, doc, updateDoc, writeBatch } from "firebase/firestore";
+import { collection, getDocs, query, onSnapshot, orderBy, doc, updateDoc, writeBatch, Unsubscribe } from "firebase/firestore";
 import { toast } from "sonner";
 import { addImageToChallenges } from "./storageService";
 
@@ -33,16 +33,31 @@ export const createProva = async (
           if (penyaInfo.participates) {
             const participantRef = doc(
               db,
-              `Circuit/${year}/Proves/${data.name}/Participants/${penyaInfo.penya.penyaId}`
+              `Circuit/${year}/Proves/${data.name}/Resultats/${penyaInfo.penya.penyaId}`
             );
 
-            batch.set(participantRef, {
+            let participantObject: {
+              penyaId: string;
+              penyaName: string;
+              participates: boolean;
+              result?: any;
+            } = {
               penyaId: penyaInfo.penya.penyaId,
               penyaName: penyaInfo.penya.name,
               participates: penyaInfo.participates,
-              points: null,
-              time: null,
-            });
+            }
+
+            switch(data.challengeType){
+              case "Temps":
+              case "Punts":
+                participantObject = { ...participantObject, result: 0 };
+                break;
+              case "Participació":
+                participantObject = { ...participantObject, result: false };
+                break;
+            }
+
+            batch.set(participantRef, participantObject);
           }
         });
       } catch (error) {
@@ -50,9 +65,6 @@ export const createProva = async (
         console.error("Error al pujar la imatge:", error);
         toast.error("Error al pujar la imatge: " + error);
       }
-
-
-
   try {
     await batch.commit();
     onSuccess([year]);
@@ -190,25 +202,96 @@ export const getProvesRealTime = (year: number, callback: (data: ProvaSummary[])
   });
 };
 
-export const getProvaInfoRealTime = (year: number, provaId: string, callback: (data: ProvaInfo) => void) => {
-  const provaRef = collection(db, `Circuit/${year}/Proves/${provaId}`);
-  const q = query(provaRef, orderBy("startDate", "desc"));
-  const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
+export const getProvaInfoRealTime = (
+  year: number,
+  provaId: string,
+  sort: boolean = true,
+  callback: (data: ProvaInfo) => void
+): Unsubscribe => {
+  const provaDocRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
+  const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Resultats`);
 
+  let base: (Omit<ProvaInfo, "results"> & { challengeType?: ProvaType; winDirection?: WinDirection }) | null = null;
+  let participants: Array<Omit<SingleProvaResultData, "provaType">> = [];
 
-  return onSnapshot(q, (snapshot) => {
-    const data = snapshot.docs.map((doc) => ({
-      provaId: doc.id,
-      imageUrl: doc.data().imageUrl || undefined,
-      name: doc.data().name || doc.id,
-      description: doc.data().description || undefined,
-      startDate: doc.data().startDate?.toDate?.() ?? null,
-      finishDate: doc.data().finishDate?.toDate?.() ?? null,
-      results: doc.data()
+  let unsubParticipants: Unsubscribe | null = null;
+
+  const emit = () => {
+    if (!base) return;
+    const results: SingleProvaResultData[] = participants.map((p) => ({
+      ...p,
+      provaType: base?.challengeType ?? "Temps",
     }));
+    callback({ ...base, results });
+  };
 
-    callback(data);
+  // 1) Snapshot del documento principal
+  const unsubDoc = onSnapshot(provaDocRef, (snap) => {
+    const d = snap.data();
+    if (!d) return;
+
+    base = {
+      provaId: snap.id,
+      name: d.name || snap.id,
+      description: d.description || undefined,
+      isSecret: d.isSecret || false,
+      imageUrl: d.imageUrl || undefined,
+      location: d.location || undefined,
+      winDirection: d.winDirection || "NONE",
+      startDate: d.startDate?.toDate?.() ?? new Date(0),
+      finishDate: d.finishDate?.toDate?.() ?? undefined,
+      pointsRange: Array.isArray(d.pointsRange) ? d.pointsRange : [],
+      challengeType: d.challengeType,
+    };
+
+    if (unsubParticipants) {
+      unsubParticipants();
+    }
+
+    const participantsQuery = sort && base.winDirection !== "NONE" 
+    ? query(participantsRef, orderBy("result", base.winDirection === "ASC" ? "desc" : "asc"))
+    : participantsRef;    
+    unsubParticipants = onSnapshot(participantsQuery, (snap) => {
+      participants = snap.docs.map((p) => {
+        const r = p.data() as any;
+        return {
+          provaReference: provaDocRef.path,
+          participates: r.participates ?? true,
+          penyaName: r.penyaName ?? "",
+          penyaId: r.penyaId ?? p.id,
+          result: r.result ?? "",
+        };
+      });
+      emit();
+    });
+
+    emit();
   });
+
+  return () => {
+    unsubDoc();
+    if (unsubParticipants) unsubParticipants();
+  };
+};
+
+export const updateProvaTimeResult = async (
+  provaReference: string,
+  penyaId: string,
+  timeInSeconds: number,
+  successCallback?: () => void,
+  errorCallback?: (error: unknown) => void
+) => {
+  const participantRef = doc(db, provaReference, "Resultats", penyaId);
+
+  try {
+    await updateDoc(participantRef, {
+      result: timeInSeconds,
+    });
+    if (successCallback) successCallback();
+  } catch (error) {
+    console.error("Error updating prova time result:", error);
+    if (errorCallback) errorCallback(error);
+  }
 }
 
 export const getPenyaInfoRealTime = (year: number, penyaId: string, callback: (data: PenyaInfo | null) => void) => {

@@ -15,6 +15,7 @@ import { YearProvider } from './components/shared/YearContext';
 import CreateProva from './pages/admin/createProva/createProva';
 import BracketTest from './pages/public/BracketTestPackage/BracketTest';
 import MainPage from './pages/public/MainPage/mainPage';
+import ProvaPage from './pages/public/ProvaPage/provaPage';
 
 // Protección de rutas
 // import { AdminRoutes } from './routes/admin/AdminRoutes';
@@ -31,6 +32,7 @@ export default function App() {
         {/* Public */}
         <Route path="/" element={<MainPage />} />
         <Route path="/penya" element={<PenyaPage />} />
+        <Route path="/prova" element={<ProvaPage />} />
         <Route path="/bracket" element={<BracketTest />} />
 
         {/* Admin */}

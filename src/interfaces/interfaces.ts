@@ -36,6 +36,7 @@ export interface PenyaProvaSummary extends ProvaSummary {
 //#region Proves
 export interface ProvaInfo {
   provaId: string;
+  challengeType: ProvaType; 
   name: string;
   description?: string;
   isSecret?: boolean;
@@ -43,6 +44,7 @@ export interface ProvaInfo {
   location?: Ubication;
   startDate: Date;
   finishDate?: Date;
+  winDirection: WinDirection; 
   pointsRange: PointsRange[];
   results: SingleProvaResultData[];
 }
@@ -77,15 +79,21 @@ export interface ChallengeResult {
 }
 
 export interface SingleProvaResultData{
-  penyaName: string;
-  penyaId: string;
+  provaReference: string;
   provaType: ProvaType;
+  participates: boolean;
+  penyaId: string;
+  penyaName: string;
+  result: number;
 }
 
 export interface BracketProvaResultData{
-  penyaName: string;
-  penyaId: string;
+  provaReference: string;
   provaType: ProvaType;
+  participates: boolean;
+  penyaId: string;
+  penyaName: string;
+  result: number;
 }
 
 let points = [

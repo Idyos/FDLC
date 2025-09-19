@@ -8,11 +8,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProvaSummaryCard from "@/components/public/provaSummary";
-import { TimeRollingInput } from "@/components/shared/timeInput";
 
 export default function MainPage() {
   const previousRankingsRef = useRef<PenyaRankingSummary[]>([]);
-    const [secs, setSecs] = useState(0);
   const [rankings, setRankings] = useState<PenyaRankingSummary[]>([]);
   const [proves, setProves] = useState<_ProvaSummary[]>([]);
 //   const [comunicats, setComunicats] = useState<any[]>([]);

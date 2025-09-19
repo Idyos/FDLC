@@ -1,9 +1,9 @@
 import PageTitle from "@/components/public/pageTitle";
 import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/YearContext";
-import { PenyaInfo, PenyaProvaSummary, ProvaInfo, SingleProvaResultData } from "@/interfaces/interfaces";
-import { getPenyaInfoRealTime, getPenyaProvesRealTime, getProvaInfoRealTime } from "@/services/dbService";
-import { useEffect, useRef, useState } from "react";
+import { ProvaInfo } from "@/interfaces/interfaces";
+import { getProvaInfoRealTime } from "@/services/dbService";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   AlertDialog,
@@ -15,7 +15,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import ProvaSummaryCard from "@/components/public/provaSummary";
+import SingleProvaResult from "@/components/public/singleProvaResult";
+
+const emptyProva: ProvaInfo = {
+    winDirection: "NONE",
+    challengeType: "Temps",
+    provaId: "",
+    name: "",
+    startDate: new Date(0),
+    pointsRange: [],
+    results: [],
+};
 
 export default function ProvaPage() {
     const navigate = useNavigate();
@@ -23,39 +33,34 @@ export default function ProvaPage() {
     const { previousSelectedYear, selectedYear, setSelectedYear } = useYear();
     
     const [noProvaAlert, setNoProbaAlert] = useState(false);
+    
 
-    const provaInfo = useRef<ProvaInfo>({ provaId: "", name: "", description: "", pointsRange: [], results: [], startDate: new Date()})
-    const [penyaProves, setPenyaProves] = useState<PenyaProvaSummary[]>([]);
+    const [provaInfo, setProvaInfo] = useState<ProvaInfo>(emptyProva);
 
-    const [isProvaLoading, setIsPenyaLoading] = useState(true);
+    const [isProvaLoading, setIsProvaLoading] = useState(true);
 
-
-    const [isProvesLoading, setIsProvesLoading] = useState(true);
     const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
-    const penyaId = searchParams.get("penyaId") || "";
+    const provaId = searchParams.get("provaId") || "";
 
     useEffect(() => {
-        setIsPenyaLoading(true);
-        setIsProvesLoading(true);
+        setIsProvaLoading(true);
 
-        const unsubscribe = getProvaInfoRealTime(selectedYear, penyaId, (penyaInfoResult) => {
+        const unsubscribe = getProvaInfoRealTime(selectedYear, provaId, true, (penyaInfoResult) => {
             if(penyaInfoResult!=null){
                 if(penyaInfoResult.isSecret){
                     navigate("/");
                     return;
                 }
-                provaInfo.current = penyaInfoResult;
-                document.title = `${provaInfo.current.name} ${selectedYear}`;
-                getPenyaProvesRealTime(selectedYear, penyaId, (data) => {
-                    setPenyaProves(data);
-                    setIsProvesLoading(false);
-                });
+                console.log("Prova info received:", penyaInfoResult);
+
+                setProvaInfo(penyaInfoResult);
+                document.title = `${penyaInfoResult.name} ${selectedYear}`;
             }
             else {
                 setNoProbaAlert(true);
             }
-            setIsPenyaLoading(false);
+            setIsProvaLoading(false);
         }, );
 
         return () => unsubscribe();
@@ -68,7 +73,7 @@ export default function ProvaPage() {
                 <AlertDialogHeader>
                 <AlertDialogTitle>No s'ha trobat aquesta proba.</AlertDialogTitle>
                 <AlertDialogDescription>
-                    No s'ha trobat cap proba amb el nom de {provaInfo.current.name} al any {selectedYear}. Si us plau, torna a intentar-ho o contacta amb l'administrador.
+                    No s'ha trobat cap proba amb el nom de {provaInfo.name} al any {selectedYear}. Si us plau, torna a intentar-ho o contacta amb l'administrador.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -79,14 +84,16 @@ export default function ProvaPage() {
         </AlertDialog>
             <YearSelector />
             <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
-              <PageTitle title={isProvaLoading ? "Carregant..." : provaInfo.current.name} image="" />
+              <PageTitle title={isProvaLoading ? "Carregant..." : provaInfo.name} image="" />
               <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
-              {isProvesLoading ? (
+              {isProvaLoading ? (
               <p className="text-gray-500 dark:text-gray-400">Carregant...</p>
               ) : (
-                penyaProves.length > 0 ? (
-                    penyaProves.map((provaSummary) => (
-                      <ProvaSummaryCard key={provaSummary.provaId} provaSummary={provaSummary} />
+                provaInfo.results.length > 0 ? (
+                    provaInfo.results.map((provaResultSummary) => (
+                        provaResultSummary.participates 
+                        ? <SingleProvaResult key={provaResultSummary.penyaId} provaResultSummary={provaResultSummary} />
+                        : null
                     ))
                 ) : (<p>No s'han trobat proves per a aquesta penya.</p>)
               )}

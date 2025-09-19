@@ -13,6 +13,9 @@ type TimeInputProps = {
   className?: string;
   /** aria-label alternativo */
   ariaLabel?: string;
+  
+  onBlur?: (seconds: number) => void;
+
 };
 
 /** Formatea a HH:MM:SS (siempre 2 dígitos por bloque) */
@@ -75,6 +78,7 @@ export const TimeRollingInput: React.FC<TimeInputProps> = ({
   disabled,
   className,
   ariaLabel = "Tiempo en HH:MM:SS",
+  onBlur,
 }) => {
   const isControlled = typeof valueSeconds === "number";
   const [internalSeconds, setInternalSeconds] = useState<number>(valueSeconds ?? 0);
@@ -161,7 +165,7 @@ export const TimeRollingInput: React.FC<TimeInputProps> = ({
   function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
     if (disabled) return;
     const text = e.clipboardData.getData("text") || "";
-    const digits = text.replace(/\D+/g, ""); // solo dígitos
+    const digits = text.replace(/\D+/g, "");
     if (!digits) return;
 
     e.preventDefault();
@@ -177,15 +181,24 @@ export const TimeRollingInput: React.FC<TimeInputProps> = ({
         type="text"
         value={display}
         readOnly
-        onKeyDown={handleKeyDown}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.currentTarget.blur();
+            return;
+          }
+
+          handleKeyDown(e);
+        }}
         onPaste={handlePaste}
         onFocus={(e) => {
-          // coloca el cursor al final para UX consistente
           const el = e.currentTarget;
           requestAnimationFrame(() => {
             const len = el.value.length;
             el.setSelectionRange(len, len);
           });
+        }}
+        onBlur={() => {
+          onBlur?.(seconds);
         }}
         inputMode="numeric"
         aria-label={ariaLabel}
