@@ -1,7 +1,7 @@
 import { ProvaSummary, PenyaProvaSummary } from "@/interfaces/interfaces";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "../../Theme/theme-provider";
+import { useTheme } from "../Theme/theme-provider";
 import { Badge } from "@/components/ui/badge";
 
 type AnyProva = ProvaSummary | PenyaProvaSummary;

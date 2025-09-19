@@ -7,10 +7,12 @@ import { getProvesRealTime, getRankingRealTime } from "@/services/dbService";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import ProvaSummary from "@/components/public/penyaPage/provaSummary";
+import ProvaSummaryCard from "@/components/public/provaSummary";
+import { TimeRollingInput } from "@/components/shared/timeInput";
 
 export default function MainPage() {
   const previousRankingsRef = useRef<PenyaRankingSummary[]>([]);
+    const [secs, setSecs] = useState(0);
   const [rankings, setRankings] = useState<PenyaRankingSummary[]>([]);
   const [proves, setProves] = useState<_ProvaSummary[]>([]);
 //   const [comunicats, setComunicats] = useState<any[]>([]);
@@ -51,7 +53,7 @@ export default function MainPage() {
                 <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
               ) : (
                 proves.map((item, index) => {
-                  return <ProvaSummary key={index} provaSummary={item} />;
+                  return <ProvaSummaryCard key={index} provaSummary={item} />;
                 })
               )}
             </div>

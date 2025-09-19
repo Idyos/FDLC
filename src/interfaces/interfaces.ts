@@ -34,6 +34,23 @@ export interface PenyaProvaSummary extends ProvaSummary {
 //#endregion
 
 //#region Proves
+export interface ProvaInfo {
+  provaId: string;
+  name: string;
+  description?: string;
+  isSecret?: boolean;
+  imageUrl?: string;
+  location?: Ubication;
+  startDate: Date;
+  finishDate?: Date;
+  pointsRange: PointsRange[];
+  results: SingleProvaResultData[];
+}
+
+export interface ProvaInfoBracket extends ProvaInfo {
+  results: BracketProvaResultData[];
+} 
+
 export const winDirections = ["NONE", "ASC", "DESC"] as const;
 export type WinDirection = (typeof winDirections)[number];
 
@@ -57,6 +74,18 @@ export interface ChallengeResult {
   name: string;
   position: number;
   pointsAwarded: number;
+}
+
+export interface SingleProvaResultData{
+  penyaName: string;
+  penyaId: string;
+  provaType: ProvaType;
+}
+
+export interface BracketProvaResultData{
+  penyaName: string;
+  penyaId: string;
+  provaType: ProvaType;
 }
 
 let points = [

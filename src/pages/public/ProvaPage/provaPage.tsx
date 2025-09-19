@@ -1,8 +1,8 @@
 import PageTitle from "@/components/public/pageTitle";
 import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/YearContext";
-import { PenyaInfo, PenyaProvaSummary } from "@/interfaces/interfaces";
-import { getPenyaInfoRealTime, getPenyaProvesRealTime } from "@/services/dbService";
+import { PenyaInfo, PenyaProvaSummary, ProvaInfo, SingleProvaResultData } from "@/interfaces/interfaces";
+import { getPenyaInfoRealTime, getPenyaProvesRealTime, getProvaInfoRealTime } from "@/services/dbService";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -17,17 +17,17 @@ import {
 } from "@/components/ui/alert-dialog"
 import ProvaSummaryCard from "@/components/public/provaSummary";
 
-export default function PenyaPage() {
+export default function ProvaPage() {
     const navigate = useNavigate();
 
     const { previousSelectedYear, selectedYear, setSelectedYear } = useYear();
     
-    const [noPenyaAlert, setNoPenyaAlert] = useState(false);
+    const [noProvaAlert, setNoProbaAlert] = useState(false);
 
-    const penyaInfo = useRef<PenyaInfo>({ name: "", description: "", penyaId: "", totalPoints: 0, position: 0 })
+    const provaInfo = useRef<ProvaInfo>({ provaId: "", name: "", description: "", pointsRange: [], results: [], startDate: new Date()})
     const [penyaProves, setPenyaProves] = useState<PenyaProvaSummary[]>([]);
 
-    const [isPenyaLoading, setIsPenyaLoading] = useState(true);
+    const [isProvaLoading, setIsPenyaLoading] = useState(true);
 
 
     const [isProvesLoading, setIsProvesLoading] = useState(true);
@@ -39,21 +39,21 @@ export default function PenyaPage() {
         setIsPenyaLoading(true);
         setIsProvesLoading(true);
 
-        const unsubscribe = getPenyaInfoRealTime(selectedYear, penyaId, (penyaInfoResult) => {
+        const unsubscribe = getProvaInfoRealTime(selectedYear, penyaId, (penyaInfoResult) => {
             if(penyaInfoResult!=null){
                 if(penyaInfoResult.isSecret){
                     navigate("/");
                     return;
                 }
-                penyaInfo.current = penyaInfoResult;
-                document.title = `${penyaInfo.current.name} ${selectedYear}`;
+                provaInfo.current = penyaInfoResult;
+                document.title = `${provaInfo.current.name} ${selectedYear}`;
                 getPenyaProvesRealTime(selectedYear, penyaId, (data) => {
                     setPenyaProves(data);
                     setIsProvesLoading(false);
                 });
             }
             else {
-                setNoPenyaAlert(true);
+                setNoProbaAlert(true);
             }
             setIsPenyaLoading(false);
         }, );
@@ -63,12 +63,12 @@ export default function PenyaPage() {
 
     return ( 
         <>
-        <AlertDialog open={noPenyaAlert} onOpenChange={setNoPenyaAlert}>
+        <AlertDialog open={noProvaAlert} onOpenChange={setNoProbaAlert}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                <AlertDialogTitle>No s'ha trobat aquesta penya.</AlertDialogTitle>
+                <AlertDialogTitle>No s'ha trobat aquesta proba.</AlertDialogTitle>
                 <AlertDialogDescription>
-                    No s'ha trobat cap penya amb el nom de {penyaInfo.current.name} al any {selectedYear}. Si us plau, torna a intentar-ho o contacta amb l'administrador.
+                    No s'ha trobat cap proba amb el nom de {provaInfo.current.name} al any {selectedYear}. Si us plau, torna a intentar-ho o contacta amb l'administrador.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -79,7 +79,7 @@ export default function PenyaPage() {
         </AlertDialog>
             <YearSelector />
             <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
-              <PageTitle title={isPenyaLoading ? "Carregant..." : penyaInfo.current.name} image="" />
+              <PageTitle title={isProvaLoading ? "Carregant..." : provaInfo.current.name} image="" />
               <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isProvesLoading ? (
               <p className="text-gray-500 dark:text-gray-400">Carregant...</p>

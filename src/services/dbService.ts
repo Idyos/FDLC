@@ -1,5 +1,5 @@
 // src/services/dbService.js
-import { BaseChallenge, PenyaInfo, PenyaProvaSummary, ProvaSummary, PenyaRankingSummary } from "@/interfaces/interfaces";
+import { BaseChallenge, PenyaInfo, PenyaProvaSummary, ProvaSummary, PenyaRankingSummary, SingleProvaResultData, ProvaInfo } from "@/interfaces/interfaces";
 import { db } from "../firebase/firebase";
 import { collection, getDocs, query, onSnapshot, orderBy, doc, updateDoc, writeBatch } from "firebase/firestore";
 import { toast } from "sonner";
@@ -133,7 +133,7 @@ export const updatePenyaInfo = async (year: number, penyaId: string, name: strin
   }
 }
 
-export const getPenyes = (year: number, callback: (data: PenyaInfo[]) => void) => {
+export const getPenyes = async (year: number, callback: (data: PenyaInfo[]) => void) => {
   const penyesRef = collection(db, `Circuit/${year}/Penyes`);
 
   return getDocs(penyesRef)
@@ -189,6 +189,27 @@ export const getProvesRealTime = (year: number, callback: (data: ProvaSummary[])
     callback(data);
   });
 };
+
+export const getProvaInfoRealTime = (year: number, provaId: string, callback: (data: ProvaInfo) => void) => {
+  const provaRef = collection(db, `Circuit/${year}/Proves/${provaId}`);
+  const q = query(provaRef, orderBy("startDate", "desc"));
+  const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
+
+
+  return onSnapshot(q, (snapshot) => {
+    const data = snapshot.docs.map((doc) => ({
+      provaId: doc.id,
+      imageUrl: doc.data().imageUrl || undefined,
+      name: doc.data().name || doc.id,
+      description: doc.data().description || undefined,
+      startDate: doc.data().startDate?.toDate?.() ?? null,
+      finishDate: doc.data().finishDate?.toDate?.() ?? null,
+      results: doc.data()
+    }));
+
+    callback(data);
+  });
+}
 
 export const getPenyaInfoRealTime = (year: number, penyaId: string, callback: (data: PenyaInfo | null) => void) => {
   const penyaRef = doc(db, `Circuit/${year}/Penyes`, penyaId);
