@@ -97,7 +97,7 @@ export default function AdminAddPenya() {
         }
       
         for (let i = 0; i < penyesNames.length; i++) {
-          if (!penyesNames[i].trim()) {
+          if (!String(penyesNames[i]).trim()) {
             toast.warning(`El nom de la penya ${i + 1} no pot estar buit.`);
             return;
           }
@@ -139,6 +139,7 @@ export default function AdminAddPenya() {
               toast.warning("Algunes penyes ja existien previament, observa quines están marcades com a no actualitzades.");
             } else {
               toast.success("Totes les penyes afegides correctament!");
+              setIsDialogOpen(false);
             }
           });
         } catch (error) {
@@ -172,7 +173,7 @@ export default function AdminAddPenya() {
         const firstColumnValue = (row as any[])[0];
         if (firstColumnValue !== undefined) {
           console.log(`Fila ${index + 1}: ${firstColumnValue}`);
-          penyesNamesTemp.push(firstColumnValue);
+          penyesNamesTemp.push(String(firstColumnValue));
         }
       });
       setPenyesNames([...penyesNames, ...penyesNamesTemp]);

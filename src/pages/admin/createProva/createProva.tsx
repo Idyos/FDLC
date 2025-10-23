@@ -62,6 +62,9 @@ export default function CreateProva() {
   const [isLoading, setIsLoading] = useState(false);
   const [penyaSearch, setPenyaSearch] = useState("");
 
+  const watchedStart = form.watch("startDate");
+  const watchedEnd = form.watch("endDate");
+
   useEffect(() => {
     form.setValue(
       "penyes",
@@ -91,6 +94,9 @@ export default function CreateProva() {
       name: location.name,
     };
     form.setValue("location", finalLocation);
+
+    console.log(form.getValues("startDate")?.toISOString().slice(0, 16), form.getValues("endDate")?.toISOString().slice(0, 16));
+
   }, [location]);
 
   const onSubmit = (data: CreateChallenge) => {
@@ -258,9 +264,19 @@ export default function CreateProva() {
                 <FormControl>
                   <Input
                     type="datetime-local"
+                    max={
+                      watchedEnd
+                        ? new Date(
+                            watchedEnd.getTime() - watchedEnd.getTimezoneOffset() * 60000
+                          ).toISOString().slice(0, 16)
+                        : undefined
+                    }
                     value={
                       field.value
-                        ? new Date(field.value).toISOString().slice(0, 16)
+                        ? new Date(
+                            new Date(field.value).getTime() -
+                            new Date(field.value).getTimezoneOffset() * 60000
+                          ).toISOString().slice(0, 16)
                         : ""
                     }
                     onChange={(e) => {
@@ -285,14 +301,31 @@ export default function CreateProva() {
                 <FormControl>
                   <Input
                     type="datetime-local"
+                    min={
+                      watchedStart
+                        ? new Date(
+                            watchedStart.getTime() - watchedStart.getTimezoneOffset() * 60000
+                          ).toISOString().slice(0, 16)
+                        : undefined
+                    }
                     value={
+                      
                       field.value
-                        ? new Date(field.value).toISOString().slice(0, 16)
+                        ? new Date(
+                            new Date(field.value).getTime() -
+                            new Date(field.value).getTimezoneOffset() * 60000
+                          ).toISOString().slice(0, 16)
                         : ""
                     }
                     onChange={(e) => {
                       const value = e.target.value;
-                      field.onChange(value ? new Date(value) : null);
+                      const next = value ? new Date(value) : null;
+                      const start = watchedStart;
+                      if (next && start && next < start) {
+                        field.onChange(start);
+                        return;
+                      }
+                      field.onChange(next);
                     }}
                     onBlur={field.onBlur}
                     name={field.name}

@@ -33,7 +33,7 @@ export const createProva = async (
           if (penyaInfo.participates) {
             const participantRef = doc(
               db,
-              `Circuit/${year}/Proves/${data.name}/Resultats/${penyaInfo.penya.penyaId}`
+              `Circuit/${year}/Proves/${data.name}/Participants/${penyaInfo.penya.penyaId}`
             );
 
             let participantObject: {
@@ -209,7 +209,7 @@ export const getProvaInfoRealTime = (
   callback: (data: ProvaInfo) => void
 ): Unsubscribe => {
   const provaDocRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
-  const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Resultats`);
+  const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
 
   let base: (Omit<ProvaInfo, "results"> & { challengeType?: ProvaType; winDirection?: WinDirection }) | null = null;
   let participants: Array<Omit<SingleProvaResultData, "provaType">> = [];
@@ -248,9 +248,24 @@ export const getProvaInfoRealTime = (
       unsubParticipants();
     }
 
+    let orderType = "";
+    switch(base.challengeType){
+      case "Temps":
+        orderType = "time";
+        break;
+      case "Participació":
+        orderType = "participation";
+        break;
+      case "Punts":
+      default:
+        orderType = "points";
+        break;
+    }
+
     const participantsQuery = sort && base.winDirection !== "NONE" 
-    ? query(participantsRef, orderBy("result", base.winDirection === "ASC" ? "desc" : "asc"))
-    : participantsRef;    
+    ? query(participantsRef, orderBy(orderType, base.winDirection === "ASC" ? "desc" : "asc"))
+    : participantsRef; 
+       
     unsubParticipants = onSnapshot(participantsQuery, (snap) => {
       participants = snap.docs.map((p) => {
         const r = p.data() as any;
@@ -281,7 +296,7 @@ export const updateProvaTimeResult = async (
   successCallback?: () => void,
   errorCallback?: (error: unknown) => void
 ) => {
-  const participantRef = doc(db, provaReference, "Resultats", penyaId);
+  const participantRef = doc(db, provaReference, "Participants", penyaId);
 
   try {
     await updateDoc(participantRef, {
@@ -325,16 +340,17 @@ export const getPenyaProvesRealTime = (
 ) => {
   const provesRef = collection(db, `Circuit/${year}/Proves`);
 
-  getDocs(provesRef).then((snapshot) => {
-    const unsubscribes: (() => void)[] = [];
-    const provisionalResults: Record<string, PenyaProvaSummary> = {};
+  const unsubscribes: (() => void)[] = [];
+  const provisionalResults: Record<string, PenyaProvaSummary> = {};
 
+  const unsubscribeProves = onSnapshot(provesRef, (snapshot) => {
     snapshot.docs.forEach((provaDoc) => {
       const provaId = provaDoc.id;
       const provaData = provaDoc.data();
+
       const participantRef = doc(db, `Circuit/${year}/Proves/${provaId}/Participants/${penyaId}`);
 
-      const unsubscribe = onSnapshot(participantRef, (participantSnap) => {
+      const unsubscribeParticipant = onSnapshot(participantRef, (participantSnap) => {
         if (!participantSnap.exists()) return;
 
         const p = participantSnap.data();
@@ -354,10 +370,13 @@ export const getPenyaProvesRealTime = (
         callback(Object.values(provisionalResults));
       });
 
-      unsubscribes.push(unsubscribe);
+      unsubscribes.push(unsubscribeParticipant);
     });
-
-    // Devuelve función para desuscribirse de todos
-    return () => unsubscribes.forEach((unsub) => unsub());
   });
+
+  // devuelve una función que limpia todos los listeners
+  return () => {
+    unsubscribeProves();
+    unsubscribes.forEach((u) => u());
+  };
 };

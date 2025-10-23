@@ -45,8 +45,10 @@ export default function PenyaPage() {
                     navigate("/");
                     return;
                 }
+
                 penyaInfo.current = penyaInfoResult;
                 document.title = `${penyaInfo.current.name} ${selectedYear}`;
+
                 getPenyaProvesRealTime(selectedYear, penyaId, (data) => {
                     setPenyaProves(data);
                     setIsProvesLoading(false);

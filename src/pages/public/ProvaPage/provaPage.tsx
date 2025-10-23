@@ -52,7 +52,6 @@ export default function ProvaPage() {
                     navigate("/");
                     return;
                 }
-                console.log("Prova info received:", penyaInfoResult);
 
                 setProvaInfo(penyaInfoResult);
                 document.title = `${penyaInfoResult.name} ${selectedYear}`;
@@ -95,7 +94,7 @@ export default function ProvaPage() {
                         ? <SingleProvaResult key={provaResultSummary.penyaId} provaResultSummary={provaResultSummary} />
                         : null
                     ))
-                ) : (<p>No s'han trobat proves per a aquesta penya.</p>)
+                ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
               )}
               </div>
             </div>
