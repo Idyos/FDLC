@@ -15,8 +15,8 @@ import { Label } from "@/components/ui/label";
 import { useTheme } from "@/components/Theme/theme-provider";
 import { useState } from "react";
 import { toast } from "sonner";
-import { updatePenyaInfo } from "@/services/dbService";
 import { Checkbox } from "@/components/ui/checkbox";
+import { updatePenyaInfo } from "@/services/database/adminDbServices";
 
 interface PenyaSummaryProps {
   rankingInfo: PenyaInfo | null;

@@ -6,14 +6,14 @@ import { motion } from "framer-motion";
 // import { useTheme } from "../Theme/theme-provider";
 import { TimeRollingInput } from "../shared/timeInput";
 import { useEffect, useRef, useState } from "react";
-
+import { updateProvaTimeResult } from "@/services/database/adminDbServices";
 type AnyProvaResult = SingleProvaResultData;
 
 interface SingleProvaSummaryProp {
   provaResultSummary: AnyProvaResult;
 }
 
-export default function SingleProvaResult({ provaResultSummary }: SingleProvaSummaryProp) {
+export default function SingleProvaResultEditable({ provaResultSummary }: SingleProvaSummaryProp) {
   // const { theme } = useTheme();
   // const navigate = useNavigate();
   const prevSeconds = useRef(provaResultSummary.result);
@@ -28,17 +28,31 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
     switch (provaResultSummary.provaType) {
       case "Temps":
         return (
-        <TimeRollingInput
+          <TimeRollingInput
             valueSeconds={secs}
             onChangeSeconds={setSecs}
             maxHours={3}
-            disabled={true}
+            onBlur={(newSeconds) => updateProvaResult(newSeconds)}
           />
         );
       default:
         return null;
     }
   };
+
+  const updateProvaResult = async (newSeconds: number) => {
+    if(prevSeconds.current !== newSeconds){
+        updateProvaTimeResult(provaResultSummary.provaReference, provaResultSummary.penyaId, newSeconds, 
+        () => {
+          prevSeconds.current = newSeconds;
+          setSecs(prevSeconds.current);
+          console.log("Prova result updated successfully");
+        }, (error) => {
+          setSecs(prevSeconds.current);
+          console.error("Error updating prova result:", error);
+        });
+    }
+  }
 
   return (
     <motion.div

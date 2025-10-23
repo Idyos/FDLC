@@ -15,9 +15,9 @@ import { Label } from "@/components/ui/label";
 import { useTheme } from "@/components/Theme/theme-provider";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { addPenyes } from "@/services/dbService";
 import { Badge } from "@/components/ui/badge";
 import { Ban, Check, Loader, Plus } from "lucide-react";
+import { addPenyes } from "@/services/database/adminDbServices";
 
 
 export default function AdminAddPenya() {

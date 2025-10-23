@@ -2,17 +2,18 @@ import PageTitle from "@/components/public/pageTitle";
 import PenyaSummary from "@/components/public/penyaSummary";
 import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/YearContext";
-import { PenyaRankingSummary, ProvaSummary as _ProvaSummary } from "@/interfaces/interfaces";
-import { getProvesRealTime, getRankingRealTime } from "@/services/dbService";
+import { PenyaRankingSummary, ProvaSummary} from "@/interfaces/interfaces";
+import { getProvesRealTime, getRankingRealTime } from "@/services/database/publicDbService";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProvaSummaryCard from "@/components/public/provaSummary";
+import DynamicList from "@/components/shared/dynamicList";
 
 export default function MainPage() {
   const previousRankingsRef = useRef<PenyaRankingSummary[]>([]);
   const [rankings, setRankings] = useState<PenyaRankingSummary[]>([]);
-  const [proves, setProves] = useState<_ProvaSummary[]>([]);
+  const [proves, setProves] = useState<ProvaSummary[]>([]);
 //   const [comunicats, setComunicats] = useState<any[]>([]);
   const { selectedYear: year } = useYear();
   const [isLoading, setIsLoading] = useState(true);
@@ -31,9 +32,14 @@ export default function MainPage() {
               {isLoading ? (
                 <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
               ) : (
-                rankings.map((item, index) => {
-                  return <PenyaSummary key={index} rankingInfo={item} />;
-                })
+                <DynamicList
+                  items={rankings}
+                  renderItem={(item, index) => (
+                    <PenyaSummary key={index} rankingInfo={item} />
+                  )}
+                  breakIndex={10}
+                  columns={3}
+                />
               )}
             </div>
           </div>

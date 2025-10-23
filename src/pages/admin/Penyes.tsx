@@ -1,11 +1,11 @@
-import AdminAddPenya from "@/components/admin/Penyes/PenyaSummary/adminAddPenya";
+import AdminAddPenya from "@/components/admin/Penyes/AddPenya/adminAddPenya";
 import AdminPenyaSummary from "@/components/admin/Penyes/PenyaSummary/adminPenyaSummary";
 import PageTitle from "@/components/public/pageTitle";
 import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/YearContext";
 import { Input } from "@/components/ui/input";
 import { PenyaInfo } from "@/interfaces/interfaces";
-import { getPenyes } from "@/services/dbService";
+import { getPenyes } from "@/services/database/adminDbServices";
 import { useEffect, useState } from "react";
 
 export default function Penyes() {

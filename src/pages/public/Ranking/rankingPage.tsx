@@ -3,8 +3,9 @@ import PenyaSummary from "@/components/public/penyaSummary";
 import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/YearContext";
 import { PenyaRankingSummary } from "@/interfaces/interfaces";
-import { getRankingRealTime } from "@/services/dbService";
+import { getRankingRealTime } from "@/services/database/publicDbService";
 import { useEffect, useRef, useState } from "react";
+import DynamicList from "@/components/shared/dynamicList";
 
 export default function RankingPage() {
     const previousRankingsRef = useRef<PenyaRankingSummary[]>([]);
@@ -53,9 +54,14 @@ export default function RankingPage() {
               {isLoading ? (
               <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
               ) : (
-                rankings.map((item, index) => {
-                  return <PenyaSummary key={index} rankingInfo={item} />;
-                })
+                <DynamicList
+                  items={rankings}
+                  renderItem={(item, index) => (
+                    <PenyaSummary key={index} rankingInfo={item} />
+                  )}
+                  breakIndex={10}
+                  columns={3}
+                />
               )}
               </div>
             </div>

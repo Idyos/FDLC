@@ -29,13 +29,12 @@ const emptyProva: ProvaInfo = {
     results: [],
 };
 
-export default function ProvaPage() {
+export default function AdminProvaPage() {
     const navigate = useNavigate();
 
     const { previousSelectedYear, selectedYear, setSelectedYear } = useYear();
     
     const [noProvaAlert, setNoProbaAlert] = useState(false);
-    
 
     const [provaInfo, setProvaInfo] = useState<ProvaInfo>(emptyProva);
 
@@ -95,7 +94,7 @@ export default function ProvaPage() {
                       items={provaInfo.results}
                       renderItem={(provaResultSummary) => (
                         provaResultSummary.participates ? (
-                          <SingleProvaResult key={provaResultSummary.penyaId} provaResultSummary={provaResultSummary} />
+                          <SingleProvaResultEditable key={provaResultSummary.penyaId} provaResultSummary={provaResultSummary} />
                         ) : null
                       )}
                     />

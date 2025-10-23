@@ -2,7 +2,7 @@ import PageTitle from "@/components/public/pageTitle";
 import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/YearContext";
 import { PenyaInfo, PenyaProvaSummary } from "@/interfaces/interfaces";
-import { getPenyaInfoRealTime, getPenyaProvesRealTime } from "@/services/dbService";
+import { getPenyaInfoRealTime, getPenyaProvesRealTime } from "@/services/database/publicDbService";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {

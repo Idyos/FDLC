@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { getYears } from "@/services/dbService";
+import { getYears } from "@/services/database/publicDbService";
 import { useYear } from "../shared/YearContext";
 
 export default function YearSelector() {
