@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import ProvaSummaryCard from "@/components/public/provaSummary";
+import LoadingAnimation from "@/components/shared/loadingAnim";
 
 export default function PenyaPage() {
     const navigate = useNavigate();
@@ -84,7 +85,7 @@ export default function PenyaPage() {
               <PageTitle title={isPenyaLoading ? "Carregant..." : penyaInfo.current.name} image="" />
               <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isProvesLoading ? (
-              <p className="text-gray-500 dark:text-gray-400">Carregant...</p>
+                <LoadingAnimation />
               ) : (
                 penyaProves.length > 0 ? (
                     penyaProves.map((provaSummary) => (

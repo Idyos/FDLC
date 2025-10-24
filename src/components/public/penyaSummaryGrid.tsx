@@ -57,7 +57,8 @@ export default function PenyaSummaryGrid({ rankingInfo }: PenyaSummaryProps) {
       {/* Contenido */}
       <div className="relative z-10 flex flex-col justify-around items-center h-full p-4 dark:text-white text-gray-900">
         <div className="text-center">
-          <p className="text-2xl font-bold"><p className="inline text-3xl font-extrabold">{rankingInfo.position}.</p> {rankingInfo.isSecret ? "???" : rankingInfo.name}</p>
+          <p className="inline text-3xl font-extrabold">{rankingInfo.position}.</p>
+          <p className="inline text-2xl font-bold"> {rankingInfo.isSecret ? "???" : rankingInfo.name}</p>
         </div>
 
         <Badge variant="secondary" className="text-right text-lg font-semibold rounded-4xl">

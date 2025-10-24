@@ -16,9 +16,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import SingleProvaResultEditable from "@/components/admin/singleProvaResultAdmin";
-import SingleProvaResult from "@/components/public/singleProvaResult";
 import DynamicList from "@/components/shared/dynamicList";
-import { doc } from "firebase/firestore";
+import LoadingAnimation from "@/components/shared/loadingAnim";
 
 const emptyProva: ProvaInfo = {
     winDirection: "NONE",
@@ -90,7 +89,7 @@ export default function AdminProvaPage() {
               <PageTitle title={isProvaLoading ? "Carregant..." : provaInfo.name} image="" />
               <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isProvaLoading ? (
-              <p className="text-gray-500 dark:text-gray-400">Carregant...</p>
+              <LoadingAnimation />
               ) : (
                 provaInfo.results.length > 0 ? (
                     <DynamicList

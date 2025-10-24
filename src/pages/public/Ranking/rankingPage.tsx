@@ -6,6 +6,7 @@ import { PenyaRankingSummary } from "@/interfaces/interfaces";
 import { getRankingRealTime } from "@/services/database/publicDbService";
 import { useEffect, useRef, useState } from "react";
 import DynamicList from "@/components/shared/dynamicList";
+import LoadingAnimation from "@/components/shared/loadingAnim";
 
 export default function RankingPage() {
     const previousRankingsRef = useRef<PenyaRankingSummary[]>([]);
@@ -52,7 +53,7 @@ export default function RankingPage() {
               <PageTitle title="Ranking" image="" />
               <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isLoading ? (
-              <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
+                <LoadingAnimation />
               ) : (
                 <DynamicList
                   items={rankings}
@@ -60,7 +61,6 @@ export default function RankingPage() {
                     <PenyaSummary key={index} rankingInfo={item} />
                   )}
                   breakIndex={10}
-                  columns={3}
                 />
               )}
               </div>

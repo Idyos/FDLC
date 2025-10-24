@@ -1,11 +1,11 @@
 import AdminAddPenya from "@/components/admin/Penyes/AddPenya/adminAddPenya";
-import AdminPenyaSummary from "@/components/admin/Penyes/PenyaSummary/adminPenyaSummary";
 import AdminProvaSummary from "@/components/admin/Proves/ProvaSummary/adminProvaSummary";
 import PageTitle from "@/components/public/pageTitle";
 import YearSelector from "@/components/public/yearSelector";
+import LoadingAnimation from "@/components/shared/loadingAnim";
 import { useYear } from "@/components/shared/YearContext";
 import { Input } from "@/components/ui/input";
-import { PenyaInfo, ProvaSummary } from "@/interfaces/interfaces";
+import { ProvaSummary } from "@/interfaces/interfaces";
 import { getProves } from "@/services/database/adminDbServices";
 
 import { useEffect, useState } from "react";
@@ -39,7 +39,7 @@ export default function Proves() {
             <PageTitle title="Penyes" image="" />
             <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isLoading ? (
-              <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
+                <LoadingAnimation />
               ) : (
                 <>
                     <Input className="p-4 mb-4" type="search" value={provesSearch} placeholder="Buscar prova..." onChange={(e) => setProvesSearch(e.target.value)}/>

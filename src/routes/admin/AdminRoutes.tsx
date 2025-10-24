@@ -1,11 +1,12 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import LoadingAnimation from "@/components/shared/loadingAnim";
 
 export const AdminRoutes = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div>Cargando...</div>;
+    return <LoadingAnimation />;
   }
 
   if (!user) {

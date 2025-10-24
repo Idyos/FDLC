@@ -27,6 +27,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { createProva, getPenyes } from "@/services/database/adminDbServices";
+import LoadingAnimation from "@/components/shared/loadingAnim";
 
 export default function CreateProva() {
     const form = useForm<CreateChallenge>({
@@ -413,7 +414,7 @@ export default function CreateProva() {
             </div>
             {challengeType == undefined ||
             challengeType == "Participació" ? null : isLoading ? (
-              <p>Carregant penyes...</p>
+              <LoadingAnimation />
             ) : (
               <FormField
                 control={form.control}

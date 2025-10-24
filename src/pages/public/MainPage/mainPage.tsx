@@ -1,4 +1,3 @@
-import PageTitle from "@/components/public/pageTitle";
 import PenyaSummary from "@/components/public/penyaSummary";
 import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/YearContext";
@@ -10,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ProvaSummaryCard from "@/components/public/provaSummary";
 import DynamicList from "@/components/shared/dynamicList";
 import PenyaSummaryGrid from "@/components/public/penyaSummaryGrid";
+import LoadingAnimation from "@/components/shared/loadingAnim";
 
 export default function MainPage() {
   const previousRankingsRef = useRef<PenyaRankingSummary[]>([]);
@@ -30,7 +30,7 @@ export default function MainPage() {
           <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
             <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isLoading ? (
-                <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
+                <LoadingAnimation />
               ) : (
                 <DynamicList
                   items={rankings}
@@ -41,7 +41,6 @@ export default function MainPage() {
                     <PenyaSummaryGrid key={index} rankingInfo={item} />
                   )}
                   breakIndex={10}
-                  columns={3}
                 />
               )}
             </div>
@@ -56,7 +55,7 @@ export default function MainPage() {
           <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
             <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isLoading ? (
-                <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
+                <LoadingAnimation />
               ) : (
                 proves.map((item, index) => {
                   return <ProvaSummaryCard key={index} provaSummary={item} />;

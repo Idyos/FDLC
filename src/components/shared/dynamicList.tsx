@@ -8,7 +8,7 @@ interface DynamicListProps<T> {
   columns?: number;
 }
 
-export default function DynamicList<T>({ items, renderItem, renderGridItem, breakIndex = 10, columns = 3 }: DynamicListProps<T>) {
+export default function DynamicList<T>({ items, renderItem, renderGridItem, breakIndex = 10 }: DynamicListProps<T>) {
   if (!items || items.length === 0) return null;
 
   const firstPart = items.slice(0, breakIndex);
