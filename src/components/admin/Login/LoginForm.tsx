@@ -3,8 +3,11 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { browserLocalPersistence, getAuth, setPersistence, signInWithEmailAndPassword } from "firebase/auth";
+import { browserLocalPersistence, browserSessionPersistence, getAuth, setPersistence, signInWithEmailAndPassword } from "firebase/auth";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 const loginSchema = z.object({
   email: z.string().email("Format del correu electrònic incorrecte"),
@@ -20,13 +23,15 @@ type LoginFormProps = {
   };
 
 export default function LoginForm({ auth, setIsLogin, onClick }: LoginFormProps) {
+  const [rememberMe, setRememberMe] = useState(false);
+
     const form = useForm<LoginFormValues>({
         resolver: zodResolver(loginSchema),
     });
 
     const onTryLogin = (data: LoginFormValues) => {
       console.log("Intentant iniciar sessió amb:", data);
-        setPersistence(auth, browserLocalPersistence)
+        setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
           .then(() => {
             return signInWithEmailAndPassword(auth, data.email, data.password);
           })
@@ -70,6 +75,14 @@ export default function LoginForm({ auth, setIsLogin, onClick }: LoginFormProps)
               </FormItem>
             )}
           />
+
+          <div className="flex items-center gap-3">
+            <Checkbox
+              checked={rememberMe}
+              onCheckedChange={(result) => result === "indeterminate" ? setRememberMe(false) : setRememberMe(result)}
+            />
+            <Label htmlFor="terms">Recordar sessió</Label>
+          </div>
           <Button type="submit" className="w-full">Iniciar sessió</Button>
           <Button variant={"outline"} className="w-full" onClick={() => setIsLogin(false)}>Crear compte</Button>
         </form>

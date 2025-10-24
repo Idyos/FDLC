@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProvaSummaryCard from "@/components/public/provaSummary";
 import DynamicList from "@/components/shared/dynamicList";
+import PenyaSummaryGrid from "@/components/public/penyaSummaryGrid";
 
 export default function MainPage() {
   const previousRankingsRef = useRef<PenyaRankingSummary[]>([]);
@@ -35,6 +36,9 @@ export default function MainPage() {
                   items={rankings}
                   renderItem={(item, index) => (
                     <PenyaSummary key={index} rankingInfo={item} />
+                  )}
+                  renderGridItem={(item, index) => (
+                    <PenyaSummaryGrid key={index} rankingInfo={item} />
                   )}
                   breakIndex={10}
                   columns={3}

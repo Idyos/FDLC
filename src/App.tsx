@@ -16,6 +16,8 @@ import CreateProva from './pages/admin/createProva/createProva';
 import BracketTest from './pages/public/BracketTestPackage/BracketTest';
 import MainPage from './pages/public/MainPage/mainPage';
 import ProvaPage from './pages/public/ProvaPage/provaPage';
+import { AdminRoutes } from './routes/admin/AdminRoutes';
+import { AuthProvider } from './routes/admin/AuthContext';
 
 // Protección de rutas
 // import { AdminRoutes } from './routes/admin/AdminRoutes';
@@ -26,26 +28,26 @@ export default function App() {
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <YearProvider>
-      <ModeToggle />
-      <Routes>
-        {/* Public */}
-        <Route path="/" element={<MainPage />} />
-        <Route path="/penya" element={<PenyaPage />} />
-        <Route path="/prova" element={<ProvaPage />} />
-        <Route path="/bracket" element={<BracketTest />} />
+      <AuthProvider>
+        <YearProvider>
+        <ModeToggle />
+        <Routes>
+          {/* Public */}
+          <Route path="/" element={<MainPage />} />
+          <Route path="/penya" element={<PenyaPage />} />
+          <Route path="/prova" element={<ProvaPage />} />
+          <Route path="/bracket" element={<BracketTest />} />
 
-        {/* Admin */}
-        <Route path="/admin/login" element={<Login />} />
-        <Route path="/admin" element={<Dashboard />} />
-        <Route path="/admin/penyes" element={<Penyes />} />
-        <Route path="/admin/proves" element={<Proves />}/>
-        <Route path="/admin/createProva" element={<CreateProva />}/>
-        {/* <Route path="/admin" element={<AdminRoutes><Dashboard /></AdminRoutes>} />
-        <Route path="/admin/penyes" element={<AdminRoutes><Penyes /></AdminRoutes>} />
-        <Route path="/admin/proves" element={<AdminRoutes><Proves /></AdminRoutes>} /> */}
-      </Routes>
-      </YearProvider>
+          {/* Admin */}
+          <Route path="/admin/login" element={<Login />} />
+          <Route path="/admin" element={<AdminRoutes><Dashboard /></AdminRoutes>} />
+          <Route path="/admin/penyes" element={<AdminRoutes><Penyes /></AdminRoutes>} />
+          <Route path="/admin/proves" element={<AdminRoutes><Proves /></AdminRoutes>} />
+          <Route path="/admin/createProva" element={<AdminRoutes><CreateProva /></AdminRoutes>} />
+
+        </Routes>
+        </YearProvider>
+      </AuthProvider>
     </ThemeProvider>
 
   );
