@@ -14,6 +14,8 @@ export default function Penyes() {
     const [isLoading, setIsLoading] = useState(true);
     const [penyesSearch, setPenyesSearch] = useState("");
 
+    document.title = `Penyes ${selectedYear} - Admin`;
+
     // Info de penyes
     useEffect(() => {
         setIsLoading(true);

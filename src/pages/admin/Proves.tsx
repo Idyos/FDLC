@@ -12,9 +12,11 @@ import { useEffect, useState } from "react";
 
 export default function Proves() {
     const { selectedYear } = useYear();    
-  const [proves, setProves] = useState<ProvaSummary[]>([]);
+    const [proves, setProves] = useState<ProvaSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [provesSearch, setProvesSearch] = useState("");
+
+    document.title = `Proves ${selectedYear} - Admin`;
 
     // Info de proves
     useEffect(() => {

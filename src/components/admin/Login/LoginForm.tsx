@@ -23,7 +23,9 @@ type LoginFormProps = {
   };
 
 export default function LoginForm({ auth, setIsLogin, onClick }: LoginFormProps) {
-  const [rememberMe, setRememberMe] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
+
+    document.title = "Iniciar sessió";
 
     const form = useForm<LoginFormValues>({
         resolver: zodResolver(loginSchema),

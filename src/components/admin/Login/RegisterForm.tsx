@@ -26,7 +26,9 @@ type LoginFormProps = {
   };
 
 export default function ({ auth, setIsLogin, onClick }: LoginFormProps) {
-    const form = useForm<RegisterFormValues>({
+    document.title = "Registrar-se";  
+  
+  const form = useForm<RegisterFormValues>({
         resolver: zodResolver(registerSchema),
     });
 

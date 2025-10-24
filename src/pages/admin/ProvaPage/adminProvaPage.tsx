@@ -18,6 +18,7 @@ import {
 import SingleProvaResultEditable from "@/components/admin/singleProvaResultAdmin";
 import SingleProvaResult from "@/components/public/singleProvaResult";
 import DynamicList from "@/components/shared/dynamicList";
+import { doc } from "firebase/firestore";
 
 const emptyProva: ProvaInfo = {
     winDirection: "NONE",
@@ -47,15 +48,17 @@ export default function AdminProvaPage() {
     useEffect(() => {
         setIsProvaLoading(true);
 
+        document.title = `Carregant Prova - Admin`;
+
+
         const unsubscribe = getProvaInfoRealTime(selectedYear, provaId, true, (penyaInfoResult) => {
             if(penyaInfoResult!=null){
                 if(penyaInfoResult.isSecret){
                     navigate("/");
                     return;
                 }
-
                 setProvaInfo(penyaInfoResult);
-                document.title = `${penyaInfoResult.name} ${selectedYear}`;
+                document.title = `${penyaInfoResult.name} ${selectedYear} - Admin`;
             }
             else {
                 setNoProbaAlert(true);

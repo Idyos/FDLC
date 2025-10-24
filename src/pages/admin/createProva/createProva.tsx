@@ -65,6 +65,8 @@ export default function CreateProva() {
   const watchedStart = form.watch("startDate");
   const watchedEnd = form.watch("endDate");
 
+  document.title = "Crear Prova";
+
   useEffect(() => {
     form.setValue(
       "penyes",

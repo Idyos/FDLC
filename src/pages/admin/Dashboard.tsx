@@ -17,6 +17,8 @@ export default function Dashboard() {
     const [completedProves, setCompletedProves] = useState(0);
     const [nextProva, setNextProva] = useState<string | null>(null);
 
+    document.title = "Dashboard";
+
   useEffect(() => {
     setPeyesCount(12);
     setProvesCount(8);

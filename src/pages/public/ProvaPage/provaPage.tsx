@@ -47,6 +47,8 @@ export default function ProvaPage() {
 
     useEffect(() => {
         setIsProvaLoading(true);
+                
+        document.title = `Carregant Prova`;
 
         const unsubscribe = getProvaInfoRealTime(selectedYear, provaId, true, (penyaInfoResult) => {
             if(penyaInfoResult!=null){
