@@ -23,8 +23,8 @@ export default function DynamicList<T>({items, renderItem, breakIndex = 10, colu
       {/* Segunda parte: grid */}
       {rest.length > 0 && (
         <div
-          className={`mt-6 grid gap-3`}
-          style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+        
+          className="grid grid-cols-[repeat(auto-fit,_minmax(300px,_1fr))] gap-x-7 gap-y-2 w-full"
         >
           {rest.map((item, i) => renderItem(item, breakIndex + i))}
         </div>
