@@ -1,9 +1,8 @@
 // src/services/dbService.js
-import { BaseChallenge, PenyaInfo, PenyaProvaSummary, ProvaSummary, PenyaRankingSummary, SingleProvaResultData, ProvaInfo, ProvaType, WinDirection } from "@/interfaces/interfaces";
+import { PenyaInfo, PenyaProvaSummary, ProvaSummary, PenyaRankingSummary, SingleProvaResultData, ProvaInfo, ProvaType, WinDirection } from "@/interfaces/interfaces";
 import { db } from "../../firebase/firebase";
-import { collection, getDocs, query, onSnapshot, orderBy, doc, updateDoc, writeBatch, Unsubscribe } from "firebase/firestore";
+import { collection, getDocs, query, onSnapshot, orderBy, doc, Unsubscribe } from "firebase/firestore";
 import { toast } from "sonner";
-import { addImageToChallenges } from "../storageService";
 
 
 

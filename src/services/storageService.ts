@@ -21,8 +21,11 @@ export const addImageToChallenges = async (file: File | null, year: number, chal
     }
 }
 
-export const addImageToPenyes = async (file: File, year: number, penyaName: string): Promise<string> => {
-    const path = `Circuit/${year}/Penyes/${penyaName}`;
+export const addImageToPenyes = async (file: File | null, year: number, penyaId: string): Promise<string> => {
+    if (!file) return "";
+
+
+    const path = `Circuit/${year}/Penyes/${penyaId}`;
 
     const storageRef = ref(storage, path);
     const metadata = {

@@ -189,7 +189,7 @@ export default function AdminAddPenya() {
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      className="col-span-full relative h-36 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
+      className="relative h-36 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
     >
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild className="w-full h-full " onClick={() => setIsDialogOpen(true)}>

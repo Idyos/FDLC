@@ -12,37 +12,56 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useTheme } from "@/components/Theme/theme-provider";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { updatePenyaInfo } from "@/services/database/adminDbServices";
+import { useYear } from "@/components/shared/YearContext";
+import { Textarea } from "@/components/ui/textarea";
 
 interface PenyaSummaryProps {
   rankingInfo: PenyaInfo | null;
 }
 
 export default function AdminPenyaSummary({ rankingInfo }: PenyaSummaryProps) {
-  const { theme } = useTheme();
+  const { selectedYear } = useYear();    
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [provaImage, setProvaImage] = useState<File | null>(null);
+  const provaImageUrl = useMemo(() => {
+    return provaImage ? URL.createObjectURL(provaImage) : rankingInfo?.imageUrl ? rankingInfo.imageUrl : null;
+  }, [provaImage]);
+
   const [penyaName, setPenyaName] = useState(rankingInfo?.name || "");
   const [penyaSecret, setPenyaSecret] = useState(rankingInfo?.isSecret || false);
+  const [penyaDescription, setPenyaDescription] = useState(rankingInfo?.description || "");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  let bgColor =
-    theme == "dark" ? "rgba(38, 38, 38, 1)" : "rgba(255, 255, 255, 1)";
-  const gradient = `linear-gradient(270deg, rgba(0, 0, 0, 0), ${bgColor} 26%)`;
+    const onImageAdded = async (file: File) => {
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+  
+        if (!allowedTypes.includes(file.type)) {
+          toast.error("Només es permeten fitxers d'Imatge (.jpg, .png o .webp)");
+          return;
+        }
+  
+        console.log(file);
+
+        setProvaImage(file);
+    };
 
   const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    
-    console.log("penyaName", penyaName, rankingInfo?.name, rankingInfo?.penyaId);
-
+  
     if (!penyaName.trim()) {
       toast.warning("El nom de la penya no pot estar buit.");
       return;
     }
 
-    if(penyaName == rankingInfo?.name && penyaSecret == rankingInfo?.isSecret) {
+    if(penyaName == rankingInfo?.name && penyaSecret == rankingInfo?.isSecret
+      && penyaDescription == rankingInfo?.description && rankingInfo?.imageUrl == provaImageUrl
+    ) {
         toast.warning("No s'han detectat canvis.");
         return;
     }
@@ -51,13 +70,16 @@ export default function AdminPenyaSummary({ rankingInfo }: PenyaSummaryProps) {
         toast.error("No s'ha pogut actualitzar la penya: informació incompleta.");
         return;
     }
-  
+
+    setIsSaving(true);
+
     try {
-      updatePenyaInfo(2025, rankingInfo.penyaId, penyaName, penyaSecret)
+      updatePenyaInfo(selectedYear, rankingInfo.penyaId, penyaName, penyaSecret, penyaDescription, provaImage)
       .then(() => {
         toast.success("Penya actualitzada!");
         rankingInfo.name = penyaName;
         rankingInfo.isSecret = penyaSecret;
+        rankingInfo.description = penyaDescription;
         closeDialog(); 
       })
       .catch((error) => {
@@ -66,6 +88,8 @@ export default function AdminPenyaSummary({ rankingInfo }: PenyaSummaryProps) {
 
     } catch (error) {
       toast.error("Error al guardar");
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -87,70 +111,92 @@ export default function AdminPenyaSummary({ rankingInfo }: PenyaSummaryProps) {
             <img
               src={rankingInfo?.imageUrl || undefined}
               alt="Imagen Peña"
-              className="right-0 absolute object-cover w-8/12 h-full"
+              className="absolute object-cover"
               style={rankingInfo?.imageUrl == null ? { display: "none" } : {}}
             />
 
             {/* Capa de overlay para oscurecer */}
             <div
               style={rankingInfo?.imageUrl == null ? { display: "none" } : {}}
-              className="absolute inset-0 dark:bg-black/40 bg-white/30"
+              className="absolute inset-0 dark:bg-black/50 bg-white/40"
             ></div>
 
-            {/* Fondo de color */}
-            <div
-              className="absolute inset-0 h-full w-[50%] left-0"
-              style={
-                rankingInfo?.imageUrl == null
-                  ? { display: "none" }
-                  : { background: gradient }
-              }
-            ></div>
             {/* Contenido */}
-            <div className="relative z-10 flex justify-between w-full h-full p-4 dark:text-white text-gray-900">
-              <div className="text-left">
-                <p className="text-2xl font-bold">{rankingInfo?.name}</p>
-                <p className="text-xl font-regular">
-                  {rankingInfo?.totalPoints}
-                </p>
-              </div>
+            <div className="relative z-10 flex justify-center items-center w-full h-full p-4 dark:text-white text-gray-900">
+                <p className="text-center text-3xl font-bold">{rankingInfo?.name}</p>
             </div>
           </div>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[88svh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Modificar {rankingInfo?.name}</DialogTitle>
           </DialogHeader>
           <DialogDescription>
-            Aquí pots modificar la penya seleccionada. Si us plau, assegura't de que la informació sigui correcta abans de guardar els canvis.
-          </DialogDescription>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
+            Aquí pots modificar la info de {rankingInfo?.name}.
+          </DialogDescription>                
+            <div>
+            <Label htmlFor="image" className="text-right mb-2">
+              Imatge de la penya
+            </Label>
+            <div
+              className="h-43 w-full relative flex items-center justify-center border-2 border-dashed rounded-lg bg-center bg-contain bg-no-repeat"
+              style={{
+                backgroundImage: provaImageUrl ? `url(${provaImageUrl})` : rankingInfo.imageUrl ? `url(${rankingInfo.imageUrl})` : "none",
+              }}
+            >
+              {(!rankingInfo.imageUrl && !provaImageUrl)  && (
+                <span className="text-sm text-gray-500">Arrossega una imatge o fes clic</span>
+              )}
+
+              <Input
+                id="image"
+                type="file"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onImageAdded(file);
+                }}
+              />
+              </div>
+            </div>
+          <div>
+              <Label htmlFor="name" className="text-right mb-2">
                 Nom de la penya
               </Label>
               <Input
                 id="name"
                 value={penyaName}
-                className="col-span-3"
                 onChange={(e) => setPenyaName(e.target.value)}
               />
-            </div>
           </div>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
+          <div>
+              <Label htmlFor="description" className="mb-2">
+                Descripció de la penya
+              </Label>
+              <Textarea 
+                id="description"
+                placeholder="Descripció de la penya" 
+                value={penyaDescription}
+                onChange={(e) => setPenyaDescription(e.target.value)}
+              />
+          </div>
+          <div className="flex items-center space-x-2">
+              <Label htmlFor="secret" className="text-right">
                 Informació secreta
               </Label>
               <Checkbox
-                id="terms"
+                id="secret"
                 checked={penyaSecret}
                 onCheckedChange={(checked) => setPenyaSecret(checked === true)}
               />
-            </div>
           </div>
           <DialogFooter>
-            <Button disabled={penyaName.length == 0} type="submit" onClick={handleClick}>Guardar canvis</Button>
+            <Button
+              disabled={isSaving || penyaName.length == 0} 
+              type="submit" 
+              onClick={handleClick}>
+                Guardar canvis
+              </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

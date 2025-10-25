@@ -46,7 +46,7 @@ export default function PenyaSummary({ rankingInfo }: PenyaSummaryProps) {
       {/* Capa de overlay para oscurecer */}
       <div 
         style={rankingInfo.isSecret || rankingInfo.imageUrl == null ? {display: "none"} : {}}
-        className="absolute inset-0 dark:bg-black/40 bg-white/30"
+        className="absolute inset-0 dark:bg-black/50 bg-white/40"
         ></div>
 
         {/* Fondo de color */}  

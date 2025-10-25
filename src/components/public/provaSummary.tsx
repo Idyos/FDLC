@@ -46,7 +46,7 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
             alt={`${provaSummary.name}`}
             className="absolute inset-0 object-cover w-8/12 h-full"
           />
-          <div className="absolute inset-0 dark:bg-black/40 bg-white/30" />
+          <div className="absolute inset-0 dark:bg-black/50 bg-white/40" />
         </>
       )}
 

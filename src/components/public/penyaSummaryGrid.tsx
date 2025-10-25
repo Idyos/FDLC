@@ -16,8 +16,6 @@ export default function PenyaSummaryGrid({ rankingInfo }: PenyaSummaryProps) {
   else if (rankingInfo.position === 2) bgColor = theme == "dark" ? "rgba(169, 169, 169, 1)" : "rgba(169, 169, 169, 1)"; // Gray
   else if (rankingInfo.position === 3) bgColor = theme == "dark" ? "rgba(255, 165, 0, 1)" : "rgba(255, 165, 0, 1)"; // Orange
 
-  // Gradiente
-  const gradient = `linear-gradient(90deg, rgba(0, 0, 0, 0), ${bgColor} 26%)`;
 
     const navigate = useNavigate();
 
@@ -38,20 +36,14 @@ export default function PenyaSummaryGrid({ rankingInfo }: PenyaSummaryProps) {
       <img
         src={rankingInfo.imageUrl || undefined}
         alt="Imagen Peña"
-        className="absolute inset-0 object-cover w-8/12 h-full"
+        className="absolute object-cover"
         style={rankingInfo.isSecret || rankingInfo.imageUrl == null ? {display: "none"} : {}} // Efecto de desenfoque y brillo
       />
   
       {/* Capa de overlay para oscurecer */}
       <div 
         style={rankingInfo.isSecret || rankingInfo.imageUrl == null ? {display: "none"} : {}}
-        className="absolute inset-0 dark:bg-black/40 bg-white/30"
-        ></div>
-
-        {/* Fondo de color */}  
-        <div 
-          className="absolute inset-0 h-full left-[50%] right-0"
-          style={ { background: gradient }}
+        className="absolute inset-0 dark:bg-black/50 bg-white/40"
         ></div>
 
       {/* Contenido */}

@@ -1,8 +1,8 @@
-import { BaseChallenge, PenyaInfo, PenyaProvaSummary, ProvaSummary, PenyaRankingSummary, SingleProvaResultData, ProvaInfo, ProvaType, WinDirection } from "@/interfaces/interfaces";
+import { BaseChallenge, PenyaInfo, ProvaInfo } from "@/interfaces/interfaces";
 import { db } from "../../firebase/firebase";
-import { collection, getDocs, query, onSnapshot, orderBy, doc, updateDoc, writeBatch, Unsubscribe } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, writeBatch } from "firebase/firestore";
 import { toast } from "sonner";
-import { addImageToChallenges } from "../storageService";
+import { addImageToChallenges, addImageToPenyes } from "../storageService";
 
 //#region PROVES
 export const getProves = async (year: number, callback: (data: ProvaInfo[]) => void) => {
@@ -131,6 +131,7 @@ export const getPenyes = async (year: number, callback: (data: PenyaInfo[]) => v
       penyaId: doc.id,
       name: doc.data().name || doc.id,
       totalPoints: doc.data().totalPoints || 0,
+      description: doc.data().description || "",
       imageUrl: doc.data().imageUrl || undefined,
       position: 0,
       isSecret: doc.data().isSecret || false,
@@ -179,13 +180,16 @@ export const addPenyes = async (
   }
 };
 
-export const updatePenyaInfo = async (year: number, penyaId: string, name: string, isSecret: boolean) => {
+export const updatePenyaInfo = async (year: number, penyaId: string, name: string, isSecret: boolean, description: string, image: File | null) => {
   const penyaRef = doc(db, `Circuit/${year}/Penyes`, penyaId);
 
   try {
+    const url = await addImageToPenyes(image, year, penyaId);
     await updateDoc(penyaRef, {
       name: name,
       isSecret: isSecret,
+      description: description,
+      imageUrl: url,
     });
     console.log("Penya updated successfully:", penyaId);
   } catch (error) {
