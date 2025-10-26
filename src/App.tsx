@@ -43,6 +43,7 @@ export default function App() {
           <Route path="/admin" element={<AdminRoutes><Dashboard /></AdminRoutes>} />
           <Route path="/admin/penyes" element={<AdminRoutes><Penyes /></AdminRoutes>} />
           <Route path="/admin/proves" element={<AdminRoutes><Proves /></AdminRoutes>} />
+          <Route path="/admin/prova" element={<AdminRoutes><ProvaPage /></AdminRoutes>} />
           <Route path="/admin/createProva" element={<AdminRoutes><CreateProva /></AdminRoutes>} />
 
         </Routes>

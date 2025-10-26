@@ -200,7 +200,7 @@ export default function AdminAddPenya() {
                 </div>
             </div>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Crear penya/es</DialogTitle>
           </DialogHeader>
