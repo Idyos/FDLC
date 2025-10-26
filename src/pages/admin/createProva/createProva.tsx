@@ -28,8 +28,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { createProva, getPenyes } from "@/services/database/adminDbServices";
 import LoadingAnimation from "@/components/shared/loadingAnim";
+import { useNavigate } from "react-router-dom";
 
 export default function CreateProva() {
+    const navigate = useNavigate();
+    
     const form = useForm<CreateChallenge>({
     resolver: zodResolver(createChallengeSchema),
     defaultValues: {
@@ -148,6 +151,10 @@ export default function CreateProva() {
     createProva(selectedYear, challenge, provaImage, (sucessData) => {
       toast.success("Prova creada correctament");
       console.log("Prova creada:", sucessData);
+
+      setTimeout(() => {
+        navigate(`/admin/prova?provaId=${form.getValues("name")}&year=${selectedYear}`);
+      }, 2000);
     }, (error) => {
       console.error("Error al crear la prova:", error);
       toast.error("Error al crear la prova");
