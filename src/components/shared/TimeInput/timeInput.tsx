@@ -1,9 +1,8 @@
 import { useAuth } from "@/routes/admin/AuthContext";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React from "react";
 import { useLocation } from "react-router-dom";
 import { TimeInputAdmin } from "./timeInputAdmin";
 import { TimeInputPublic } from "./timeInputPublic";
-import { isatty } from "tty";
 
 /** Formatea a HH:MM:SS (siempre 2 dígitos por bloque) */
 export function formatHHMMSS(totalSeconds: number): string {
@@ -75,7 +74,7 @@ export const TimeRollingInput: React.FC<TimeInputProps> = (props) => {
   const { user } = useAuth();
   const location = useLocation();
   const isAdmin = user !== null && location.pathname.startsWith("/admin");
-  
+
   return isAdmin ? <TimeInputAdmin {...props} /> : <TimeInputPublic {...props} />;
 };
 
