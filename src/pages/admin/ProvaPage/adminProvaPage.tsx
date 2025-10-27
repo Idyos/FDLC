@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import SingleProvaResultEditable from "@/components/admin/singleProvaResultAdmin";
+import SingleProvaResult from "@/components/admin/singleProvaResult";
 import DynamicList from "@/components/shared/dynamicList";
 import LoadingAnimation from "@/components/shared/loadingAnim";
 
@@ -96,7 +96,7 @@ export default function AdminProvaPage() {
                       items={provaInfo.results}
                       renderItem={(provaResultSummary) => (
                         provaResultSummary.participates ? (
-                          <SingleProvaResultEditable key={provaResultSummary.penyaId} provaResultSummary={provaResultSummary} />
+                          <SingleProvaResult key={provaResultSummary.penyaId} provaResultSummary={provaResultSummary} />
                         ) : null
                       )}
                     />

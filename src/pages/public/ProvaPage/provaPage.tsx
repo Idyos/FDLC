@@ -14,10 +14,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import SingleProvaResult from "@/components/public/singleProvaResult";
+} from "@/components/ui/alert-dialog";
 import DynamicList from "@/components/shared/dynamicList";
 import LoadingAnimation from "@/components/shared/loadingAnim";
+import SingleProvaResult from "@/components/admin/singleProvaResult";
 
 const emptyProva: ProvaInfo = {
     winDirection: "NONE",
