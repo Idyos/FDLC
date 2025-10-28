@@ -110,22 +110,8 @@ export const getProvaInfoRealTime = (
       unsubParticipants();
     }
 
-    let orderType = "";
-    switch(base.challengeType){
-      case "Temps":
-        orderType = "time";
-        break;
-      case "Participació":
-        orderType = "participation";
-        break;
-      case "Punts":
-      default:
-        orderType = "points";
-        break;
-    }
-
     const participantsQuery = sort && base.winDirection !== "NONE" 
-    ? query(participantsRef, orderBy(orderType, base.winDirection === "ASC" ? "desc" : "asc"))
+    ? query(participantsRef, orderBy("result", base.winDirection === "ASC" ? "asc" : "desc"))
     : participantsRef; 
        
     unsubParticipants = onSnapshot(participantsQuery, (snap) => {

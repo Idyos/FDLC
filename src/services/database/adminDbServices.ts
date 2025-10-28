@@ -1,6 +1,6 @@
-import { BaseChallenge, PenyaInfo, ProvaInfo } from "@/interfaces/interfaces";
+import { BaseChallenge, PenyaInfo, ProvaInfo, ProvaType, SingleProvaResultData, WinDirection } from "@/interfaces/interfaces";
 import { db } from "../../firebase/firebase";
-import { collection, getDocs, doc, updateDoc, writeBatch } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, writeBatch, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { addImageToChallenges, addImageToPenyes } from "../storageService";
 
@@ -119,6 +119,69 @@ export const updateProvaTimeResult = async (
     if (errorCallback) errorCallback(error);
   }
 }
+
+export async function getProvaInfo(
+  year: number,
+  provaId: string,
+): Promise<ProvaInfo | null> {
+  const provaDocRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
+  const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
+
+  const provaSnap = await getDoc(provaDocRef);
+  if (!provaSnap.exists()) return null;
+
+  const d = provaSnap.data();
+
+  const base: Omit<ProvaInfo, "results"> & { challengeType?: ProvaType; winDirection?: WinDirection } = {
+    provaId: provaSnap.id,
+    name: d.name || provaSnap.id,
+    description: d.description || undefined,
+    isSecret: d.isSecret || false,
+    imageUrl: d.imageUrl || undefined,
+    location: d.location || undefined,
+    winDirection: d.winDirection || "NONE",
+    startDate: d.startDate?.toDate?.() ?? new Date(0),
+    finishDate: d.finishDate?.toDate?.() ?? undefined,
+    pointsRange: Array.isArray(d.pointsRange) ? d.pointsRange : [],
+    challengeType: d.challengeType,
+  };
+
+  // Determinar el tipo de orden
+  let orderType = "";
+  switch (base.challengeType) {
+    case "Temps":
+      orderType = "time";
+      break;
+    case "Participació":
+      orderType = "participation";
+      break;
+    case "Punts":
+    default:
+      orderType = "points";
+      break;
+  }
+
+
+  const participantsSnap = await getDocs(participantsRef);
+  const participants = participantsSnap.docs.map((p) => {
+    const r = p.data() as any;
+    return {
+      provaReference: provaDocRef.path,
+      participates: r.participates ?? true,
+      penyaName: r.penyaName ?? "",
+      penyaId: r.penyaId ?? p.id,
+      result: r.result ?? "",
+    };
+  });
+
+  const results: SingleProvaResultData[] = participants.map((p) => ({
+    ...p,
+    provaType: base?.challengeType ?? "Temps",
+  }));
+
+  return { ...base, results };
+}
+
 //#endregion
 
 //#region PENYES

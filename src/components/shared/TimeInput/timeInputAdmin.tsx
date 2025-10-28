@@ -25,6 +25,7 @@ export const TimeInputAdmin: React.FC<TimeInputProps> = ({
   }, [isControlled, seconds]);
 
   function emit(secondsNext: number) {
+
     if (isControlled) {
       onChangeSeconds?.(secondsNext);
     } else {
@@ -56,6 +57,7 @@ export const TimeInputAdmin: React.FC<TimeInputProps> = ({
 
   function clearAll() {
     emit(0);
+    onBlur?.(0);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {

@@ -18,6 +18,9 @@ import {
 import DynamicList from "@/components/shared/dynamicList";
 import LoadingAnimation from "@/components/shared/loadingAnim";
 import SingleProvaResult from "@/components/admin/singleProvaResult";
+import { useAuth } from "@/routes/admin/AuthContext";
+import AdminSingleProvaResult from "@/components/admin/Proves/ProvaPenyaSummary/adminSingleProvaResult";
+import { getProvaInfo } from "@/services/database/adminDbServices";
 
 const emptyProva: ProvaInfo = {
     winDirection: "NONE",
@@ -30,6 +33,10 @@ const emptyProva: ProvaInfo = {
 };
 
 export default function ProvaPage() {
+    const { user } = useAuth();
+    const location = useLocation();
+    const isAdmin = user !== null && location.pathname.startsWith("/admin");
+
     const navigate = useNavigate();
 
     const { previousSelectedYear, selectedYear, setSelectedYear } = useYear();
@@ -41,33 +48,58 @@ export default function ProvaPage() {
 
     const [isProvaLoading, setIsProvaLoading] = useState(true);
 
-    const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
     const provaId = searchParams.get("provaId") || "";
 
-    useEffect(() => {
-        setIsProvaLoading(true);
-                
-        document.title = `Carregant Prova`;
+  useEffect(() => {
+    setIsProvaLoading(true);
+    document.title = `Carregant Prova`;
 
-        const unsubscribe = getProvaInfoRealTime(selectedYear, provaId, true, (penyaInfoResult) => {
-            if(penyaInfoResult!=null){
-                if(penyaInfoResult.isSecret){
-                    navigate("/");
-                    return;
-                }
+    let unsubscribe: (() => void) | undefined;
 
-                setProvaInfo(penyaInfoResult);
-                document.title = `${penyaInfoResult.name} ${selectedYear}`;
-            }
-            else {
-                setNoProbaAlert(true);
-            }
-            setIsProvaLoading(false);
-        }, );
+    if (isAdmin) {
+      // 🔹 ADMIN → petición única
+      getProvaInfo(selectedYear, provaId)
+        .then((provaInfoResult) => {
+          if (!provaInfoResult) {
+            setNoProbaAlert(true);
+            return;
+          }
 
-        return () => unsubscribe();
-    }, [selectedYear]);
+          if (provaInfoResult.isSecret) {
+            navigate("/");
+            return;
+          }
+
+          setProvaInfo(provaInfoResult);
+          document.title = `${provaInfoResult.name} ${selectedYear} - Admin`;
+        })
+        .catch((error) => {
+          console.error("Error al obtener la prova:", error);
+          setNoProbaAlert(true);
+        })
+        .finally(() => setIsProvaLoading(false));
+    } else {
+      unsubscribe = getProvaInfoRealTime(selectedYear, provaId, true, (provaInfoResult) => {
+        if (provaInfoResult != null) {
+          if (provaInfoResult.isSecret) {
+            navigate("/");
+            return;
+          }
+
+          setProvaInfo(provaInfoResult);
+          document.title = `${provaInfoResult.name} ${selectedYear}`;
+        } else {
+          setNoProbaAlert(true);
+        }
+        setIsProvaLoading(false);
+      });
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [selectedYear, isAdmin]);
 
     return ( 
         <>
@@ -88,22 +120,36 @@ export default function ProvaPage() {
             <YearSelector />
             <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
               <PageTitle title={isProvaLoading ? "Carregant..." : provaInfo.name} image="" />
-              <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
-              {isProvaLoading ? (
-                <LoadingAnimation />
+
+              {isAdmin ? (
+              <div className="grid grid-cols-[repeat(auto-fit,_minmax(300px,_1fr))] gap-3 w-full">
+                  {isProvaLoading ? (
+                    <LoadingAnimation />
+                  ) : (
+                    provaInfo.results.length > 0 ? (
+                      provaInfo.results.map((provaResultSummary) => (
+                        <AdminSingleProvaResult key={provaResultSummary.penyaId} provaResultSummary={provaResultSummary} />
+                      ))
+                    ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
+                  )}
+                </div>
               ) : (
-                provaInfo.results.length > 0 ? (
-                    <DynamicList
-                      items={provaInfo.results}
-                      renderItem={(provaResultSummary) => (
-                        provaResultSummary.participates ? (
+              <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
+                {isProvaLoading ? (
+                  <LoadingAnimation />
+                ) : (
+                  provaInfo.results.length > 0 ? (
+                      <DynamicList
+                        items={provaInfo.results}
+                        renderItem={(provaResultSummary) => (
                           <SingleProvaResult key={provaResultSummary.penyaId} provaResultSummary={provaResultSummary} />
-                        ) : null
-                      )}
-                    />
-                ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
-              )}
+                        )}
+                      />
+                  ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
+                )}
               </div>
+              )}
+
             </div>
         </>
 
