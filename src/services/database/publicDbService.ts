@@ -115,9 +115,10 @@ export const getProvaInfoRealTime = (
     : participantsRef; 
        
     unsubParticipants = onSnapshot(participantsQuery, (snap) => {
-      participants = snap.docs.map((p) => {
+      participants = snap.docs.map((p, index) => {
         const r = p.data() as any;
         return {
+          index: index + 1,
           provaReference: provaDocRef.path,
           participates: r.participates ?? true,
           penyaName: r.penyaName ?? "",

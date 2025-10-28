@@ -2,15 +2,11 @@ import {
   SingleProvaResultData,
 } from "@/interfaces/interfaces";
 import { motion } from "framer-motion";
-// import { useNavigate } from "react-router-dom";
-// import { useTheme } from "../Theme/theme-provider";
 import { TimeRollingInput } from "../shared/TimeInput/timeInput";
 import { useEffect, useRef, useState } from "react";
-import { updateProvaTimeResult } from "@/services/database/adminDbServices";
-type AnyProvaResult = SingleProvaResultData;
 
 interface SingleProvaSummaryProp {
-  provaResultSummary: AnyProvaResult;
+  provaResultSummary: SingleProvaResultData;
 }
 
 export default function SingleProvaResult({ provaResultSummary }: SingleProvaSummaryProp) {
@@ -32,27 +28,12 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
             valueSeconds={secs}
             onChangeSeconds={setSecs}
             maxHours={3}
-            onBlur={(newSeconds) => updateProvaResult(newSeconds)}
           />
         );
       default:
         return null;
     }
   };
-
-  const updateProvaResult = async (newSeconds: number) => {
-    if(prevSeconds.current !== newSeconds){
-        updateProvaTimeResult(provaResultSummary.provaReference, provaResultSummary.penyaId, newSeconds, 
-        () => {
-          prevSeconds.current = newSeconds;
-          setSecs(prevSeconds.current);
-          console.log("Prova result updated successfully");
-        }, (error) => {
-          setSecs(prevSeconds.current);
-          console.error("Error updating prova result:", error);
-        });
-    }
-  }
 
   return (
     <motion.div
@@ -62,6 +43,7 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
       {/* Contenido */}
       <div className="relative z-10 flex justify-between items-center h-full p-4 dark:text-white text-gray-900">
         <div className="text-left">
+          <p className="text-4xl font-extrabold">{provaResultSummary.index}.</p>
           <p className="text-2xl font-bold">{provaResultSummary.penyaName}</p>
         </div>
         {renderInput()}

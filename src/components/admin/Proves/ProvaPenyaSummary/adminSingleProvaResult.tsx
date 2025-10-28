@@ -5,10 +5,9 @@ import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { updateProvaTimeResult } from "@/services/database/adminDbServices";
 import { TimeRollingInput } from "@/components/shared/TimeInput/timeInput";
-type AnyProvaResult = SingleProvaResultData;
 
 interface SingleProvaSummaryProp {
-  provaResultSummary: AnyProvaResult;
+  provaResultSummary: SingleProvaResultData;
 }
 
 export default function AdminSingleProvaResult({ provaResultSummary }: SingleProvaSummaryProp) {

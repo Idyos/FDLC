@@ -58,7 +58,6 @@ export default function ProvaPage() {
     let unsubscribe: (() => void) | undefined;
 
     if (isAdmin) {
-      // 🔹 ADMIN → petición única
       getProvaInfo(selectedYear, provaId)
         .then((provaInfoResult) => {
           if (!provaInfoResult) {

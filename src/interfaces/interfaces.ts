@@ -79,6 +79,7 @@ export interface ChallengeResult {
 }
 
 export interface SingleProvaResultData{
+  index: number | undefined;
   provaReference: string;
   provaType: ProvaType;
   participates: boolean;
@@ -88,6 +89,7 @@ export interface SingleProvaResultData{
 }
 
 export interface BracketProvaResultData{
+  index: number | undefined;
   provaReference: string;
   provaType: ProvaType;
   participates: boolean;

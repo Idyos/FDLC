@@ -79,6 +79,7 @@ export default function CreateProva() {
         participates: penya.participates,
       }))
     );
+    console.log(form.getValues("winDirection"));
   }, [penyes]);
 
   useEffect(() => {
@@ -401,12 +402,12 @@ export default function CreateProva() {
                         </FormControl>
                         <SelectContent position="popper">
                           <SelectItem value="NONE">Cap</SelectItem>
-                          <SelectItem value="ASC">
+                          <SelectItem value="DESC">
                             {challengeType === "Punts"
                               ? "Com més punts millor"
                               : "Com més temps millor"}
                           </SelectItem>
-                          <SelectItem value="DESC">
+                          <SelectItem value="ASC">
                             {challengeType === "Punts"
                               ? "Com menys punts millor"
                               : "Com menys temps millor"}
