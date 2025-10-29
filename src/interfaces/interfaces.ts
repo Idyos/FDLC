@@ -44,6 +44,7 @@ export interface ProvaInfo {
   location?: Ubication;
   startDate: Date;
   finishDate?: Date;
+  isFinished: boolean;
   winDirection: WinDirection; 
   pointsRange: PointsRange[];
   results: SingleProvaResultData[];

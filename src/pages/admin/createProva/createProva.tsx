@@ -19,7 +19,7 @@ import { LocationSelector } from "@/components/admin/locationSelector";
 import { CreateChallenge, createChallengeSchema, fieldStepMap, ParticipatingPenya } from "./createProvaData";
 import { BaseChallenge, ChallengeByDiscalification, ChallengeByParticipation, ChallengeByPoints, ChallengeByTime, MultiChallenge, PenyaInfo, ProvaType, provaTypes, Ubication } from "@/interfaces/interfaces";
 import { toast } from "sonner";
-import { useYear } from "@/components/shared/YearContext";
+import { useYear } from "@/components/shared/Contexts/YearContext";
 import { TooltipProvider } from "@radix-ui/react-tooltip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

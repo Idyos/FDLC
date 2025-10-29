@@ -1,6 +1,5 @@
-import PageTitle from "@/components/public/pageTitle";
 import YearSelector from "@/components/public/yearSelector";
-import { useYear } from "@/components/shared/YearContext";
+import { useYear } from "@/components/shared/Contexts/YearContext";
 import { ProvaInfo } from "@/interfaces/interfaces";
 import { getProvaInfoRealTime } from "@/services/database/publicDbService";
 import { useEffect, useState } from "react";
@@ -21,6 +20,8 @@ import SingleProvaResult from "@/components/admin/singleProvaResult";
 import { useAuth } from "@/routes/admin/AuthContext";
 import AdminSingleProvaResult from "@/components/admin/Proves/ProvaPenyaSummary/adminSingleProvaResult";
 import { getProvaInfo } from "@/services/database/adminDbServices";
+import ProvaTitle from "@/components/public/provaTitle";
+import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
 
 const emptyProva: ProvaInfo = {
     winDirection: "NONE",
@@ -29,6 +30,7 @@ const emptyProva: ProvaInfo = {
     name: "",
     startDate: new Date(0),
     pointsRange: [],
+    isFinished: false,
     results: [],
 };
 
@@ -36,6 +38,9 @@ export default function ProvaPage() {
     const { user } = useAuth();
     const location = useLocation();
     const isAdmin = user !== null && location.pathname.startsWith("/admin");
+
+    const setProva = useProvaStore((state) => state.setProva);
+
 
     const navigate = useNavigate();
 
@@ -70,6 +75,7 @@ export default function ProvaPage() {
             return;
           }
 
+          setProva(provaInfoResult);
           setProvaInfo(provaInfoResult);
           document.title = `${provaInfoResult.name} ${selectedYear} - Admin`;
         })
@@ -86,6 +92,7 @@ export default function ProvaPage() {
             return;
           }
 
+          setProva(provaInfoResult);
           setProvaInfo(provaInfoResult);
           document.title = `${provaInfoResult.name} ${selectedYear}`;
         } else {
@@ -118,7 +125,7 @@ export default function ProvaPage() {
         </AlertDialog>
             <YearSelector />
             <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
-              <PageTitle title={isProvaLoading ? "Carregant..." : provaInfo.name} image="" />
+              <ProvaTitle prova={provaInfo} />
 
               {isAdmin ? (
               <div className="grid grid-cols-[repeat(auto-fit,_minmax(300px,_1fr))] gap-3 w-full">

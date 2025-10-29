@@ -3,7 +3,7 @@ import AdminPenyaSummary from "@/components/admin/Penyes/PenyaSummary/adminPenya
 import PageTitle from "@/components/public/pageTitle";
 import YearSelector from "@/components/public/yearSelector";
 import LoadingAnimation from "@/components/shared/loadingAnim";
-import { useYear } from "@/components/shared/YearContext";
+import { useYear } from "@/components/shared/Contexts/YearContext";
 import { Input } from "@/components/ui/input";
 import { PenyaInfo } from "@/interfaces/interfaces";
 import { getPenyes } from "@/services/database/adminDbServices";

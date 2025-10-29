@@ -100,6 +100,7 @@ export const getProvaInfoRealTime = (
       imageUrl: d.imageUrl || undefined,
       location: d.location || undefined,
       winDirection: d.winDirection || "NONE",
+      isFinished: d.isFinished || false,
       startDate: d.startDate?.toDate?.() ?? new Date(0),
       finishDate: d.finishDate?.toDate?.() ?? undefined,
       pointsRange: Array.isArray(d.pointsRange) ? d.pointsRange : [],

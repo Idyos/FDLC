@@ -11,7 +11,7 @@ import Login from './pages/admin/Login';
 import Dashboard from './pages/admin/Dashboard';
 import Penyes from './pages/admin/Penyes';
 import Proves from './pages/admin/Proves';
-import { YearProvider } from './components/shared/YearContext';
+import { YearProvider } from './components/shared/Contexts/YearContext';
 import CreateProva from './pages/admin/createProva/createProva';
 import BracketTest from './pages/public/BracketTestPackage/BracketTest';
 import MainPage from './pages/public/MainPage/mainPage';

@@ -1,17 +1,20 @@
-import {
-  SingleProvaResultData,
-} from "@/interfaces/interfaces";
+import { SingleProvaResultData } from "@/interfaces/interfaces";
 import { motion } from "framer-motion";
 import { TimeRollingInput } from "../shared/TimeInput/timeInput";
 import { useEffect, useRef, useState } from "react";
+import { useProvaStore } from "../shared/Contexts/ProvaContext";
+import { useNavigate } from "react-router-dom";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: SingleProvaResultData;
 }
 
 export default function SingleProvaResult({ provaResultSummary }: SingleProvaSummaryProp) {
-  // const { theme } = useTheme();
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
+
+  const prova = useProvaStore((state) => state.prova);
+  console.log(prova);
+
   const prevSeconds = useRef(provaResultSummary.result);
   const [secs, setSecs] = useState(provaResultSummary.result);
 
@@ -19,6 +22,10 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
     prevSeconds.current = provaResultSummary.result;
     setSecs(provaResultSummary.result);
   }, [provaResultSummary.penyaId, provaResultSummary.result]);
+
+  const handleClick = () => {
+      navigate(`/penya?penyaId=${provaResultSummary.penyaId}`);
+  }
 
   const renderInput = () => {
     switch (provaResultSummary.provaType) {
@@ -35,18 +42,33 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
     }
   };
 
+  const getPointsForIndex = (index: number): number | null => {
+    if (!prova?.pointsRange) return null;
+    if(index == -1) return null;
+
+    // Busca el rango que contenga el índice
+    const range = prova.pointsRange.find(r => index >= r.from && index <= r.to);
+
+    // Devuelve los puntos (o null si no encaja en ninguno)
+    return range ? range.points : null;
+  };
+
   return (
     <motion.div
       className="relative w-full h-36 rounded-2xl overflow-hidden shadow-lg mb-6 cursor-pointer"
       whileHover={{ scale: 1.02 }}
+      onClick={handleClick}
     >
       {/* Contenido */}
       <div className="relative z-10 flex justify-between items-center h-full p-4 dark:text-white text-gray-900">
         <div className="text-left">
-          <p className="text-4xl font-extrabold">{provaResultSummary.index}.</p>
-          <p className="text-2xl font-bold">{provaResultSummary.penyaName}</p>
+          <p className={`${prova?.isFinished ? "text-4xl font-extrabold" : "inline text-2xl font-bold opacity-40"}`}>{provaResultSummary.index}. </p>
+          <span className="text-2xl font-bold">{provaResultSummary.penyaName}</span>
         </div>
-        {renderInput()}
+        <div className="flex flex-row items-center space-x-6">
+          {renderInput()}
+          <span className={`${!prova?.isFinished ? "text-2xl font-bold opacity-40" : "text-4xl font-extrabold"}`} >{prova?.isFinished ? "+" : null}{getPointsForIndex(provaResultSummary.index || -1) ?? ""}</span>
+        </div>
       </div>
     </motion.div>
   );

@@ -1,6 +1,6 @@
 import PageTitle from "@/components/public/pageTitle";
 import YearSelector from "@/components/public/yearSelector";
-import { useYear } from "@/components/shared/YearContext";
+import { useYear } from "@/components/shared/Contexts/YearContext";
 import { ProvaInfo } from "@/interfaces/interfaces";
 import { getProvaInfoRealTime } from "@/services/database/publicDbService";
 import { useEffect, useState } from "react";

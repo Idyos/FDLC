@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { getYears } from "@/services/database/publicDbService";
-import { useYear } from "../shared/YearContext";
+import { useYear } from "../shared/Contexts/YearContext";
 
 export default function YearSelector() {
   const [years, setYears] = useState<number[]>([]);

@@ -3,7 +3,7 @@ import AdminProvaSummary from "@/components/admin/Proves/ProvaSummary/adminProva
 import PageTitle from "@/components/public/pageTitle";
 import YearSelector from "@/components/public/yearSelector";
 import LoadingAnimation from "@/components/shared/loadingAnim";
-import { useYear } from "@/components/shared/YearContext";
+import { useYear } from "@/components/shared/Contexts/YearContext";
 import { Input } from "@/components/ui/input";
 import { ProvaSummary } from "@/interfaces/interfaces";
 import { getProves } from "@/services/database/adminDbServices";

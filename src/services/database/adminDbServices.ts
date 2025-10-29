@@ -18,6 +18,7 @@ export const getProves = async (year: number, callback: (data: ProvaInfo[]) => v
         isSecret: doc.data().isSecret || false,
         imageUrl: doc.data().imageUrl || undefined,
         location: doc.data().location || undefined,
+        isFinished: doc.data().isFinished || false,
         startDate: doc.data().startDate?.toDate?.() ?? null,
         finishDate: doc.data().finishDate?.toDate?.() ?? null,
         winDirection: doc.data().winDirection,
@@ -53,6 +54,7 @@ export const createProva = async (
           location: data.location ?? null,
           pointsRange: data.pointsRange,
           winDirection: data.winDirection ?? null,
+          isFinished: false,
         });
 
         data.penyes.forEach((penyaInfo) => {
@@ -139,28 +141,13 @@ export async function getProvaInfo(
     isSecret: d.isSecret || false,
     imageUrl: d.imageUrl || undefined,
     location: d.location || undefined,
+    isFinished: d.isFinished || false,
     winDirection: d.winDirection || "NONE",
     startDate: d.startDate?.toDate?.() ?? new Date(0),
     finishDate: d.finishDate?.toDate?.() ?? undefined,
     pointsRange: Array.isArray(d.pointsRange) ? d.pointsRange : [],
     challengeType: d.challengeType,
   };
-
-  // Determinar el tipo de orden
-  let orderType = "";
-  switch (base.challengeType) {
-    case "Temps":
-      orderType = "time";
-      break;
-    case "Participació":
-      orderType = "participation";
-      break;
-    case "Punts":
-    default:
-      orderType = "points";
-      break;
-  }
-
 
   const participantsSnap = await getDocs(participantsRef);
   const participants = participantsSnap.docs.map((p) => {
@@ -176,6 +163,7 @@ export async function getProvaInfo(
 
   const results: SingleProvaResultData[] = participants.map((p) => ({
     ...p,
+    index: undefined,
     provaType: base?.challengeType ?? "Temps",
   }));
 

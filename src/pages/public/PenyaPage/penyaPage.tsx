@@ -1,5 +1,5 @@
 import YearSelector from "@/components/public/yearSelector";
-import { useYear } from "@/components/shared/YearContext";
+import { useYear } from "@/components/shared/Contexts/YearContext";
 import { PenyaInfo, PenyaProvaSummary } from "@/interfaces/interfaces";
 import { getPenyaInfoRealTime, getPenyaProvesRealTime } from "@/services/database/publicDbService";
 import { useEffect, useRef, useState } from "react";
