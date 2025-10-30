@@ -13,7 +13,6 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
   const navigate = useNavigate();
 
   const prova = useProvaStore((state) => state.prova);
-  console.log(prova);
 
   const prevSeconds = useRef(provaResultSummary.result);
   const [secs, setSecs] = useState(provaResultSummary.result);
@@ -62,12 +61,12 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
       {/* Contenido */}
       <div className="relative z-10 flex justify-between items-center h-full p-4 dark:text-white text-gray-900">
         <div className="text-left">
-          <p className={`${prova?.isFinished ? "text-4xl font-extrabold" : "inline text-2xl font-bold opacity-40"}`}>{provaResultSummary.index}. </p>
+          <p className={`${prova?.isFinished ? "text-4xl font-extrabold" : "inline text-2xl font-bold opacity-40 blur-[2.5px]"}`}>{provaResultSummary.index}. </p>
           <span className="text-2xl font-bold">{provaResultSummary.penyaName}</span>
         </div>
         <div className="flex flex-row items-center space-x-6">
           {renderInput()}
-          <span className={`${!prova?.isFinished ? "text-2xl font-bold opacity-40" : "text-4xl font-extrabold"}`} >{prova?.isFinished ? "+" : null}{getPointsForIndex(provaResultSummary.index || -1) ?? ""}</span>
+          <span className={`${!prova?.isFinished ? "text-2xl font-bold opacity-40 blur-[2.5px]" : "text-4xl font-extrabold"}`} >{prova?.isFinished ? "+" : null}{getPointsForIndex(provaResultSummary.index || -1) ?? ""}</span>
         </div>
       </div>
     </motion.div>

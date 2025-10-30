@@ -17,7 +17,7 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
   // position y points solo existen si es PenyaProvaSummary
   const isPenya = ("provaReference" in provaSummary);
   const position = isPenya ? (provaSummary as PenyaProvaSummary).position : undefined;
-  const points   = isPenya ? (provaSummary as PenyaProvaSummary).points   : undefined;
+  const result   = isPenya ? (provaSummary as PenyaProvaSummary).result   : undefined;
 
   // Color de fondo en función de position (si existe)
   let bgColor = theme === "dark" ? "rgba(66, 66, 66, 1)" : "rgba(255, 255, 255, 1)";
@@ -71,9 +71,9 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
         </div>
 
         {/* Badge: si hay points los muestro; si no, se puede ocultar o mostrar otra info */}
-        {typeof points === "number" ? (
+        {typeof result === "number" ? (
           <Badge variant="secondary" className="text-right text-lg font-semibold rounded-4xl">
-            {points} punts
+            {result} punts
           </Badge>
         ) : null}
       </div>

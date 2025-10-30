@@ -192,8 +192,7 @@ export const getPenyaProvesRealTime = (
           startDate: provaData.startDate?.toDate?.() ?? null,
           finishDate: provaData.finishDate?.toDate?.() ?? null,
           provaReference: provaDoc.ref.path,
-          position: p.position ?? null,
-          points: p.points ?? null,
+          result: p.result ?? null,
           participates: p.participates ?? false,
         };
 

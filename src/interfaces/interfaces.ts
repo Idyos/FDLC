@@ -27,8 +27,8 @@ export interface ProvaSummary {
 export interface PenyaProvaSummary extends ProvaSummary {
   provaReference: string;
   position?: number;
-  points?: number;
-  participates?: boolean;
+  result?: number;
+  participates: boolean;
 }
 
 //#endregion
