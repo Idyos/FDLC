@@ -58,6 +58,7 @@ export const getProvesRealTime = (year: number, callback: (data: ProvaSummary[])
       description: doc.data().description || undefined,
       startDate: doc.data().startDate?.toDate?.() ?? null,
       finishDate: doc.data().finishDate?.toDate?.() ?? null,
+      challengeType: doc.data().challengeType ?? "Temps",
     }));
 
     callback(data);
@@ -194,6 +195,7 @@ export const getPenyaProvesRealTime = (
           provaReference: provaDoc.ref.path,
           result: p.result ?? null,
           participates: p.participates ?? false,
+          challengeType: provaData.challengeType,
         };
 
         callback(Object.values(provisionalResults));

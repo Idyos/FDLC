@@ -22,6 +22,7 @@ export interface ProvaSummary {
   description?: string;
   startDate: Date;
   finishDate?: Date;
+  challengeType: ProvaType;
 }
 
 export interface PenyaProvaSummary extends ProvaSummary {

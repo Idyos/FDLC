@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../Theme/theme-provider";
 import { Badge } from "@/components/ui/badge";
+import PenyaProvaResult from "../shared/Prova/penyaProvaResult";
 
 type AnyProva = ProvaSummary | PenyaProvaSummary;
 
@@ -72,9 +73,7 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
 
         {/* Badge: si hay points los muestro; si no, se puede ocultar o mostrar otra info */}
         {typeof result === "number" ? (
-          <Badge variant="secondary" className="text-right text-lg font-semibold rounded-4xl">
-            {result} punts
-          </Badge>
+          <PenyaProvaResult prova={provaSummary as PenyaProvaSummary} />
         ) : null}
       </div>
     </motion.div>
