@@ -1,9 +1,10 @@
 import { SingleProvaResultData } from "@/interfaces/interfaces";
 import { motion } from "framer-motion";
-import { TimeRollingInput } from "../shared/TimeInput/timeInput";
+import { TimeRollingInput } from "../shared/PenyaProvaResults/TimeInput/timeInput";
 import { useEffect, useRef, useState } from "react";
 import { useProvaStore } from "../shared/Contexts/ProvaContext";
 import { useNavigate } from "react-router-dom";
+import { PointsInput } from "../shared/PenyaProvaResults/PointsInput/pointsInput";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: SingleProvaResultData;
@@ -14,12 +15,12 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
 
   const prova = useProvaStore((state) => state.prova);
 
-  const prevSeconds = useRef(provaResultSummary.result);
-  const [secs, setSecs] = useState(provaResultSummary.result);
+  const prevValue = useRef(provaResultSummary.result);
+  const [value, setValue] = useState(provaResultSummary.result);
 
   useEffect(() => {
-    prevSeconds.current = provaResultSummary.result;
-    setSecs(provaResultSummary.result);
+    prevValue.current = provaResultSummary.result;
+    setValue(provaResultSummary.result);
   }, [provaResultSummary.penyaId, provaResultSummary.result]);
 
   const handleClick = () => {
@@ -31,9 +32,16 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
       case "Temps":
         return (
           <TimeRollingInput
-            valueSeconds={secs}
-            onChangeSeconds={setSecs}
+            value={value}
+            onChange={setValue}
             maxHours={3}
+          />
+        );
+      case "Punts":
+        return (
+          <PointsInput
+            value={value}
+            onChange={setValue}
           />
         );
       default:

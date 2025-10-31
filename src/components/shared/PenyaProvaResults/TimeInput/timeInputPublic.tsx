@@ -3,7 +3,7 @@ import React from "react";
 import { formatHHMMSS, TimeInputProps } from "./timeInput";
 
 export const TimeInputPublic: React.FC<TimeInputProps> = ({
-  valueSeconds = 0,
+  value: valueSeconds = 0,
   className,
 }) => {
   const display = formatHHMMSS(valueSeconds);

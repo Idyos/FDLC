@@ -59,8 +59,8 @@ export function toBCD6FromSeconds(totalSeconds: number, clampHoursTo = 99): stri
  */
 
 export type TimeInputProps = {
-  valueSeconds?: number;
-  onChangeSeconds?: (seconds: number) => void;
+  value?: number;
+  onChange?: (seconds: number) => void;
   maxHours?: number;
   className?: string;
   ariaLabel?: string;

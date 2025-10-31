@@ -4,7 +4,7 @@ import {
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { updateProvaTimeResult } from "@/services/database/adminDbServices";
-import { TimeRollingInput } from "@/components/shared/TimeInput/timeInput";
+import { TimeRollingInput } from "@/components/shared/PenyaProvaResults/TimeInput/timeInput";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: SingleProvaResultData;
@@ -26,8 +26,8 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
       case "Temps":
         return (
           <TimeRollingInput
-            valueSeconds={secs}
-            onChangeSeconds={setSecs}
+            value={secs}
+            onChange={setSecs}
             maxHours={3}
             onBlur={(newSeconds) => updateProvaResult(newSeconds)}
           />

@@ -1,5 +1,6 @@
 import { PenyaProvaSummary } from "@/interfaces/interfaces";
-import { TimeRollingInput } from "../TimeInput/timeInput";
+import { TimeRollingInput } from "../PenyaProvaResults/TimeInput/timeInput";
+import { PointsInput } from "../PenyaProvaResults/PointsInput/pointsInput";
 
 interface PenyaProvaResultProps {
   prova: PenyaProvaSummary;
@@ -11,10 +12,16 @@ export default function PenyaProvaResult({ prova }: PenyaProvaResultProps) {
             case "Temps":
             return (
                 <TimeRollingInput
-                    valueSeconds={prova.result || 0}
+                    value={prova.result || 0}
                     maxHours={3}
                 />
             );
+            case "Punts":
+              return (
+                <PointsInput
+                    value={prova.result || 0}
+                />
+              );
             default:
             return null;
         }

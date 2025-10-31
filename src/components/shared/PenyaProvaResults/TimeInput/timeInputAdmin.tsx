@@ -2,8 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { formatHHMMSS, fromBCD6ToSeconds, TimeInputProps, toBCD6FromSeconds } from "./timeInput";
 
 export const TimeInputAdmin: React.FC<TimeInputProps> = ({
-  valueSeconds,
-  onChangeSeconds,
+  value: valueSeconds,
+  onChange: onChangeSeconds,
   maxHours = 99,
   className,
   ariaLabel = "Tiempo en HH:MM:SS",
