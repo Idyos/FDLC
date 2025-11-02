@@ -7,6 +7,10 @@ import PenyaProvaResult from "../shared/Prova/penyaProvaResult";
 
 type AnyProva = ProvaSummary | PenyaProvaSummary;
 
+function isPenyaProvaSummary(prova: AnyProva): prova is PenyaProvaSummary {
+  return "participates" in prova;
+}
+
 interface ProvaSummaryProps {
   provaSummary: AnyProva;
 }
@@ -39,6 +43,12 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
       style={{ background: bgColor }}
       whileHover={{ scale: 1.02 }}
     >
+      {isPenyaProvaSummary(provaSummary) && !provaSummary.participates && (
+        <div className="absolute z-20 inset-0 h-full w-full flex items-center justify-center dark:bg-black/60 bg-white/60">
+          <h1 className="font-extrabold text-4xl">NO PARTICIPA</h1>
+        </div>
+      )}
+
       {/* Imagen de fondo */}
       {provaSummary.imageUrl && (
         <>

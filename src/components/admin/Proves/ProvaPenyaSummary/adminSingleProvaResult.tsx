@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { updateProvaTimeResult } from "@/services/database/adminDbServices";
 import { TimeRollingInput } from "@/components/shared/PenyaProvaResults/TimeInput/timeInput";
+import { PointsInput } from "@/components/shared/PenyaProvaResults/PointsInput/pointsInput";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: SingleProvaResultData;
@@ -14,11 +15,11 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
   // const { theme } = useTheme();
   // const navigate = useNavigate();
   const prevSeconds = useRef(provaResultSummary.result);
-  const [secs, setSecs] = useState(provaResultSummary.result);
+  const [value, setValue] = useState(provaResultSummary.result);
 
   useEffect(() => {
     prevSeconds.current = provaResultSummary.result;
-    setSecs(provaResultSummary.result);
+    setValue(provaResultSummary.result);
   }, [provaResultSummary.penyaId, provaResultSummary.result]);
 
   const renderInput = () => {
@@ -26,10 +27,18 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
       case "Temps":
         return (
           <TimeRollingInput
-            value={secs}
-            onChange={setSecs}
+            value={value}
+            onChange={setValue}
             maxHours={3}
             onBlur={(newSeconds) => updateProvaResult(newSeconds)}
+          />
+        );
+      case "Punts":
+        return (
+          <PointsInput
+            value={value}
+            onChange={setValue}
+            onBlur={(newPoints) => updateProvaResult(newPoints)}
           />
         );
       default:
@@ -42,10 +51,10 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
         updateProvaTimeResult(provaResultSummary.provaReference, provaResultSummary.penyaId, newSeconds, 
         () => {
           prevSeconds.current = newSeconds;
-          setSecs(prevSeconds.current);
+          setValue(prevSeconds.current);
           console.log("Prova result updated successfully");
         }, (error) => {
-          setSecs(prevSeconds.current);
+          setValue(prevSeconds.current);
           console.error("Error updating prova result:", error);
         });
     }

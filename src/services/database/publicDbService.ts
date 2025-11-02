@@ -112,22 +112,32 @@ export const getProvaInfoRealTime = (
       unsubParticipants();
     }
 
-    const participantsQuery = sort && base.winDirection !== "NONE" 
-    ? query(participantsRef, orderBy("result", base.winDirection === "ASC" ? "asc" : "desc"))
-    : participantsRef; 
+  const participantsQuery =
+    sort && base.winDirection !== "NONE"
+      ? query(
+          participantsRef,
+          orderBy("result", base.winDirection === "ASC" ? "asc" : "desc"),
+        )
+      : participantsRef;
        
     unsubParticipants = onSnapshot(participantsQuery, (snap) => {
-      participants = snap.docs.map((p, index) => {
+      let penyaIndex = 0;
+      participants = snap.docs.map((p) => {
         const r = p.data() as any;
+        if (r.participates === false) return null;
+        penyaIndex++;
+
         return {
-          index: index + 1,
+          index: penyaIndex,
           provaReference: provaDocRef.path,
           participates: r.participates ?? true,
           penyaName: r.penyaName ?? "",
           penyaId: r.penyaId ?? p.id,
-          result: r.result ?? "",
+          result: r.result == -1 ? "0" : r.result ?? "",
         };
-      });
+      })
+      .filter((p): p is NonNullable<typeof p> => !!p);
+
       emit();
     });
 

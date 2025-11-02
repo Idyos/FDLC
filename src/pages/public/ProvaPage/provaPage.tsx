@@ -41,7 +41,6 @@ export default function ProvaPage() {
 
     const setProva = useProvaStore((state) => state.setProva);
 
-
     const navigate = useNavigate();
 
     const { previousSelectedYear, selectedYear, setSelectedYear } = useYear();
@@ -91,6 +90,8 @@ export default function ProvaPage() {
             navigate("/");
             return;
           }
+
+          console.log(provaInfoResult.results)
 
           setProva(provaInfoResult);
           setProvaInfo(provaInfoResult);

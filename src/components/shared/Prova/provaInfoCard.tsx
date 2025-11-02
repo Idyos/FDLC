@@ -22,7 +22,7 @@ export default function ProvaInfoCard({ prova }: ProvaInfoCardProps) {
   } = prova;
 
   return (
-    <Card className="overflow-hidden  shadow-md dark:bg-gray-900">
+    <Card className="max-h-[96svh] overflow-auto  shadow-md dark:bg-gray-900">
       {/* Imagen de cabecera */}
       {imageUrl && (
         <img

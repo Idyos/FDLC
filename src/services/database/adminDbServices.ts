@@ -44,6 +44,7 @@ export const createProva = async (
 
       try {
         const url = await addImageToChallenges(image, year, data.name)
+        console.log(url);
         batch.set(provaRef, {
           imageUrl: url ?? null,
           name: data.name ?? "",
@@ -58,48 +59,34 @@ export const createProva = async (
         });
 
         data.penyes.forEach((penyaInfo) => {
-          if (penyaInfo.participates) {
-            const participantRef = doc(
-              db,
-              `Circuit/${year}/Proves/${data.name}/Participants/${penyaInfo.penya.penyaId}`
-            );
+          const participantRef = doc(
+            db,
+            `Circuit/${year}/Proves/${data.name}/Participants/${penyaInfo.penya.penyaId}`
+          );
 
-            let participantObject: {
-              penyaId: string;
-              penyaName: string;
-              participates: boolean;
-              result?: any;
-            } = {
-              penyaId: penyaInfo.penya.penyaId,
-              penyaName: penyaInfo.penya.name,
-              participates: penyaInfo.participates,
-            }
-
-            switch(data.challengeType){
-              case "Temps":
-              case "Punts":
-                participantObject = { ...participantObject, result: 0 };
-                break;
-              case "Participació":
-                participantObject = { ...participantObject, result: false };
-                break;
-            }
-
-            batch.set(participantRef, participantObject);
+          let participantObject: {
+            penyaId: string;
+            penyaName: string;
+            participates: boolean;
+            result?: number;
+          } = {
+            penyaId: penyaInfo.penya.penyaId,
+            penyaName: penyaInfo.penya.name,
+            participates: penyaInfo.participates,
+            result: -1,
           }
+
+          batch.set(participantRef, participantObject);
         });
+
+        await batch.commit();
+        onSuccess([year]);
       } catch (error) {
         // manejar error
-        console.error("Error al pujar la imatge:", error);
-        toast.error("Error al pujar la imatge: " + error);
+        console.error("Error al crear la prova:", error);
+        toast.error("Error al crear la prova: " + error);
+        if (onError) onError(error);
       }
-  try {
-    await batch.commit();
-    onSuccess([year]);
-  } catch (error) {
-    console.error("Error creant la prova:", error);
-    if (onError) onError(error);
-  }
 };
 
 export const updateProvaTimeResult = async (
@@ -152,6 +139,7 @@ export async function getProvaInfo(
   const participantsSnap = await getDocs(participantsRef);
   const participants = participantsSnap.docs.map((p) => {
     const r = p.data() as any;
+
     return {
       provaReference: provaDocRef.path,
       participates: r.participates ?? true,
@@ -159,7 +147,7 @@ export async function getProvaInfo(
       penyaId: r.penyaId ?? p.id,
       result: r.result ?? "",
     };
-  });
+  }).filter((p) => p.participates);
 
   const results: SingleProvaResultData[] = participants.map((p) => ({
     ...p,

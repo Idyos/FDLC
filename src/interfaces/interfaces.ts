@@ -35,7 +35,20 @@ export interface PenyaProvaSummary extends ProvaSummary {
 //#endregion
 
 //#region Proves
-export interface ProvaInfo {
+export class ProvaInfo {
+  constructor() {
+    this.provaId = "";
+    this.name = "";
+    this.challengeType = "Temps";
+    this.startDate = new Date(0);
+    this.isFinished = false;
+    this.pointsRange = [];
+    this.results = [];
+    this.winDirection = "NONE";
+    this.pointsRange = [];
+    this.location = undefined;
+  }
+
   provaId: string;
   challengeType: ProvaType; 
   name: string;
@@ -59,9 +72,9 @@ export const winDirections = ["NONE", "ASC", "DESC"] as const;
 export type WinDirection = (typeof winDirections)[number];
 
 export type Ubication = {
-  lat: number | null;
-  lng: number | null;
-  name: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  name?: string | null;
 };
 
 export const provaTypes = ["Participació", "Temps", "Punts", "Rondes", "MultiProva"] as const;

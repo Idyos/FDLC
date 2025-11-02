@@ -1,11 +1,7 @@
 import { motion, useAnimation } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { ProvaInfo } from "@/interfaces/interfaces";
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import ProvaInfoCard from "../shared/Prova/provaInfoCard";
 import { Badge } from "../ui/badge";
 const COLLAPSED_H = 250;
@@ -56,7 +52,10 @@ export default function ProvaTitle({ prova }: ProvaInfoTitleProps) {
   const expand = () => {
     if (!isExpanded) {
       setIsExpanded(true);
-      controls.start({ height: expandedH * 0.9, transition: { duration: 1, ease: "backInOut" } });
+      controls.start({
+        height: expandedH * 0.9,
+        transition: { duration: 1, ease: "backInOut" },
+      });
     }
   };
   const collapse = () => {
@@ -66,7 +65,10 @@ export default function ProvaTitle({ prova }: ProvaInfoTitleProps) {
     }
     if (isExpanded) {
       setIsExpanded(false);
-      controls.start({ height: COLLAPSED_H, transition: { duration: 1, ease: "backInOut" } });
+      controls.start({
+        height: COLLAPSED_H,
+        transition: { duration: 1, ease: "backInOut" },
+      });
     } else {
       controls.start({ height: COLLAPSED_H });
     }
@@ -82,7 +84,7 @@ export default function ProvaTitle({ prova }: ProvaInfoTitleProps) {
       pressTimer.current = null;
     }, LONG_PRESS_MS);
   };
-  
+
   const onPressEnd = () => collapse();
 
   // 6) Accesibilidad teclado (mantener espacio/enter)
@@ -100,57 +102,76 @@ export default function ProvaTitle({ prova }: ProvaInfoTitleProps) {
   };
 
   return (
-    <motion.div
-      ref={containerRef}
-      role="button"
-      tabIndex={0}
-      aria-pressed={isExpanded}
-      initial={{ height: COLLAPSED_H }}
-      animate={controls}
-      onPointerDown={onPressStart}
-      onPointerUp={onPressEnd}
-      onPointerCancel={onPressEnd}
-      onPointerLeave={onPressEnd}
-      onKeyDown={onKeyDown}
-      onKeyUp={onKeyUp}
-      className="min-h-[250px] relative border-gray-900 dark:border-gray-100 border-4 rounded-4xl flex flex-col justify-center space-y-4 mb-4 p-12 overflow-hidden select-none cursor-pointer"
-    >
-    <Badge variant="secondary" className="absolute top-2 right-5 mt-2 text-sm font-medium rounded-4xl">{prova.challengeType}</Badge>
-    <Badge variant="secondary" className="absolute bottom-2 right-5 mt-2 text-sm font-medium rounded-4xl">
-              {prova.startDate.toLocaleDateString()} | {prova.startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              {prova.finishDate 
-              ? prova.startDate.toLocaleDateString() == prova.finishDate.toLocaleDateString()
-                ? " - " + prova.finishDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : ` – ${prova.finishDate.toLocaleDateString()} | ${prova.finishDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <DialogTrigger asChild onClick={() => setIsDialogOpen(true)}>
+        <motion.div
+          ref={containerRef}
+          role="button"
+          tabIndex={0}
+          aria-pressed={isExpanded}
+          initial={{ height: COLLAPSED_H }}
+          animate={controls}
+          onPointerDown={onPressStart}
+          onPointerUp={onPressEnd}
+          onPointerCancel={onPressEnd}
+          onPointerLeave={onPressEnd}
+          onKeyDown={onKeyDown}
+          onKeyUp={onKeyUp}
+          className="min-h-[250px] relative border-gray-900 dark:border-gray-100 border-4 rounded-4xl flex flex-col justify-center space-y-4 mb-4 p-12 overflow-hidden select-none cursor-pointer"
+        >
+          <Badge
+            variant="secondary"
+            className="absolute z-10 top-2 right-5 mt-2 text-sm font-medium rounded-4xl"
+          >
+            {prova.challengeType}
+          </Badge>
+          <Badge
+            variant="secondary"
+            className="absolute z-10 bottom-2 right-5 mt-2 text-sm font-medium rounded-4xl"
+          >
+            {prova.startDate.toLocaleDateString()} |{" "}
+            {prova.startDate.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+            {prova.finishDate
+              ? prova.startDate.toLocaleDateString() ==
+                prova.finishDate.toLocaleDateString()
+                ? " - " +
+                  prova.finishDate.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : ` – ${prova.finishDate.toLocaleDateString()} | ${prova.finishDate.toLocaleTimeString(
+                    [],
+                    { hour: "2-digit", minute: "2-digit" }
+                  )}`
               : ""}
-    </Badge>
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>  
-        <DialogTrigger asChild onClick={() => setIsDialogOpen(true)}>
-        <div>
+          </Badge>
             <h1 className="text-5xl font-extrabold z-10 mb-0">{prova.name}</h1>
 
             {prova.description?.length ? (
-            <h3 className="z-10 italic mb-0">"{prova.description}"</h3>
+              <h3 className="z-10 italic mb-0">"{prova.description}"</h3>
             ) : null}
 
             {prova.imageUrl?.length ? (
-            <>
+              <>
                 <img
-                ref={imgRef}
-                src={prova.imageUrl}
-                alt={prova.name}
-                onLoad={handleImgLoad}
-                className="absolute inset-0 w-full h-full rounded-2xl object-cover"
+                  ref={imgRef}
+                  src={prova.imageUrl}
+                  alt={prova.name}
+                  onLoad={handleImgLoad}
+                  className="absolute inset-0 w-full h-full rounded-2xl object-cover"
                 />
                 <div className="absolute inset-0 dark:bg-black/50 bg-white/40" />
-            </>
+              </>
             ) : null}
-        </div>
-        </DialogTrigger> 
-      <DialogContent className="p-0 "> 
-        <ProvaInfoCard prova={prova} />
-      </DialogContent>
-      </Dialog>
-    </motion.div>
+          
+        </motion.div>
+        </DialogTrigger>
+        <DialogContent className="p-0 ">
+          <ProvaInfoCard prova={prova} />
+        </DialogContent>
+    </Dialog>
   );
 }
