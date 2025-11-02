@@ -27,6 +27,7 @@ const emptyProva: ProvaInfo = {
     startDate: new Date(0),
     pointsRange: [],
     results: [],
+    isFinished: false,
 };
 
 export default function AdminProvaPage() {
