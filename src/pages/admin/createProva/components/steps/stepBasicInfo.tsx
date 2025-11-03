@@ -4,15 +4,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { LocationSelector } from "@/components/admin/locationSelector";
 import { TooltipProvider } from "@radix-ui/react-tooltip";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Ubication } from "@/interfaces/interfaces";
 
 type Props = {
   provaImageUrl: string | null;
   onImageAdded: (f: File) => void;
   watchedStart: Date | null | undefined;
   watchedEnd: Date | null | undefined;
+  onLocationChange: (location: Ubication) => void;
+
 };
 
-export default function StepBasicInfo({ provaImageUrl, onImageAdded, watchedStart, watchedEnd }: Props) {
+export default function StepBasicInfo({ provaImageUrl, onImageAdded, watchedStart, watchedEnd, onLocationChange }: Props) {
   return (
     <>
       <FormField name="image" render={() => (
@@ -62,7 +65,7 @@ export default function StepBasicInfo({ provaImageUrl, onImageAdded, watchedStar
       <FormField name="location" render={() => (
         <FormItem>
           <FormLabel>Ubicació:</FormLabel>
-          <FormControl><LocationSelector onLocationChange={() => { /* lo inyectas desde fuera si quieres */ }} /></FormControl>
+          <FormControl><LocationSelector onLocationChange={onLocationChange} /></FormControl>
           <FormMessage />
         </FormItem>
       )} />

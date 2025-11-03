@@ -129,6 +129,7 @@ export default function CreateProva() {
         onImageAdded={onImageAdded}
         watchedStart={watchedStart}
         watchedEnd={watchedEnd}
+        onLocationChange={setLocation}
       />
     )},
     { title: "Tipus i penyes", content: (

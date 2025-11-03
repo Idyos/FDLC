@@ -15,7 +15,14 @@ export interface PenyaRankingSummary extends PenyaInfo {
   directionChange: "up" | "down" | "same" | null;
 }
 
-export interface ProvaSummary {
+export class ProvaSummary {
+  constructor(){
+    this.provaId = "";
+    this.name = "";
+    this.startDate = new Date(0);
+    this.challengeType = "Temps";
+  }
+
   provaId: string;
   imageUrl?: string;
   name: string;
@@ -25,7 +32,13 @@ export interface ProvaSummary {
   challengeType: ProvaType;
 }
 
-export interface PenyaProvaSummary extends ProvaSummary {
+export class PenyaProvaSummary extends ProvaSummary {
+  constructor() {
+    super();
+    this.provaReference = "";
+    this.participates = false;
+  }
+
   provaReference: string;
   position?: number;
   result?: number;
