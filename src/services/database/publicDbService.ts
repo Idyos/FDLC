@@ -26,39 +26,26 @@ export const getYears = async (
     });
 }
 
-
 export const getRankingRealTime = (
   year: number,
   callback: (data: PenyaRankingSummary[]) => void
 ) => {
   const penyesRef = collection(db, `Circuit/${year}/Penyes`);
   const resultsRef = collection(db, `Circuit/${year}/Results`);
-  const q = query(resultsRef, orderBy("createdAt", "asc"));
 
-  let allPenyes: PenyaRankingSummary[] = [];
+  // Estado local de ambas colecciones
+  let penyes: PenyaRankingSummary[] = [];
+  let resultsDocs: any[] = [];
 
-  // 1️⃣ Escucha penyes base
-  const unsubPenyes = onSnapshot(penyesRef, (penyesSnap) => {
-    allPenyes = penyesSnap.docs.map((doc) => ({
-      penyaId: doc.id,
-      name: doc.data().name || doc.id,
-      totalPoints: 0,
-      imageUrl: doc.data().imageUrl || undefined,
-      position: 0,
-      directionChange: null,
-      isSecret: doc.data().isSecret || false,
-    }));
-  });
+  // 🔁 Función que recalcula el ranking combinando penyes + results
+  const recomputeRanking = () => {
+    if (penyes.length === 0) return;
 
-  // 2️⃣ Escucha resultados
-  const unsubResults = onSnapshot(q, (snapshot) => {
-    // Mapa para acumular puntuaciones
+    // 1️⃣ Crear mapa con puntos acumulados por penya
     const penyaPoints = new Map<string, number>();
-
-    snapshot.docs.forEach((docSnap) => {
+    resultsDocs.forEach((docSnap) => {
       const provaData = docSnap.data();
       const results: ChallengeResult[] = provaData.results || [];
-
       results.forEach((r) => {
         penyaPoints.set(
           r.penyaId,
@@ -67,13 +54,13 @@ export const getRankingRealTime = (
       });
     });
 
-    // 3️⃣ Combinar los puntos en la lista base
-    const combined = allPenyes.map((p) => ({
+    // 2️⃣ Combinar penyes + puntos
+    const combined = penyes.map((p) => ({
       ...p,
       totalPoints: penyaPoints.get(p.penyaId) || 0,
     }));
 
-    // 4️⃣ Ordenar por puntos (desc) y asignar posiciones
+    // 3️⃣ Ordenar y asignar posiciones
     const sorted = combined
       .sort((a, b) => b.totalPoints - a.totalPoints)
       .map((item, index) => ({
@@ -81,7 +68,28 @@ export const getRankingRealTime = (
         position: index + 1,
       }));
 
+    // 4️⃣ Emitir resultado al callback
     callback(sorted);
+  };
+
+  // 1️⃣ Escucha de penyes
+  const unsubPenyes = onSnapshot(penyesRef, (penyesSnap) => {
+    penyes = penyesSnap.docs.map((doc) => ({
+      penyaId: doc.id,
+      name: doc.data().name || doc.id,
+      totalPoints: 0,
+      imageUrl: doc.data().imageUrl || undefined,
+      position: 0,
+      directionChange: null,
+      isSecret: doc.data().isSecret || false,
+    }));
+    recomputeRanking(); // 🔁 recalcula cuando cambian penyes
+  });
+
+  // 2️⃣ Escucha de resultados
+  const unsubResults = onSnapshot(resultsRef, (snapshot) => {
+    resultsDocs = snapshot.docs;
+    recomputeRanking(); // 🔁 recalcula cuando cambian resultados
   });
 
   return () => {
