@@ -102,7 +102,9 @@ export const updateProvaTimeResult = async (
     await updateDoc(participantRef, {
       result: timeInSeconds,
     });
-    if (successCallback) successCallback();
+    if (successCallback){
+      successCallback();
+    } 
   } catch (error) {
     console.error("Error updating prova time result:", error);
     if (errorCallback) errorCallback(error);

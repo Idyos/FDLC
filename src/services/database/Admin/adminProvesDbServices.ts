@@ -8,7 +8,7 @@ import {
   serverTimestamp,
   updateDoc
 } from "firebase/firestore";
-import { ProvaInfo, SingleProvaResultData, ChallengeResult, PenyaInfo } from "@/interfaces/interfaces";
+import { ProvaInfo, SingleProvaResultData, ChallengeResult } from "@/interfaces/interfaces";
 import { db } from "@/firebase/firebase";
 
 export async function generateProvaResults(year: number, provaId: string) {
@@ -34,15 +34,24 @@ export async function generateProvaResults(year: number, provaId: string) {
 
   // 3️⃣ Calcular posición y puntos
   const results: ChallengeResult[] = sorted.map((p, index) => {
-    const position = index + 1;
-    const range = provaData.pointsRange.find(r => position >= r.from && position <= r.to);
-    const pointsAwarded = range ? range.points : 0;
+    let position = 0;
+    let pointsAwarded = 0;
+    if(p.participates && p.result > -1){  
+      position = index + 1;
+      
+      const range = provaData.pointsRange.find(r => position >= r.from && position <= r.to);
+
+      if(range) pointsAwarded = range.points;
+    } 
+
+    console.log(p.penyaId, p.participates, p.result);
+
     return {
       penyaId: p.penyaId,
       name: p.penyaName,
       position,
       pointsAwarded,
-     result: p.result
+      result: p.result
     };
   });
 
@@ -56,7 +65,12 @@ export async function generateProvaResults(year: number, provaId: string) {
     results,
   });
 
-    await updateDoc(provaRef, { isFinished: true });
+  await updateDoc(provaRef, { isFinished: true });
 
   return results;
+}
+
+export async function openProva(year: number, provaId: string){
+    const provaRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
+    await updateDoc(provaRef, { isFinished: false });
 }

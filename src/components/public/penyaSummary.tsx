@@ -26,6 +26,8 @@ export default function PenyaSummary({ rankingInfo }: PenyaSummaryProps) {
       navigate(`/penya?penyaId=${rankingInfo.penyaId}`);
     };
 
+    console.log(rankingInfo.penyaId, rankingInfo.imageUrl);
+
     return (
       <>
       <motion.div

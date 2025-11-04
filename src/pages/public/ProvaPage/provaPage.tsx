@@ -92,8 +92,6 @@ export default function ProvaPage() {
             return;
           }
 
-          console.log(provaInfoResult.results)
-
           setProva(provaInfoResult);
           setProvaInfo(provaInfoResult);
           document.title = `${provaInfoResult.name} ${selectedYear}`;

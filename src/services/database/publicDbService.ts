@@ -1,5 +1,5 @@
 // src/services/dbService.js
-import { PenyaInfo, PenyaProvaSummary, ProvaSummary, PenyaRankingSummary, SingleProvaResultData, ProvaInfo, ProvaType, WinDirection } from "@/interfaces/interfaces";
+import { PenyaInfo, PenyaProvaSummary, ProvaSummary, PenyaRankingSummary, SingleProvaResultData, ProvaInfo, ProvaType, WinDirection, ChallengeResult } from "@/interfaces/interfaces";
 import { db } from "../../firebase/firebase";
 import { collection, getDocs, query, onSnapshot, orderBy, doc, Unsubscribe } from "firebase/firestore";
 import { toast } from "sonner";
@@ -27,23 +27,67 @@ export const getYears = async (
 }
 
 
-export const getRankingRealTime = (year: number, callback: (data: PenyaRankingSummary[]) => void) => {
-  const rankingsRef = collection(db, `Circuit/${year}/Penyes`);
-  const q = query(rankingsRef, orderBy("totalPoints", "desc"));
+export const getRankingRealTime = (
+  year: number,
+  callback: (data: PenyaRankingSummary[]) => void
+) => {
+  const penyesRef = collection(db, `Circuit/${year}/Penyes`);
+  const resultsRef = collection(db, `Circuit/${year}/Results`);
+  const q = query(resultsRef, orderBy("createdAt", "asc"));
 
-  return onSnapshot(q, (snapshot) => {
-    const data = snapshot.docs.map((doc, index) => ({
+  let allPenyes: PenyaRankingSummary[] = [];
+
+  // 1️⃣ Escucha penyes base
+  const unsubPenyes = onSnapshot(penyesRef, (penyesSnap) => {
+    allPenyes = penyesSnap.docs.map((doc) => ({
       penyaId: doc.id,
       name: doc.data().name || doc.id,
-      totalPoints: doc.data().totalPoints || 0,
+      totalPoints: 0,
       imageUrl: doc.data().imageUrl || undefined,
-      position: index + 1,
+      position: 0,
       directionChange: null,
       isSecret: doc.data().isSecret || false,
     }));
-
-    callback(data);
   });
+
+  // 2️⃣ Escucha resultados
+  const unsubResults = onSnapshot(q, (snapshot) => {
+    // Mapa para acumular puntuaciones
+    const penyaPoints = new Map<string, number>();
+
+    snapshot.docs.forEach((docSnap) => {
+      const provaData = docSnap.data();
+      const results: ChallengeResult[] = provaData.results || [];
+
+      results.forEach((r) => {
+        penyaPoints.set(
+          r.penyaId,
+          (penyaPoints.get(r.penyaId) || 0) + (r.pointsAwarded || 0)
+        );
+      });
+    });
+
+    // 3️⃣ Combinar los puntos en la lista base
+    const combined = allPenyes.map((p) => ({
+      ...p,
+      totalPoints: penyaPoints.get(p.penyaId) || 0,
+    }));
+
+    // 4️⃣ Ordenar por puntos (desc) y asignar posiciones
+    const sorted = combined
+      .sort((a, b) => b.totalPoints - a.totalPoints)
+      .map((item, index) => ({
+        ...item,
+        position: index + 1,
+      }));
+
+    callback(sorted);
+  });
+
+  return () => {
+    unsubPenyes();
+    unsubResults();
+  };
 };
 
 export const getProvesRealTime = (year: number, callback: (data: ProvaSummary[]) => void) => {
@@ -163,7 +207,6 @@ export const getPenyaInfoRealTime = (year: number, penyaId: string, callback: (d
     const data : PenyaInfo = {
       penyaId: snapshot.id,
       name: snapshot.data().name || snapshot.id,
-      totalPoints: snapshot.data().totalPoints || 0,
       position: 0,
       isSecret: snapshot.data().isSecret || false,
       imageUrl: snapshot.data().imageUrl || undefined,

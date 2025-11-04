@@ -11,19 +11,42 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { generateProvaResults } from "@/services/database/Admin/adminProvesDbServices";
+import { generateProvaResults, openProva } from "@/services/database/Admin/adminProvesDbServices";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 export default function AdminFooter() {    
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+  const setProva = useProvaStore((state) => state.setProva);
 
   const { selectedYear } = useYear();
   const prova = useProvaStore((state) => state.prova);
 
   const [openAlert, setOpenAlert] = useState(false);
   const [missingPenyes, setMissingPenyes] = useState<string[]>([]);
+
+  const onOpenProva = async () => {
+    if (!prova) return;
+
+    if(!prova.isFinished){
+      toast.error("La prova ja està oberta!");
+      return;
+    }
+
+    try {
+      await openProva(selectedYear, prova.provaId);
+      toast.success("Prova oberta correctament!");
+
+      setProva({
+        ...prova,
+        isFinished: false,
+      });
+
+    } catch (error: any) {
+      toast.error("Error al obrir la prova: " + error.message);
+    }
+  };
 
   const onFinishProva = async () => {
     if (!prova || !prova.results) return;
@@ -41,12 +64,19 @@ export default function AdminFooter() {
     try {
       await generateProvaResults(selectedYear, prova.provaId);
       toast.success("Resultats generats correctament!");
+
       setOpenAlert(false);
-        if(prova.provaId){
-            setTimeout(() => {
-                navigate(`/prova?provaId=${prova.provaId}`);
-            }, 2000);
-        }
+
+      setProva({
+        ...prova,
+        isFinished: true,
+      });
+
+      if(prova.provaId){
+          setTimeout(() => {
+              navigate(`/prova?provaId=${prova.provaId}`);
+          }, 2000);
+      }
     } catch (error: any) {
       toast.error("Error al generar resultats: " + error.message);
       setOpenAlert(false);
@@ -68,16 +98,22 @@ export default function AdminFooter() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setOpenAlert(false)}>D'acord</AlertDialogCancel>
-            <AlertDialogAction onClick={() => onFinishProva()}>Continuar de totes formes</AlertDialogAction>
+            <AlertDialogAction onClick={(e) =>{e.preventDefault(); onFinishProva()}}>Continuar de totes formes</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* FOOTER FIJO */}
       <footer className="z-30 fixed bottom-0 right-0 rounded-tl-3xl bg-black py-4 flex justify-end p-5">
-        <Button onClick={onFinishProva}>
+        {prova.isFinished ? (
+         <Button onClick={onOpenProva}>
+          Tornar a obrir prova
+        </Button>
+        ) : (
+          <Button onClick={onFinishProva}>
           Tancar prova
         </Button>
+        )}
       </footer>
     </>
   );

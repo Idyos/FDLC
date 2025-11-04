@@ -25,7 +25,7 @@ export default function PenyaPage() {
     
     const [noPenyaAlert, setNoPenyaAlert] = useState(false);
 
-    const penyaInfo = useRef<PenyaInfo>({ name: "", description: "", penyaId: "", totalPoints: 0, position: 0 })
+    const penyaInfo = useRef<PenyaInfo>({ name: "", description: "", penyaId: "", position: 0 })
     const [penyaProves, setPenyaProves] = useState<PenyaProvaSummary[]>([]);
 
     const [isPenyaLoading, setIsPenyaLoading] = useState(true);

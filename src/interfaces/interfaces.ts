@@ -4,7 +4,6 @@ import { ParticipatingPenya } from "@/pages/admin/createProva/createProvaData";
 export interface PenyaInfo {
   penyaId: string;
   name: string;
-  totalPoints: number;
   position: number;
   isSecret?: boolean;
   imageUrl?: string;
@@ -13,6 +12,7 @@ export interface PenyaInfo {
 
 export interface PenyaRankingSummary extends PenyaInfo {
   directionChange: "up" | "down" | "same" | null;
+  totalPoints: number;
 }
 
 export class ProvaSummary {

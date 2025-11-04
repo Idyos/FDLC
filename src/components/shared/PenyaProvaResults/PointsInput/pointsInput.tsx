@@ -17,8 +17,6 @@ export const PointsInput: React.FC<PointsInputProps> = (props) => {
   const location = useLocation();
   const isAdmin = user !== null && location.pathname.startsWith("/admin");
 
-  console.log(props.value);
-
     return (
         <Input
           type="number"

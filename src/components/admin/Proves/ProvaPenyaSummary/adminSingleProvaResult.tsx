@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { updateProvaTimeResult } from "@/services/database/Admin/adminDbServices";
 import { TimeRollingInput } from "@/components/shared/PenyaProvaResults/TimeInput/timeInput";
 import { PointsInput } from "@/components/shared/PenyaProvaResults/PointsInput/pointsInput";
+import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
+import { toast } from "sonner";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: SingleProvaResultData;
@@ -14,6 +16,8 @@ interface SingleProvaSummaryProp {
 export default function AdminSingleProvaResult({ provaResultSummary }: SingleProvaSummaryProp) {
   // const { theme } = useTheme();
   // const navigate = useNavigate();
+  const prova = useProvaStore((state) => state.prova);
+
   const prevSeconds = useRef(provaResultSummary.result);
   const [value, setValue] = useState(provaResultSummary.result);
 
@@ -47,6 +51,12 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
   };
 
   const updateProvaResult = async (newSeconds: number) => {
+    if(prova.isFinished){
+      toast.error("La prova està finalitzada! Has de reobrir-la per modificar els resultats.");
+      setValue(prevSeconds.current);
+      return;
+    }
+
     if(prevSeconds.current !== newSeconds){
         updateProvaTimeResult(provaResultSummary.provaReference, provaResultSummary.penyaId, newSeconds, 
         () => {
