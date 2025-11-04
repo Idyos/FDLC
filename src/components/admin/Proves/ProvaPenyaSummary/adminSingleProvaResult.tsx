@@ -3,7 +3,7 @@ import {
 } from "@/interfaces/interfaces";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { updateProvaTimeResult } from "@/services/database/adminDbServices";
+import { updateProvaTimeResult } from "@/services/database/Admin/adminDbServices";
 import { TimeRollingInput } from "@/components/shared/PenyaProvaResults/TimeInput/timeInput";
 import { PointsInput } from "@/components/shared/PenyaProvaResults/PointsInput/pointsInput";
 

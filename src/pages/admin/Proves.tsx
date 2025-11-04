@@ -6,7 +6,7 @@ import LoadingAnimation from "@/components/shared/loadingAnim";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { Input } from "@/components/ui/input";
 import { ProvaSummary } from "@/interfaces/interfaces";
-import { getProves } from "@/services/database/adminDbServices";
+import { getProves } from "@/services/database/Admin/adminDbServices";
 
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";

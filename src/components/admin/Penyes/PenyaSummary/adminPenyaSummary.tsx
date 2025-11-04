@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
-import { updatePenyaInfo } from "@/services/database/adminDbServices";
+import { updatePenyaInfo } from "@/services/database/Admin/adminDbServices";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { Textarea } from "@/components/ui/textarea";
 

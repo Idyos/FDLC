@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Ban, Check, Loader, Plus } from "lucide-react";
-import { addPenyes } from "@/services/database/adminDbServices";
+import { addPenyes } from "@/services/database/Admin/adminDbServices";
 
 
 export default function AdminAddPenya() {

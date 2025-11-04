@@ -19,9 +19,10 @@ import LoadingAnimation from "@/components/shared/loadingAnim";
 import SingleProvaResult from "@/components/admin/singleProvaResult";
 import { useAuth } from "@/routes/admin/AuthContext";
 import AdminSingleProvaResult from "@/components/admin/Proves/ProvaPenyaSummary/adminSingleProvaResult";
-import { getProvaInfo } from "@/services/database/adminDbServices";
+import { getProvaInfo } from "@/services/database/Admin/adminDbServices";
 import ProvaTitle from "@/components/public/provaTitle";
 import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
+import AdminFooter from "@/components/admin/Proves/Footer/adminFooter";
 
 const emptyProva: ProvaInfo = {
     winDirection: "NONE",
@@ -141,7 +142,7 @@ export default function ProvaPage() {
                   )}
                 </div>
               ) : (
-              <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
+              <div className="p-3.5 flex flex-col items-end justify-start ">
                 {isProvaLoading ? (
                   <LoadingAnimation />
                 ) : (
@@ -158,6 +159,7 @@ export default function ProvaPage() {
               )}
 
             </div>
+            {isAdmin ? <AdminFooter /> : null}
         </>
 
     );    

@@ -1,8 +1,8 @@
 import { BaseChallenge, PenyaInfo, ProvaInfo, ProvaType, SingleProvaResultData, WinDirection } from "@/interfaces/interfaces";
-import { db } from "../../firebase/firebase";
+import { db } from "../../../firebase/firebase";
 import { collection, getDocs, doc, updateDoc, writeBatch, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
-import { addImageToChallenges, addImageToPenyes } from "../storageService";
+import { addImageToChallenges, addImageToPenyes } from "../../storageService";
 
 //#region PROVES
 export const getProves = async (year: number, callback: (data: ProvaInfo[]) => void) => {

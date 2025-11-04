@@ -104,6 +104,7 @@ export interface ChallengeResult {
   name: string;
   position: number;
   pointsAwarded: number;
+  result?: number;
 }
 
 export interface SingleProvaResultData{

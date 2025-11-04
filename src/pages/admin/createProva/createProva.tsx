@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useYear } from "@/components/shared/Contexts/YearContext";
-import { createProva, getPenyes } from "@/services/database/adminDbServices";
+import { createProva, getPenyes } from "@/services/database/Admin/adminDbServices";
 import { CreateChallenge, createChallengeSchema, fieldStepMap, ParticipatingPenya } from "./createProvaData";
 import { ProvaInfo, PenyaInfo, ProvaType, Ubication } from "@/interfaces/interfaces";
 import StepBasicInfo from "./components/steps/stepBasicInfo";
