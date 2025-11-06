@@ -1,5 +1,5 @@
 import {
-  SingleProvaResultData,
+  ParticipatingPenya,
 } from "@/interfaces/interfaces";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
@@ -10,7 +10,7 @@ import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
 import { toast } from "sonner";
 
 interface SingleProvaSummaryProp {
-  provaResultSummary: SingleProvaResultData;
+  provaResultSummary: ParticipatingPenya;
 }
 
 export default function AdminSingleProvaResult({ provaResultSummary }: SingleProvaSummaryProp) {
@@ -27,7 +27,7 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
   }, [provaResultSummary.penyaId, provaResultSummary.result]);
 
   const renderInput = () => {
-    switch (provaResultSummary.provaType) {
+    switch (prova.challengeType) {
       case "Temps":
         return (
           <TimeRollingInput
@@ -51,14 +51,14 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
   };
 
   const updateProvaResult = async (newSeconds: number) => {
-    if(prova.isFinished){
+    if(prova.isProvaFinished()){
       toast.error("La prova està finalitzada! Has de reobrir-la per modificar els resultats.");
       setValue(prevSeconds.current);
       return;
     }
 
     if(prevSeconds.current !== newSeconds){
-        updateProvaTimeResult(provaResultSummary.provaReference, provaResultSummary.penyaId, newSeconds, 
+        updateProvaTimeResult(prova.reference, provaResultSummary.penyaId, newSeconds, 
         () => {
           prevSeconds.current = newSeconds;
           setValue(prevSeconds.current);
@@ -78,7 +78,7 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
       {/* Contenido */}
       <div className="relative z-10 flex flex-col justify-between items-center h-full p-4 dark:text-white text-gray-900">
         <div className="text-left">
-          <p className="text-2xl font-bold">{provaResultSummary.penyaName}</p>
+          <p className="text-2xl font-bold">{provaResultSummary.name}</p>
         </div>
         <div>
             {renderInput()}

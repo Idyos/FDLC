@@ -21,7 +21,7 @@ export const PointsInput: React.FC<PointsInputProps> = (props) => {
         <Input
           type="number"
           readOnly={!isAdmin}
-          className="text-center text-lg px-4 py-2 rounded-md   bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-100"
+          // className="text-center text-4xl px-4 py-2 rounded-md max-w-[100px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-100"
           value={props.value == -1 ? 0 : props.value}
           onChange={(e) => {
             const newValue = parseInt(e.target.value);

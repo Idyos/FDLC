@@ -1,14 +1,11 @@
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { ParticipatingPenya } from "@/interfaces/interfaces";
 
-type PenyaItem = {
-  penya: { penyaId: string; name: string };
-  participates: boolean;
-};
 
 type PenyesGridProps = {
-  items: PenyaItem[];
+  items: ParticipatingPenya[];
   checkedByIndex: (index: number) => boolean;
   onToggle: (index: number, checked: boolean) => void;
 };
@@ -33,7 +30,7 @@ export default function PenyesGrid({
     <div className="grid grid-cols-[repeat(auto-fit,_minmax(160px,_1fr))] gap-2 w-full mt-2">
       {items.map((penya, index) => (
         <Card
-          key={penya.penya.penyaId}
+          key={penya.penyaId}
           className="h-15 flex flex-row items-center justify-start space-x-2 px-3 py-2"
         >
           <Checkbox
@@ -44,9 +41,9 @@ export default function PenyesGrid({
           <Label
             htmlFor={`penya-${index}`}
             className="text-sm font-medium leading-none truncate"
-            title={penya.penya.name}
+            title={penya.name}
           >
-            {penya.penya.name}
+            {penya.name}
           </Label>
         </Card>
       ))}

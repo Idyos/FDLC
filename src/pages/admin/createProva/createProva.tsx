@@ -10,8 +10,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { createProva, getPenyes } from "@/services/database/Admin/adminDbServices";
-import { CreateChallenge, createChallengeSchema, fieldStepMap, ParticipatingPenya } from "./createProvaData";
-import { ProvaInfo, PenyaInfo, ProvaType, Ubication } from "@/interfaces/interfaces";
+import { CreateChallenge, createChallengeSchema, fieldStepMap,  } from "./createProvaData";
+import { Prova, PenyaInfo, ProvaType, Ubication, EmptyProva, ParticipatingPenya } from "@/interfaces/interfaces";
 import StepBasicInfo from "./components/steps/stepBasicInfo";
 import StepTypeAndPenyes from "./components/steps/stepTypeAndPenyes";
 import StepConfirm from "./components/steps/stepConfirm";
@@ -49,7 +49,7 @@ export default function CreateProva() {
   const [penyes, setPenyes] = useState<ParticipatingPenya[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [penyaSearch, setPenyaSearch] = useState("");
-  const [provaInfo, setProvaInfo] = useState<ProvaInfo>(new ProvaInfo());
+  const [provaInfo, setProvaInfo] = useState<Prova>(new EmptyProva());
 
   const provaImageState = useState<File | null>(null);
   const [provaImage] = provaImageState;
@@ -62,7 +62,7 @@ export default function CreateProva() {
   useEffect(() => {
     setIsLoading(true);
     getPenyes(selectedYear, (data) => {
-      setPenyes(data.map((p: PenyaInfo) => ({ penya: p, participates: true })));
+      setPenyes(data.map((p: PenyaInfo) => ({ index: -1, penyaId: p.id, name: p.name, participates: true, result: -1 })));
       setIsLoading(false);
     });
   }, [selectedYear]);
@@ -79,7 +79,7 @@ export default function CreateProva() {
   // form <-> penyes
   useEffect(() => {
     form.setValue("penyes", penyes.map(p => ({
-      penya: { id: p.penya.penyaId || "", name: p.penya.name },
+      penya: { id: p.penyaId || "", name: p.name },
       participates: p.participates,
     })));
   }, [penyes, form]);
@@ -119,7 +119,7 @@ export default function CreateProva() {
 
   // Datos visuales
   const filteredPenyes = penyes.filter(p =>
-    p.penya.name.toLowerCase().includes(penyaSearch.toLowerCase())
+    p.name.toLowerCase().includes(penyaSearch.toLowerCase())
   );
 
   const steps = [

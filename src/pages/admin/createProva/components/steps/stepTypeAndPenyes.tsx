@@ -1,13 +1,13 @@
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { ProvaType, provaTypes } from "@/interfaces/interfaces";
+import { ParticipatingPenya, ProvaType, provaTypes } from "@/interfaces/interfaces";
 import PenyesGrid from "../penyesGrid";
 
 type Props = {
   challengeType: ProvaType | undefined;
   penyaSearch: string; setPenyaSearch: (s: string) => void;
-  filteredPenyes: Array<{ penya: { penyaId: string; name: string }, participates: boolean }>;
+  filteredPenyes: ParticipatingPenya[];
   onTogglePenya: (index: number, checked: boolean) => void;
 };
 

@@ -1,6 +1,6 @@
 import { motion, useAnimation } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { ProvaInfo } from "@/interfaces/interfaces";
+import { Prova } from "@/interfaces/interfaces";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import ProvaInfoCard from "../shared/Prova/provaInfoCard";
 import { Badge } from "../ui/badge";
@@ -8,7 +8,7 @@ const COLLAPSED_H = 250;
 const LONG_PRESS_MS = 200;
 
 interface ProvaInfoTitleProps {
-  prova: ProvaInfo;
+  prova: Prova;
 }
 
 export default function ProvaTitle({ prova }: ProvaInfoTitleProps) {
@@ -21,6 +21,92 @@ export default function ProvaTitle({ prova }: ProvaInfoTitleProps) {
   const [expandedH, setExpandedH] = useState(COLLAPSED_H);
   const [isExpanded, setIsExpanded] = useState(false);
   const [imgRatio, setImgRatio] = useState<number | null>(null);
+
+  const isProvaBeingPlayed = (startDate: Date, finishDate?: Date): boolean => {
+    const now = new Date();
+    if (!startDate) return false;
+
+    const effectiveFinishDate = finishDate
+      ? finishDate
+      : new Date(
+          startDate.getFullYear(),
+          startDate.getMonth(),
+          startDate.getDate(),
+          23,
+          59,
+          59,
+          999
+        );
+
+    return now >= startDate && now <= effectiveFinishDate;
+  };
+
+  const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
+    const now = new Date();
+
+    console.log(startDate.getTime(), new Date(0));
+    console.log(startDate.getTime() == new Date(0).getTime());
+
+    if (!startDate)
+      return "No hi ha data d'inici, és un error. Contacta amb una de les sombres i fes-ho saber.";
+
+    if(startDate.getTime() == new Date(0).getTime()) return "Carregant...";
+
+    const effectiveFinishDate = finishDate
+      ? finishDate
+      : new Date(
+          startDate.getFullYear(),
+          startDate.getMonth(),
+          startDate.getDate(),
+          23,
+          59,
+          59,
+          999
+        );
+
+    if (now < startDate) {
+      const diffMs = startDate.getTime() - now.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMinutes = Math.floor((diffMs / (1000 * 60)) % 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffDays > 0) {
+        const hoursLeft = diffHours % 24;
+        return `Comença en ${diffDays} ${diffDays > 1 ? "dies" : "dia"}${
+          hoursLeft > 0 ? ` i ${hoursLeft} h` : ""
+        }`;
+      } else if (diffHours > 0) {
+        return `Comença en ${diffHours} h${
+          diffMinutes > 0 ? ` i ${diffMinutes} min` : ""
+        }`;
+      } else {
+        return `Comença en ${diffMinutes} min`;
+      }
+    }
+
+    if (now >= startDate && now < effectiveFinishDate) {
+      const diffMs = effectiveFinishDate.getTime() - now.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMinutes = Math.floor((diffMs / (1000 * 60)) % 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffDays > 0) {
+        const hoursLeft = diffHours % 24;
+        return `En curs, finalitza en ${diffDays} ${diffDays > 1 ? "dies" : "dia"}${
+          hoursLeft > 0 ? ` i ${hoursLeft} h` : ""
+        }`;
+      } else if (diffHours > 0) {
+        return `En curs, finalitza en ${diffHours} h${
+          diffMinutes > 0 ? ` i ${diffMinutes} min` : ""
+        }`;
+      } else {
+        return `En curs, finalitza en ${diffMinutes} min`;
+      }
+    }
+
+    // Si ya ha terminado
+    return "Finalitzada";
+  };
 
   const handleImgLoad = () => {
     const img = imgRef.current;
@@ -125,29 +211,12 @@ export default function ProvaTitle({ prova }: ProvaInfoTitleProps) {
           >
             {prova.challengeType}
           </Badge>
-          <Badge
-            variant="secondary"
-            className="absolute z-10 bottom-2 right-5 mt-2 text-sm font-medium rounded-4xl"
-          >
-            {prova.startDate.toLocaleDateString()} |{" "}
-            {prova.startDate.toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-            {prova.finishDate
-              ? prova.startDate.toLocaleDateString() ==
-                prova.finishDate.toLocaleDateString()
-                ? " - " +
-                  prova.finishDate.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : ` – ${prova.finishDate.toLocaleDateString()} | ${prova.finishDate.toLocaleTimeString(
-                    [],
-                    { hour: "2-digit", minute: "2-digit" }
-                  )}`
-              : ""}
-          </Badge>
+            <Badge
+              variant="secondary"
+              className="absolute z-10 bottom-2 right-5 mt-2 text-sm font-medium rounded-4xl"
+            >
+              {isProvaBeingPlayed(prova.startDate, prova.finishDate)}{buildTimeInfo(prova.startDate, prova.finishDate)}
+            </Badge>
             <h1 className="text-5xl font-extrabold z-10 mb-0">{prova.name}</h1>
 
             {prova.description?.length ? (

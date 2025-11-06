@@ -2,8 +2,10 @@ import { ProvaType, provaTypes, WinDirection } from "@/interfaces/interfaces";
 import { z } from "zod";
 
 export interface ParticipatingPenya {
-  penya: {penyaId: string; name: string};
+  penyaId: string; 
+  name: string
   participates: boolean;
+  result?: number;
 }
 
 export const fieldStepMap: Record<keyof CreateChallenge, number> = {

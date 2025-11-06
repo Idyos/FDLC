@@ -1,15 +1,15 @@
 // useProvaStore.ts
 import { create } from "zustand";
-import { ProvaInfo } from "@/interfaces/interfaces";
+import { EmptyProva, Prova } from "@/interfaces/interfaces";
 
 interface ProvaState {
-  prova: ProvaInfo;
-  setProva: (prova: ProvaInfo) => void;
+  prova: Prova;
+  setProva: (prova: Prova) => void;
   clearProva: () => void;
 }
 
 export const useProvaStore = create<ProvaState>((set) => ({
-  prova: new ProvaInfo(),
+  prova: new EmptyProva(),
   setProva: (prova) => set({ prova }),
-  clearProva: () => set({ prova: new ProvaInfo() }),
+  clearProva: () => set({ prova: new EmptyProva() }),
 }));

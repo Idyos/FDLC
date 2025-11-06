@@ -29,7 +29,7 @@ export default function AdminFooter() {
   const onOpenProva = async () => {
     if (!prova) return;
 
-    if(!prova.isFinished){
+    if(!prova.isProvaFinished){
       toast.error("La prova ja està oberta!");
       return;
     }
@@ -38,10 +38,8 @@ export default function AdminFooter() {
       await openProva(selectedYear, prova.provaId);
       toast.success("Prova oberta correctament!");
 
-      setProva({
-        ...prova,
-        isFinished: false,
-      });
+    prova.setProvaFinished(false);
+    setProva(prova);
 
     } catch (error: any) {
       toast.error("Error al obrir la prova: " + error.message);
@@ -49,11 +47,11 @@ export default function AdminFooter() {
   };
 
   const onFinishProva = async () => {
-    if (!prova || !prova.results) return;
+    if (!prova || !prova.penyes) return;
 
-    const penyesWithoutResults = prova.results
+    const penyesWithoutResults = prova.penyes
       .filter((r) => r.result == null || r.result === -1)
-      .map((r) => r.penyaName);
+      .map((r) => r.name);
 
     if (penyesWithoutResults.length > 0 && openAlert === false) {
       setMissingPenyes(penyesWithoutResults);
@@ -67,10 +65,8 @@ export default function AdminFooter() {
 
       setOpenAlert(false);
 
-      setProva({
-        ...prova,
-        isFinished: true,
-      });
+      prova.setProvaFinished(false);
+      setProva(prova);
 
       if(prova.provaId){
           setTimeout(() => {
@@ -105,7 +101,7 @@ export default function AdminFooter() {
 
       {/* FOOTER FIJO */}
       <footer className="z-30 fixed bottom-0 right-0 rounded-tl-3xl bg-black py-4 flex justify-end p-5">
-        {prova.isFinished ? (
+        {prova.isProvaFinished() ? (
          <Button onClick={onOpenProva}>
           Tornar a obrir prova
         </Button>

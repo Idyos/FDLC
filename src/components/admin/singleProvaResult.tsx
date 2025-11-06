@@ -1,4 +1,4 @@
-import { SingleProvaResultData } from "@/interfaces/interfaces";
+import { ParticipatingPenya } from "@/interfaces/interfaces";
 import { motion } from "framer-motion";
 import { TimeRollingInput } from "../shared/PenyaProvaResults/TimeInput/timeInput";
 import { useEffect, useRef, useState } from "react";
@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { PointsInput } from "../shared/PenyaProvaResults/PointsInput/pointsInput";
 
 interface SingleProvaSummaryProp {
-  provaResultSummary: SingleProvaResultData;
+  provaResultSummary: ParticipatingPenya;
 }
 
 export default function SingleProvaResult({ provaResultSummary }: SingleProvaSummaryProp) {
@@ -28,7 +28,7 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
   }
 
   const renderInput = () => {
-    switch (provaResultSummary.provaType) {
+    switch (prova.challengeType) {
       case "Temps":
         return (
           <TimeRollingInput
@@ -69,12 +69,12 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
       {/* Contenido */}
       <div className="relative z-10 flex justify-between items-center h-full p-4 dark:text-white text-gray-900">
         <div className="text-left">
-          <p className={`${prova?.isFinished ? "text-4xl font-extrabold" : "inline text-2xl font-bold opacity-40 blur-[2.5px]"}`}>{provaResultSummary.index}. </p>
-          <span className="text-2xl font-bold">{provaResultSummary.penyaName}</span>
+          <p className={`${prova.isProvaFinished() ? "text-4xl font-extrabold" : "inline text-2xl font-bold opacity-40 blur-[2.5px]"}`}>{provaResultSummary.index}. </p>
+          <span className="text-2xl font-bold">{provaResultSummary.name}</span>
         </div>
         <div className="flex flex-row items-center space-x-6">
           {renderInput()}
-          <span className={`${!prova?.isFinished ? "text-2xl font-bold opacity-40 blur-[2.5px]" : "text-4xl font-extrabold"}`} >{prova?.isFinished ? "+" : null}{getPointsForIndex(provaResultSummary.index || -1) ?? ""}</span>
+          <span className={`${!prova?.isProvaFinished() ? "text-2xl font-bold opacity-40 blur-[2.5px]" : "text-4xl font-extrabold"}`} >{prova.isProvaFinished() ? "+" : null}{getPointsForIndex(provaResultSummary.index || -1) ?? ""}</span>
         </div>
       </div>
     </motion.div>
