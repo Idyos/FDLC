@@ -25,7 +25,7 @@ export default function PenyaPage() {
     
     const [noPenyaAlert, setNoPenyaAlert] = useState(false);
 
-    const penyaInfo = useRef<PenyaInfo>({ name: "", description: "", penyaId: "", position: 0 })
+    const penyaInfo = useRef<PenyaInfo>(new PenyaInfo());
     const [penyaProves, setPenyaProves] = useState<PenyaProvaSummary[]>([]);
 
     const [isPenyaLoading, setIsPenyaLoading] = useState(true);
@@ -89,7 +89,7 @@ export default function PenyaPage() {
               ) : (
                 penyaProves.length > 0 ? (
                     penyaProves.map((provaSummary) => (
-                      <ProvaSummaryCard key={provaSummary.provaId} provaSummary={provaSummary} />
+                      <ProvaSummaryCard key={provaSummary.id} provaSummary={provaSummary} />
                     ))
                 ) : (<p>No s'han trobat proves per a aquesta penya.</p>)
               )}

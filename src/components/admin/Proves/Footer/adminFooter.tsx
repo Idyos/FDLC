@@ -29,16 +29,16 @@ export default function AdminFooter() {
   const onOpenProva = async () => {
     if (!prova) return;
 
-    if(!prova.isProvaFinished){
+    if(!prova.isFinished){
       toast.error("La prova ja està oberta!");
       return;
     }
 
     try {
-      await openProva(selectedYear, prova.provaId);
+      await openProva(selectedYear, prova.id);
       toast.success("Prova oberta correctament!");
 
-    prova.setProvaFinished(false);
+    prova.isFinished = false;
     setProva(prova);
 
     } catch (error: any) {
@@ -60,17 +60,17 @@ export default function AdminFooter() {
     }
 
     try {
-      await generateProvaResults(selectedYear, prova.provaId);
+      await generateProvaResults(selectedYear, prova.id);
       toast.success("Resultats generats correctament!");
 
       setOpenAlert(false);
 
-      prova.setProvaFinished(false);
+      prova.isFinished = false;
       setProva(prova);
 
-      if(prova.provaId){
+      if(prova.id){
           setTimeout(() => {
-              navigate(`/prova?provaId=${prova.provaId}`);
+              navigate(`/prova?id=${prova.id}`);
           }, 2000);
       }
     } catch (error: any) {
@@ -101,7 +101,7 @@ export default function AdminFooter() {
 
       {/* FOOTER FIJO */}
       <footer className="z-30 fixed bottom-0 right-0 rounded-tl-3xl bg-black py-4 flex justify-end p-5">
-        {prova.isProvaFinished() ? (
+        {prova.isFinished ? (
          <Button onClick={onOpenProva}>
           Tornar a obrir prova
         </Button>

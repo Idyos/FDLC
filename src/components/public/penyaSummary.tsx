@@ -1,11 +1,11 @@
-import { PenyaRankingSummary } from "@/interfaces/interfaces";
+import { PenyaInfo } from "@/interfaces/interfaces";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../Theme/theme-provider";
 import { Badge } from "@/components/ui/badge"
 
 interface PenyaSummaryProps {
-    rankingInfo: PenyaRankingSummary;
+    rankingInfo: PenyaInfo;
 }
 
 export default function PenyaSummary({ rankingInfo }: PenyaSummaryProps) {              
@@ -23,14 +23,14 @@ export default function PenyaSummary({ rankingInfo }: PenyaSummaryProps) {
     const navigate = useNavigate();
 
     const handleClick = () => {
-      navigate(`/penya?penyaId=${rankingInfo.penyaId}`);
+      navigate(`/penya?penyaId=${rankingInfo.id}`);
     };
 
     return (
       <>
       <motion.div
       onClick={rankingInfo.isSecret ? undefined : handleClick}
-      key={rankingInfo.penyaId}
+      key={rankingInfo.id}
       whileHover={{ scale: 1.02 }}
       className="relative w-full h-36 rounded-2xl overflow-hidden shadow-lg mb-6 cursor-pointer"
       style={{ background: bgColor }}
@@ -68,7 +68,7 @@ export default function PenyaSummary({ rankingInfo }: PenyaSummaryProps) {
       </div>
 
       {/* Flechitas de subida/bajada */}
-      {rankingInfo.directionChange === "up" && (
+      {/* {rankingInfo.directionChange === "up" && (
         <motion.div
           className="absolute right-4 top-4 text-green-400"
           initial={{ opacity: 0, y: 5 }}
@@ -87,7 +87,7 @@ export default function PenyaSummary({ rankingInfo }: PenyaSummaryProps) {
         >
           ⬇
         </motion.div>
-      )}
+      )} */}
     </motion.div>
       </>
     );

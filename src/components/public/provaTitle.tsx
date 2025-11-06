@@ -44,9 +44,6 @@ export default function ProvaTitle({ prova }: ProvaInfoTitleProps) {
   const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
     const now = new Date();
 
-    console.log(startDate.getTime(), new Date(0));
-    console.log(startDate.getTime() == new Date(0).getTime());
-
     if (!startDate)
       return "No hi ha data d'inici, és un error. Contacta amb una de les sombres i fes-ho saber.";
 

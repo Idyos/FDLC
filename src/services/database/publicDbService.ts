@@ -1,5 +1,5 @@
 // src/services/dbService.js
-import { PenyaInfo, PenyaProvaSummary, ProvaSummary, PenyaRankingSummary, SingleProvaResultData, ProvaInfo, ProvaType, WinDirection, ChallengeResult } from "@/interfaces/interfaces";
+import { PenyaInfo, PenyaProvaSummary, ProvaSummary, ProvaType, WinDirection, ChallengeResult, Prova, EmptyProva, ProvaResultData, ParticipatingPenya } from "@/interfaces/interfaces";
 import { db } from "../../firebase/firebase";
 import { collection, getDocs, query, onSnapshot, orderBy, doc, Unsubscribe } from "firebase/firestore";
 import { toast } from "sonner";
@@ -28,13 +28,13 @@ export const getYears = async (
 
 export const getRankingRealTime = (
   year: number,
-  callback: (data: PenyaRankingSummary[]) => void
+  callback: (data: PenyaInfo[]) => void
 ) => {
   const penyesRef = collection(db, `Circuit/${year}/Penyes`);
   const resultsRef = collection(db, `Circuit/${year}/Results`);
 
   // Estado local de ambas colecciones
-  let penyes: PenyaRankingSummary[] = [];
+  let penyes: PenyaInfo[] = [];
   let resultsDocs: any[] = [];
 
   // 🔁 Función que recalcula el ranking combinando penyes + results
@@ -57,7 +57,7 @@ export const getRankingRealTime = (
     // 2️⃣ Combinar penyes + puntos
     const combined = penyes.map((p) => ({
       ...p,
-      totalPoints: penyaPoints.get(p.penyaId) || 0,
+      totalPoints: penyaPoints.get(p.id) || 0,
     }));
 
     // 3️⃣ Ordenar y asignar posiciones
@@ -75,7 +75,7 @@ export const getRankingRealTime = (
   // 1️⃣ Escucha de penyes
   const unsubPenyes = onSnapshot(penyesRef, (penyesSnap) => {
     penyes = penyesSnap.docs.map((doc) => ({
-      penyaId: doc.id,
+      id: doc.id,
       name: doc.data().name || doc.id,
       totalPoints: 0,
       imageUrl: doc.data().imageUrl || undefined,
@@ -103,17 +103,29 @@ export const getProvesRealTime = (year: number, callback: (data: ProvaSummary[])
   const q = query(provesRef, orderBy("startDate", "desc"));
 
   return onSnapshot(q, (snapshot) => {
-    const data = snapshot.docs.map((doc) => ({
-      provaId: doc.id,
-      imageUrl: doc.data().imageUrl || undefined,
-      name: doc.data().name || doc.id,
-      description: doc.data().description || undefined,
-      startDate: doc.data().startDate?.toDate?.() ?? null,
-      finishDate: doc.data().finishDate?.toDate?.() ?? null,
-      challengeType: doc.data().challengeType ?? "Temps",
-    }));
+    const proves: Prova[] = snapshot.docs.map((docSnap) => {
+      const d = docSnap.data();
 
-    callback(data);
+      let prova = new EmptyProva();
+
+      prova.id = docSnap.id;
+      prova.reference = provesRef.path;
+      prova.name = d.name || docSnap.id;
+      prova.description = d.description || "";
+      prova.imageUrl = d.imageUrl || undefined;
+      prova.isSecret = d.isSecret || false;
+      prova.isFinished = d.isFinished || false;
+      prova.startDate = d.startDate?.toDate?.() ?? new Date(0);
+      prova.finishDate = d.finishDate?.toDate?.() ?? undefined;
+      prova.challengeType = d.challengeType || "null";
+      prova.winDirection = d.winDirection || "NONE";
+      prova.location = d.location || undefined;
+      prova.pointsRange = d.pointsRange || [];
+
+      return prova;
+    });
+
+    callback(proves);
   });
 };
 
@@ -121,23 +133,18 @@ export const getProvaInfoRealTime = (
   year: number,
   provaId: string,
   sort: boolean = true,
-  callback: (data: ProvaInfo) => void
+  callback: (data: Prova) => void
 ): Unsubscribe => {
   const provaDocRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
   const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
 
-  let base: (Omit<ProvaInfo, "results"> & { challengeType?: ProvaType; winDirection?: WinDirection }) | null = null;
-  let participants: Array<Omit<SingleProvaResultData, "provaType">> = [];
+  const prova = new EmptyProva();
 
   let unsubParticipants: Unsubscribe | null = null;
 
   const emit = () => {
-    if (!base) return;
-    const results: SingleProvaResultData[] = participants.map((p) => ({
-      ...p,
-      provaType: base?.challengeType ?? "Temps",
-    }));
-    callback({ ...base, results });
+    if (!prova.id) return;
+    callback(prova);
   };
 
   // 1) Snapshot del documento principal
@@ -145,50 +152,56 @@ export const getProvaInfoRealTime = (
     const d = snap.data();
     if (!d) return;
 
-    base = {
-      provaId: snap.id,
-      name: d.name || snap.id,
-      description: d.description || undefined,
-      isSecret: d.isSecret || false,
-      imageUrl: d.imageUrl || undefined,
-      location: d.location || undefined,
-      winDirection: d.winDirection || "NONE",
-      isFinished: d.isFinished || false,
-      startDate: d.startDate?.toDate?.() ?? new Date(0),
-      finishDate: d.finishDate?.toDate?.() ?? undefined,
-      pointsRange: Array.isArray(d.pointsRange) ? d.pointsRange : [],
-      challengeType: d.challengeType,
-    };
+    prova.id = snap.id;
+    prova.reference = provaDocRef.path;
+    prova.name = d.name || snap.id;
+    prova.description = d.description || undefined;
+    prova.imageUrl = d.imageUrl || undefined;
+    prova.isSecret = d.isSecret || false;
+    prova.isFinished = d.isFinished || false;
+    prova.startDate = d.startDate?.toDate?.() ?? new Date(0);
+    prova.finishDate = d.finishDate?.toDate?.() ?? undefined;
+    prova.challengeType = d.challengeType || "null";
+    prova.winDirection = d.winDirection || "NONE";
+    prova.location = d.location || undefined;
+    prova.pointsRange = d.pointsRange || [];
 
     if (unsubParticipants) {
       unsubParticipants();
     }
 
   const participantsQuery =
-    sort && base.winDirection !== "NONE"
+    sort && prova.winDirection !== "NONE"
       ? query(
           participantsRef,
-          orderBy("result", base.winDirection === "ASC" ? "asc" : "desc"),
+          orderBy("result", prova.winDirection === "ASC" ? "asc" : "desc"),
         )
       : participantsRef;
        
     unsubParticipants = onSnapshot(participantsQuery, (snap) => {
       let penyaIndex = 0;
-      participants = snap.docs.map((p) => {
-        const r = p.data() as any;
-        if (r.participates === false) return null;
-        penyaIndex++;
+      snap.docs.forEach((p) => {
+        const d = p.data();
 
-        return {
-          index: penyaIndex,
-          provaReference: provaDocRef.path,
-          participates: r.participates ?? true,
-          penyaName: r.penyaName ?? "",
-          penyaId: r.penyaId ?? p.id,
-          result: r.result == -1 ? "0" : r.result ?? "",
+        const penya: ParticipatingPenya = {
+          penyaId: typeof d.penyaId === "string" ? d.penyaId : p.id,
+          name: typeof d.penyaName === "string" ? d.penyaName : "Sense nom",
+          participates: d.participates !== false, // default true
+          result:
+            typeof d.result === "number"
+              ? d.result
+              : d.result != null
+              ? Number(d.result)
+              : undefined,
         };
-      })
-      .filter((p): p is NonNullable<typeof p> => !!p);
+
+        if (!penya.participates) return;
+
+        penyaIndex++;
+        penya.index = penyaIndex;
+
+        prova.penyes.push(penya);
+        });
 
       emit();
     });
@@ -213,7 +226,7 @@ export const getPenyaInfoRealTime = (year: number, penyaId: string, callback: (d
     }
 
     const data : PenyaInfo = {
-      penyaId: snapshot.id,
+      id: snapshot.id,
       name: snapshot.data().name || snapshot.id,
       position: 0,
       isSecret: snapshot.data().isSecret || false,
@@ -239,7 +252,6 @@ export const getPenyaProvesRealTime = (
     snapshot.docs.forEach((provaDoc) => {
       const provaId = provaDoc.id;
       const provaData = provaDoc.data();
-
       const participantRef = doc(db, `Circuit/${year}/Proves/${provaId}/Participants/${penyaId}`);
 
       const unsubscribeParticipant = onSnapshot(participantRef, (participantSnap) => {
@@ -248,15 +260,17 @@ export const getPenyaProvesRealTime = (
         const p = participantSnap.data();
 
         provisionalResults[provaId] = {
-          provaId,
-          imageUrl: provaData.imageUrl,
-          name: provaData.name || provaId,
-          startDate: provaData.startDate?.toDate?.() ?? null,
-          finishDate: provaData.finishDate?.toDate?.() ?? null,
-          provaReference: provaDoc.ref.path,
-          result: p.result ?? null,
-          participates: p.participates ?? false,
-          challengeType: provaData.challengeType,
+            id: provaId,
+            name: provaData.name || provaId,
+            reference: provaDoc.ref.path,
+            imageUrl: provaData.imageUrl,
+            startDate: provaData.startDate?.toDate?.() ?? null,
+            finishDate: provaData.finishDate?.toDate?.() ?? null,
+            challengeType: provaData.challengeType,
+            isFinished: provaData.isFinished,
+            isSecret: provaData.isSecret,
+            position: p.participates ? p.index || undefined : undefined,
+            participates: p.participates,
         };
 
         callback(Object.values(provisionalResults));

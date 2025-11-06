@@ -1,7 +1,7 @@
 import PenyaSummary from "@/components/public/penyaSummary";
 import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/Contexts/YearContext";
-import { PenyaRankingSummary, ProvaSummary} from "@/interfaces/interfaces";
+import { PenyaInfo, ProvaSummary} from "@/interfaces/interfaces";
 import { getProvesRealTime, getRankingRealTime } from "@/services/database/publicDbService";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useRef, useState } from "react";
@@ -12,8 +12,8 @@ import PenyaSummaryGrid from "@/components/public/penyaSummaryGrid";
 import LoadingAnimation from "@/components/shared/loadingAnim";
 
 export default function MainPage() {
-  const previousRankingsRef = useRef<PenyaRankingSummary[]>([]);
-  const [rankings, setRankings] = useState<PenyaRankingSummary[]>([]);
+  const previousRankingsRef = useRef<PenyaInfo[]>([]);
+  const [rankings, setRankings] = useState<PenyaInfo[]>([]);
   const [proves, setProves] = useState<ProvaSummary[]>([]);
 //   const [comunicats, setComunicats] = useState<any[]>([]);
   const { selectedYear: year } = useYear();
@@ -86,21 +86,22 @@ export default function MainPage() {
       document.title = `Ranking ${year}`;
 
       const unsubscribe = getRankingRealTime(year, (data) => {
-        const newData = data.map((item, index) => {
-          const newPosition = index + 1;
-          const prev = previousRankingsRef.current.find(
-            (r) => r.penyaId === item.penyaId
-          );
-          let direction: "up" | "down" | "same" | null = null;
-          if (prev) {
-            if (prev.position > newPosition) direction = "up";
-            else if (prev.position < newPosition) direction = "down";
-            else direction = "same";
-          }
-          return { ...item, position: newPosition, directionChange: direction };
-        });
-        previousRankingsRef.current = newData;
-        setRankings(newData);
+        // const newData = data.map((item, index) => {
+        //   const newPosition = index + 1;
+        //   const prev = previousRankingsRef.current.find(
+        //     (r) => r.id === item.id
+        //   );
+        //   let direction: "up" | "down" | "same" | null = null;
+        //   if (prev) {
+        //     if (prev.position > newPosition) direction = "up";
+        //     else if (prev.position < newPosition) direction = "down";
+        //     else direction = "same";
+        //   }
+        //   return { ...item, position: newPosition, directionChange: direction };
+        // });
+        console.log(data);
+        previousRankingsRef.current = data;
+        setRankings(data);
         setIsLoading(false);
       });
       unsubscribeRef.current = unsubscribe;

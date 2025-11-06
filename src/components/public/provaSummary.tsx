@@ -33,7 +33,7 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
   const gradient = `linear-gradient(90deg, rgba(0, 0, 0, 0), ${bgColor} 26%)`;
 
   const handleClick = () => {
-    navigate(`/prova?provaId=${provaSummary.provaId}`);
+    navigate(`/prova?provaId=${provaSummary.id}`);
   };
 
   return (

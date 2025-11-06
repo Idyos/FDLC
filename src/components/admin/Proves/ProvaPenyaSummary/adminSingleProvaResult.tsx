@@ -51,7 +51,7 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
   };
 
   const updateProvaResult = async (newSeconds: number) => {
-    if(prova.isProvaFinished()){
+    if(prova.isFinished === false){
       toast.error("La prova està finalitzada! Has de reobrir-la per modificar els resultats.");
       setValue(prevSeconds.current);
       return;

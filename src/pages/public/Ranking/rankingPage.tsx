@@ -2,15 +2,15 @@ import PageTitle from "@/components/public/pageTitle";
 import PenyaSummary from "@/components/public/penyaSummary";
 import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/Contexts/YearContext";
-import { PenyaRankingSummary } from "@/interfaces/interfaces";
 import { getRankingRealTime } from "@/services/database/publicDbService";
 import { useEffect, useRef, useState } from "react";
 import DynamicList from "@/components/shared/dynamicList";
 import LoadingAnimation from "@/components/shared/loadingAnim";
+import { PenyaInfo } from "@/interfaces/interfaces";
 
 export default function RankingPage() {
-    const previousRankingsRef = useRef<PenyaRankingSummary[]>([]);
-    const [rankings, setRankings] = useState<PenyaRankingSummary[]>([]);
+    const previousRankingsRef = useRef<PenyaInfo[]>([]);
+    const [rankings, setRankings] = useState<PenyaInfo[]>([]);
     const { selectedYear: year } = useYear();
     const [isLoading, setIsLoading] = useState(true);
 
@@ -21,7 +21,7 @@ export default function RankingPage() {
         console.log("Ranking data:", data, year); 
         const newData = data.map((item, index) => {
           const newPosition = index + 1;
-          const previousItem = previousRankingsRef.current.find((r) => r.penyaId === item.penyaId);
+          const previousItem = previousRankingsRef.current.find((r) => r.id === item.id);
     
           let direction: "up" | "down" | "same" | null = null;
           if (previousItem) {

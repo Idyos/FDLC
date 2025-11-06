@@ -1,7 +1,7 @@
 import PageTitle from "@/components/public/pageTitle";
 import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/Contexts/YearContext";
-import { ProvaInfo } from "@/interfaces/interfaces";
+import { EmptyProva, Prova } from "@/interfaces/interfaces";
 import { getProvaInfoRealTime } from "@/services/database/publicDbService";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -19,17 +19,6 @@ import SingleProvaResult from "@/components/admin/singleProvaResult";
 import DynamicList from "@/components/shared/dynamicList";
 import LoadingAnimation from "@/components/shared/loadingAnim";
 
-const emptyProva: ProvaInfo = {
-    winDirection: "NONE",
-    challengeType: "Temps",
-    provaId: "",
-    name: "",
-    startDate: new Date(0),
-    pointsRange: [],
-    results: [],
-    isFinished: false,
-};
-
 export default function AdminProvaPage() {
     const navigate = useNavigate();
 
@@ -37,7 +26,7 @@ export default function AdminProvaPage() {
     
     const [noProvaAlert, setNoProbaAlert] = useState(false);
 
-    const [provaInfo, setProvaInfo] = useState<ProvaInfo>(emptyProva);
+    const [provaInfo, setProvaInfo] = useState<Prova>(new EmptyProva());
 
     const [isProvaLoading, setIsProvaLoading] = useState(true);
 
@@ -92,9 +81,9 @@ export default function AdminProvaPage() {
               {isProvaLoading ? (
               <LoadingAnimation />
               ) : (
-                provaInfo.results.length > 0 ? (
+                provaInfo.penyes.length > 0 ? (
                     <DynamicList
-                      items={provaInfo.results}
+                      items={provaInfo.penyes}
                       renderItem={(provaResultSummary) => (
                         provaResultSummary.participates ? (
                           <SingleProvaResult key={provaResultSummary.penyaId} provaResultSummary={provaResultSummary} />

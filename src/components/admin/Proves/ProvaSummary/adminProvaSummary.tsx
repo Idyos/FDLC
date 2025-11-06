@@ -10,12 +10,12 @@ export default function AdminProvaSummary({ provaSummary }: ProvaSummaryProps) {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate(`/admin/prova?provaId=${provaSummary?.provaId}`);
+    navigate(`/admin/prova?provaId=${provaSummary?.id}`);
   };
 
   return provaSummary != null && (
     <motion.div
-      key={provaSummary?.provaId}
+      key={provaSummary?.id}
       whileHover={{ scale: 1.02 }}
       className="bg-white/30 relative h-36 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
       onClick={handleClick}

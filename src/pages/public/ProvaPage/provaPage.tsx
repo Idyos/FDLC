@@ -1,6 +1,5 @@
 import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/Contexts/YearContext";
-import { ProvaInfo } from "@/interfaces/interfaces";
 import { getProvaInfoRealTime } from "@/services/database/publicDbService";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -23,17 +22,7 @@ import { getProvaInfo } from "@/services/database/Admin/adminDbServices";
 import ProvaTitle from "@/components/public/provaTitle";
 import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
 import AdminFooter from "@/components/admin/Proves/Footer/adminFooter";
-
-const emptyProva: ProvaInfo = {
-    winDirection: "NONE",
-    challengeType: "Temps",
-    provaId: "",
-    name: "",
-    startDate: new Date(0),
-    pointsRange: [],
-    isFinished: false,
-    results: [],
-};
+import { EmptyProva, Prova } from "@/interfaces/interfaces";
 
 export default function ProvaPage() {
     const { user } = useAuth();
@@ -48,8 +37,7 @@ export default function ProvaPage() {
     
     const [noProvaAlert, setNoProbaAlert] = useState(false);
     
-
-    const [provaInfo, setProvaInfo] = useState<ProvaInfo>(emptyProva);
+    const [provaInfo, setProvaInfo] = useState<Prova>(new EmptyProva());
 
     const [isProvaLoading, setIsProvaLoading] = useState(true);
 
@@ -65,6 +53,7 @@ export default function ProvaPage() {
     if (isAdmin) {
       getProvaInfo(selectedYear, provaId)
         .then((provaInfoResult) => {
+          console.log(provaInfoResult);
           if (!provaInfoResult) {
             setNoProbaAlert(true);
             return;
@@ -92,8 +81,13 @@ export default function ProvaPage() {
             return;
           }
 
-          setProva(provaInfoResult);
-          setProvaInfo(provaInfoResult);
+          const clonedProva = Object.assign(
+            Object.create(Object.getPrototypeOf(provaInfoResult)),
+            provaInfoResult
+          );
+
+          setProva(clonedProva);
+          setProvaInfo(clonedProva);
           document.title = `${provaInfoResult.name} ${selectedYear}`;
         } else {
           setNoProbaAlert(true);
@@ -132,32 +126,37 @@ export default function ProvaPage() {
                   {isProvaLoading ? (
                     <LoadingAnimation />
                   ) : (
-                    provaInfo.results.length > 0 ? (
-                      provaInfo.results.map((provaResultSummary) => (
-                        <AdminSingleProvaResult key={provaResultSummary.penyaId} provaResultSummary={provaResultSummary} />
+                    provaInfo.penyes.length > 0 ? (
+                      provaInfo.penyes.map((penya) => (
+                        <AdminSingleProvaResult key={penya.penyaId} provaResultSummary={penya} />
                       ))
                     ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
                   )}
                 </div>
               ) : (
-              <div className="p-3.5 flex flex-col items-end justify-start ">
-                {isProvaLoading ? (
-                  <LoadingAnimation />
-                ) : (
-                  provaInfo.results.length > 0 ? (
+                <div className="p-3.5 flex flex-col items-end justify-start ">
+                  {isProvaLoading ? (
+                    <LoadingAnimation />
+                  ) : (
+                    provaInfo.penyes.length > 0 ? (
                       <DynamicList
-                        items={provaInfo.results}
+                        items={provaInfo.penyes}
                         renderItem={(provaResultSummary) => (
-                          <SingleProvaResult key={provaResultSummary.penyaId} provaResultSummary={provaResultSummary} />
+                          <SingleProvaResult
+                            key={provaResultSummary.penyaId}
+                            provaResultSummary={provaResultSummary}
+                          />
                         )}
                       />
-                  ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
-                )}
-              </div>
+                    ) : (
+                      <p>No s'han trobat penyes per a aquesta prova.</p>
+                    )
+                  )}
+                </div>
               )}
 
             </div>
-            {isAdmin ? <AdminFooter /> : null}
+            {isAdmin && <AdminFooter />}
         </>
 
     );    

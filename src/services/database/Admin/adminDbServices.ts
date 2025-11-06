@@ -1,40 +1,51 @@
-import { BaseChallenge, PenyaInfo, ProvaInfo, ProvaType, SingleProvaResultData, WinDirection } from "@/interfaces/interfaces";
+import { Prova, PenyaInfo, ProvaType, ProvaResultData, WinDirection, EmptyProva } from "@/interfaces/interfaces";
 import { db } from "../../../firebase/firebase";
 import { collection, getDocs, doc, updateDoc, writeBatch, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { addImageToChallenges, addImageToPenyes } from "../../storageService";
 
 //#region PROVES
-export const getProves = async (year: number, callback: (data: ProvaInfo[]) => void) => {
+export const getProves = async (
+  year: number,
+  callback: (data: Prova[]) => void
+) => {
   const provesRef = collection(db, `Circuit/${year}/Proves`);
 
-  return getDocs(provesRef)
-  .then((data) => {
-    const dataConstructed = data.docs.map((doc) => ({
-        provaId: doc.id,
-        challengeType: doc.data().challengeType,
-        name: doc.data().name || doc.id,
-        description: doc.data().description || undefined,
-        isSecret: doc.data().isSecret || false,
-        imageUrl: doc.data().imageUrl || undefined,
-        location: doc.data().location || undefined,
-        isFinished: doc.data().isFinished || false,
-        startDate: doc.data().startDate?.toDate?.() ?? null,
-        finishDate: doc.data().finishDate?.toDate?.() ?? null,
-        winDirection: doc.data().winDirection,
-        pointsRange: doc.data().pointsRange || [],
-        results: doc.data().results || [],
-    }));
+  try {
+    const snap = await getDocs(provesRef);
 
-    callback(dataConstructed);
-  }).catch((error) => {
-    console.error("Error fetching rankings:", error);
-  });
+    const proves: Prova[] = snap.docs.map((docSnap) => {
+      const d = docSnap.data();
+
+      let prova = new EmptyProva();
+
+      prova.id = docSnap.id;
+      prova.reference = provesRef.path;
+      prova.name = d.name || docSnap.id;
+      prova.description = d.description || "";
+      prova.imageUrl = d.imageUrl || undefined;
+      prova.isSecret = d.isSecret || false;
+      prova.isFinished = d.isFinished || false;
+      prova.startDate = d.startDate?.toDate?.() ?? new Date(0);
+      prova.finishDate = d.finishDate?.toDate?.() ?? undefined;
+      prova.challengeType = d.challengeType || "null";
+      prova.winDirection = d.winDirection || "NONE";
+      prova.location = d.location || undefined;
+      prova.pointsRange = d.pointsRange || [];
+      prova.penyes = Array.isArray(d.penyes) ? d.penyes : [];
+
+      return prova;
+    });
+
+    callback(proves);
+  } catch (error) {
+    console.error("Error obtenint proves:", error);
+  }
 };
 
 export const createProva = async (
   year: number,
-  data: BaseChallenge,
+  data: Prova,
   image: File | null,
   onSuccess: (data: number[]) => void,
   onError?: (error: unknown) => void
@@ -61,7 +72,7 @@ export const createProva = async (
         data.penyes.forEach((penyaInfo) => {
           const participantRef = doc(
             db,
-            `Circuit/${year}/Proves/${data.name}/Participants/${penyaInfo.penya.penyaId}`
+            `Circuit/${year}/Proves/${data.name}/Participants/${penyaInfo.penyaId}`
           );
 
           let participantObject: {
@@ -70,8 +81,8 @@ export const createProva = async (
             participates: boolean;
             result?: number;
           } = {
-            penyaId: penyaInfo.penya.penyaId,
-            penyaName: penyaInfo.penya.name,
+            penyaId: penyaInfo.penyaId,
+            penyaName: penyaInfo.name,
             participates: penyaInfo.participates,
             result: -1,
           }
@@ -113,8 +124,8 @@ export const updateProvaTimeResult = async (
 
 export async function getProvaInfo(
   year: number,
-  provaId: string,
-): Promise<ProvaInfo | null> {
+  provaId: string
+): Promise<Prova | null> {
   const provaDocRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
   const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
 
@@ -123,41 +134,71 @@ export async function getProvaInfo(
 
   const d = provaSnap.data();
 
-  const base: Omit<ProvaInfo, "results"> & { challengeType?: ProvaType; winDirection?: WinDirection } = {
-    provaId: provaSnap.id,
-    name: d.name || provaSnap.id,
-    description: d.description || undefined,
-    isSecret: d.isSecret || false,
-    imageUrl: d.imageUrl || undefined,
-    location: d.location || undefined,
-    isFinished: d.isFinished || false,
-    winDirection: d.winDirection || "NONE",
-    startDate: d.startDate?.toDate?.() ?? new Date(0),
-    finishDate: d.finishDate?.toDate?.() ?? undefined,
-    pointsRange: Array.isArray(d.pointsRange) ? d.pointsRange : [],
-    challengeType: d.challengeType,
-  };
+  // 🔹 Crear instancia correcta según challengeType
+  let prova = new EmptyProva();
 
+  // 🔹 Asignar campos base del documento
+  prova.id = provaSnap.id;
+  prova.name = d.name || provaSnap.id;
+  prova.description = d.description || "";
+  prova.imageUrl = d.imageUrl || undefined;
+  prova.isSecret = d.isSecret || false;
+  prova.isFinished = d.isFinished || false;
+  prova.startDate = d.startDate?.toDate?.() ?? new Date(0);
+  prova.finishDate = d.finishDate?.toDate?.() ?? undefined;
+  prova.challengeType = d.challengeType || "null";
+  prova.winDirection = d.winDirection || "NONE";
+  prova.location = d.location || undefined;
+  prova.pointsRange = Array.isArray(d.pointsRange) ? d.pointsRange : [];
+  prova.penyes = [];
+
+  // 🔹 Cargar participantes
   const participantsSnap = await getDocs(participantsRef);
-  const participants = participantsSnap.docs.map((p) => {
-    const r = p.data() as any;
+  const participants = participantsSnap.docs
+    .map((p) => {
+      const r = p.data() as any;
+      return {
+        provaReference: provaDocRef.path,
+        participates: r.participates ?? true,
+        penyaName: r.penyaName ?? "",
+        penyaId: r.penyaId ?? p.id,
+        result: r.result ?? 0,
+      };
+    })
+    .filter((p) => p.participates);
 
-    return {
-      provaReference: provaDocRef.path,
-      participates: r.participates ?? true,
-      penyaName: r.penyaName ?? "",
-      penyaId: r.penyaId ?? p.id,
-      result: r.result ?? "",
-    };
-  }).filter((p) => p.participates);
+  // 🔹 Convertir a objetos ProvaResultData
+  const results: ProvaResultData[] = participants.map(
+    (p, index) =>
+      new ProvaResultData(
+        p.provaReference,
+        prova.challengeType,
+        p.penyaId,
+        p.penyaName,
+        p.result,
+        p.participates,
+        index + 1
+      )
+  );
 
-  const results: SingleProvaResultData[] = participants.map((p) => ({
-    ...p,
-    index: undefined,
-    provaType: base?.challengeType ?? "Temps",
+  // 🔹 Guardar penyes y resultados en la instancia
+  prova.penyes = participants.map((p) => ({
+    penyaId: p.penyaId,
+    name: p.penyaName,
+    participates: p.participates,
+    result: p.result,
   }));
 
-  return { ...base, results };
+  // 🔹 Si el tipo de prova tiene resultados específicos, puedes asignarlos
+  // (por ejemplo para ChallengeByTime)
+  if ("resultados" in prova && Array.isArray(prova["resultados"])) {
+    prova["resultados"] = participants.map((p) => ({
+      penyaId: p.penyaId,
+      tiempo: p.result ?? 0,
+    }));
+  }
+
+  return prova;
 }
 
 //#endregion
@@ -169,7 +210,7 @@ export const getPenyes = async (year: number, callback: (data: PenyaInfo[]) => v
   return getDocs(penyesRef)
   .then((data) => {
     const dataConstructed = data.docs.map((doc) => ({
-      penyaId: doc.id,
+      id: doc.id,
       name: doc.data().name || doc.id,
       totalPoints: doc.data().totalPoints || 0,
       description: doc.data().description || "",

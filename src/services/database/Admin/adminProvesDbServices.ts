@@ -8,7 +8,7 @@ import {
   serverTimestamp,
   updateDoc
 } from "firebase/firestore";
-import { ProvaInfo, SingleProvaResultData, ChallengeResult } from "@/interfaces/interfaces";
+import { Prova, ProvaResultData } from "@/interfaces/interfaces";
 import { db } from "@/firebase/firebase";
 
 export async function generateProvaResults(year: number, provaId: string) {
@@ -16,12 +16,12 @@ export async function generateProvaResults(year: number, provaId: string) {
   const provaSnap = await getDoc(provaRef);
   if (!provaSnap.exists()) throw new Error("No s'ha trobat la prova.");
 
-  const provaData = provaSnap.data() as ProvaInfo;
+  const provaData = provaSnap.data() as Prova;
 
   // 1️⃣ Obtener participantes y resultados
   const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
   const participantsSnap = await getDocs(participantsRef);
-  const participants: SingleProvaResultData[] = participantsSnap.docs.map((d) => d.data() as SingleProvaResultData);
+  const participants: ProvaResultData[] = participantsSnap.docs.map((d) => d.data() as ProvaResultData);
 
   if (participants.length === 0) throw new Error("No hi ha participants.");
 
@@ -33,7 +33,7 @@ export async function generateProvaResults(year: number, provaId: string) {
   });
 
   // 3️⃣ Calcular posición y puntos
-  const results: ChallengeResult[] = sorted.map((p, index) => {
+  const results: ProvaResultData[] = sorted.map((p, index) => {
     let position = 0;
     let pointsAwarded = 0;
     if(p.participates && p.result > -1){  
@@ -43,8 +43,6 @@ export async function generateProvaResults(year: number, provaId: string) {
 
       if(range) pointsAwarded = range.points;
     } 
-
-    console.log(p.penyaId, p.participates, p.result);
 
     return {
       penyaId: p.penyaId,

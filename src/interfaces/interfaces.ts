@@ -42,30 +42,24 @@ export abstract class BaseEntity {
 }
 
 export class PenyaInfo extends BaseEntity {
-  totalPoints: number;
   position: number;
   isSecret: boolean;
   imageUrl?: string;
+  totalPoints?: number;
 
   constructor(
     penyaId: string = "",
     name: string = "",
-    totalPoints: number = 0,
     position: number = 0,
     isSecret: boolean = false,
     imageUrl?: string,
     description?: string
   ) {
     super(penyaId, name, description);
-    this.totalPoints = totalPoints;
     this.position = position;
     this.isSecret = isSecret;
     this.imageUrl = imageUrl;
   }
-}
-
-export class PenyaRankingSummary extends PenyaInfo {
-  directionChange: "up" | "down" | "same" | null = null;
 }
 
 //#endregion
@@ -80,16 +74,17 @@ export interface ParticipatingPenya {
 }
 
 export class ProvaSummary extends BaseEntity {
-  provaId: string;
+
   reference: string;
   imageUrl?: string;
   startDate: Date;
   finishDate?: Date;
   challengeType: ProvaType;
   isFinished: boolean;  
+  isSecret: boolean;
 
   constructor(
-    provaId: string = "",
+    id: string = "",
     reference: string = "",
     name: string = "",
     challengeType: ProvaType = "null",
@@ -97,36 +92,27 @@ export class ProvaSummary extends BaseEntity {
     finishDate?: Date,
     imageUrl?: string,
     description?: string,
-    isFinished: boolean = false
+    isFinished: boolean = false,
+    isSecret: boolean = false,
   ) {
-    super(provaId, name, description);
-    this.provaId = provaId;
+    super(id, name, description);
     this.reference = reference;
     this.imageUrl = imageUrl;
     this.startDate = startDate;
     this.finishDate = finishDate;
     this.challengeType = challengeType;
     this.isFinished = isFinished;
-  }
-
-  setProvaFinished(finished: boolean): void {
-    this.isFinished = finished;
-  }
-  
-  isProvaFinished(): boolean {
-    return this.isFinished;
+    this.isSecret = isSecret;
   }
 }
 
 export class PenyaProvaSummary extends ProvaSummary {
-  provaReference: string;
   position?: number;
   result?: number;
   participates: boolean;
 
   constructor() {
     super();
-    this.provaReference = "";
     this.participates = false;
   }
 }
@@ -247,7 +233,7 @@ export class ChallengeByParticipation extends Prova {
     return this.resultados.map((res, index) => {
       const penya = penyesInfo.find((p) => p.id === res.penyaId);
       const base = new ProvaResultData(
-        this.provaId,
+        this.id,
         this.challengeType,
         res.penyaId,
         penya?.name || "Desconegut",
@@ -273,7 +259,7 @@ export abstract class SortedChallenge extends Prova {
     return sorted.map((res, index) => {
       const penya = penyesInfo.find((p) => p.id === res.penyaId);
       const base = new ProvaResultData(
-        this.provaId,
+        this.id,
         this.challengeType,
         res.penyaId,
         penya?.name || "Desconegut",
