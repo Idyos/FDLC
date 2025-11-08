@@ -1,7 +1,6 @@
 import { Checkbox } from "@/components/ui/checkbox";
-import { useAuth } from "@/routes/admin/AuthContext";
+import { isAdmin } from "@/services/authService";
 import React from "react";
-import { useLocation } from "react-router-dom";
 
 
 export type ParticipatesInputProps = {
@@ -13,13 +12,10 @@ export type ParticipatesInputProps = {
 };
 
 export const ParticipatesInput: React.FC<ParticipatesInputProps> = (props) => {
-  const { user } = useAuth();
-  const location = useLocation();
-  const isAdmin = user !== null && location.pathname.startsWith("/admin");
-
+  const admin = isAdmin();
     return (
         <Checkbox
-          disabled={!isAdmin}
+          disabled={!admin}
           checked={props.value}
           onCheckedChange={(checked) => props.onChange?.(checked === true)}
           onBlur={() => props.onBlur?.(props.value)}

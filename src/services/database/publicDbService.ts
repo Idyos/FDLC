@@ -1,5 +1,5 @@
 // src/services/dbService.js
-import { PenyaInfo, PenyaProvaSummary, ProvaSummary, ProvaType, WinDirection, ChallengeResult, Prova, EmptyProva, ProvaResultData, ParticipatingPenya } from "@/interfaces/interfaces";
+import { PenyaInfo, PenyaProvaSummary, ProvaSummary, ChallengeResult, Prova, EmptyProva, ParticipatingPenya } from "@/interfaces/interfaces";
 import { db } from "../../firebase/firebase";
 import { collection, getDocs, query, onSnapshot, orderBy, doc, Unsubscribe } from "firebase/firestore";
 import { toast } from "sonner";
@@ -137,20 +137,20 @@ export const getProvaInfoRealTime = (
 ): Unsubscribe => {
   const provaDocRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
   const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
-
   const prova = new EmptyProva();
 
   let unsubParticipants: Unsubscribe | null = null;
 
   const emit = () => {
-    if (!prova.id) return;
-    callback(prova);
+    if (prova.id) callback(prova);
   };
 
-  // 1) Snapshot del documento principal
+  // 🔹 Escucha del documento principal
   const unsubDoc = onSnapshot(provaDocRef, (snap) => {
     const d = snap.data();
     if (!d) return;
+
+    const oldWinDir = prova.winDirection;
 
     prova.id = snap.id;
     prova.reference = provaDocRef.path;
@@ -166,47 +166,46 @@ export const getProvaInfoRealTime = (
     prova.location = d.location || undefined;
     prova.pointsRange = d.pointsRange || [];
 
-    if (unsubParticipants) {
-      unsubParticipants();
-    }
+    // 🧭 Solo recreamos el listener de participants si cambió el criterio de orden
+    if (sort && oldWinDir !== prova.winDirection) {
+      if (unsubParticipants) unsubParticipants();
 
-  const participantsQuery =
-    sort && prova.winDirection !== "NONE"
-      ? query(
-          participantsRef,
-          orderBy("result", prova.winDirection === "ASC" ? "asc" : "desc"),
-        )
-      : participantsRef;
-       
-    unsubParticipants = onSnapshot(participantsQuery, (snap) => {
-      let penyaIndex = 0;
-      snap.docs.forEach((p) => {
-        const d = p.data();
+      const participantsQuery =
+        sort && prova.winDirection !== "NONE"
+          ? query(
+              participantsRef,
+              orderBy("result", prova.winDirection === "ASC" ? "asc" : "desc")
+            )
+          : participantsRef;
 
-        const penya: ParticipatingPenya = {
-          penyaId: typeof d.penyaId === "string" ? d.penyaId : p.id,
-          name: typeof d.penyaName === "string" ? d.penyaName : "Sense nom",
-          participates: d.participates !== false, // default true
-          result:
-            typeof d.result === "number"
-              ? d.result
-              : d.result != null
-              ? Number(d.result)
-              : undefined,
-        };
+      unsubParticipants = onSnapshot(participantsQuery, (snap) => {
+        const newPenyes: ParticipatingPenya[] = [];
+        let penyaIndex = 0;
 
-        if (!penya.participates) return;
+        snap.docs.forEach((p) => {
+          const d = p.data();
+          const penya: ParticipatingPenya = {
+            penyaId: typeof d.penyaId === "string" ? d.penyaId : p.id,
+            name: typeof d.penyaName === "string" ? d.penyaName : "Sense nom",
+            participates: d.participates !== false,
+            result:
+              typeof d.result === "number"
+                ? d.result
+                : d.result != null
+                ? Number(d.result)
+                : undefined,
+          };
 
-        penyaIndex++;
-        penya.index = penyaIndex;
-
-        prova.penyes.push(penya);
+          if (!penya.participates) return;
+          penyaIndex++;
+          penya.index = penyaIndex;
+          newPenyes.push(penya);
         });
 
-      emit();
-    });
-
-    emit();
+        prova.penyes = newPenyes;
+        emit();
+      });
+    }
   });
 
   return () => {
@@ -214,6 +213,9 @@ export const getProvaInfoRealTime = (
     if (unsubParticipants) unsubParticipants();
   };
 };
+
+
+
 
 export const getPenyaInfoRealTime = (year: number, penyaId: string, callback: (data: PenyaInfo | null) => void) => {
   const penyaRef = doc(db, `Circuit/${year}/Penyes`, penyaId);

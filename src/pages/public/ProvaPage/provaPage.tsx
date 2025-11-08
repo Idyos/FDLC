@@ -16,29 +16,25 @@ import {
 import DynamicList from "@/components/shared/dynamicList";
 import LoadingAnimation from "@/components/shared/loadingAnim";
 import SingleProvaResult from "@/components/admin/singleProvaResult";
-import { useAuth } from "@/routes/admin/AuthContext";
 import AdminSingleProvaResult from "@/components/admin/Proves/ProvaPenyaSummary/adminSingleProvaResult";
 import { getProvaInfo } from "@/services/database/Admin/adminDbServices";
 import ProvaTitle from "@/components/public/provaTitle";
 import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
 import AdminFooter from "@/components/admin/Proves/Footer/adminFooter";
 import { EmptyProva, Prova } from "@/interfaces/interfaces";
+import { isAdmin } from "@/services/authService";
 
 export default function ProvaPage() {
-    const { user } = useAuth();
     const location = useLocation();
-    const isAdmin = user !== null && location.pathname.startsWith("/admin");
+    const navigate = useNavigate();
+    const { previousSelectedYear, selectedYear, setSelectedYear } = useYear();
+
+    const admin = isAdmin();
 
     const setProva = useProvaStore((state) => state.setProva);
 
-    const navigate = useNavigate();
-
-    const { previousSelectedYear, selectedYear, setSelectedYear } = useYear();
-    
     const [noProvaAlert, setNoProbaAlert] = useState(false);
-    
     const [provaInfo, setProvaInfo] = useState<Prova>(new EmptyProva());
-
     const [isProvaLoading, setIsProvaLoading] = useState(true);
 
     const searchParams = new URLSearchParams(location.search);
@@ -50,7 +46,7 @@ export default function ProvaPage() {
 
     let unsubscribe: (() => void) | undefined;
 
-    if (isAdmin) {
+    if (admin) {
       getProvaInfo(selectedYear, provaId)
         .then((provaInfoResult) => {
           if (!provaInfoResult) {
@@ -85,9 +81,9 @@ export default function ProvaPage() {
             provaInfoResult
           );
 
-          setProva(provaInfoResult);
-          setProvaInfo(provaInfoResult);
-          document.title = `${provaInfoResult.name} ${selectedYear}`;
+          setProva(clonedProva);
+          setProvaInfo(clonedProva);
+          document.title = `${clonedProva.name} ${selectedYear}`;
         } else {
           setNoProbaAlert(true);
         }
@@ -98,7 +94,7 @@ export default function ProvaPage() {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [selectedYear, isAdmin]);
+  }, [selectedYear, admin]);
 
     return ( 
         <>
@@ -120,7 +116,7 @@ export default function ProvaPage() {
             <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
               <ProvaTitle prova={provaInfo} />
 
-              {isAdmin ? (
+              {admin ? (
               <div className="grid grid-cols-[repeat(auto-fit,_minmax(300px,_1fr))] gap-3 w-full">
                   {isProvaLoading ? (
                     <LoadingAnimation />
@@ -155,7 +151,7 @@ export default function ProvaPage() {
               )}
 
             </div>
-            {isAdmin && <AdminFooter />}
+            {admin && <AdminFooter />}
         </>
 
     );    

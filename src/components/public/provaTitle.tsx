@@ -41,69 +41,120 @@ export default function ProvaTitle({ prova }: ProvaInfoTitleProps) {
     return now >= startDate && now <= effectiveFinishDate;
   };
 
-  const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
-    const now = new Date();
+const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
+  const now = new Date();
 
-    if (!startDate)
-      return "No hi ha data d'inici, és un error. Contacta amb una de les sombres i fes-ho saber.";
+  if (!startDate)
+    return "No hi ha data d'inici, és un error. Contacta amb una de les sombres i fes-ho saber.";
 
-    if(startDate.getTime() == new Date(0).getTime()) return "Carregant...";
+  if (startDate.getTime() === new Date(0).getTime()) return "Carregant...";
 
-    const effectiveFinishDate = finishDate
-      ? finishDate
-      : new Date(
-          startDate.getFullYear(),
-          startDate.getMonth(),
-          startDate.getDate(),
-          23,
-          59,
-          59,
-          999
-        );
-
-    if (now < startDate) {
-      const diffMs = startDate.getTime() - now.getTime();
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffMinutes = Math.floor((diffMs / (1000 * 60)) % 60);
+  if (prova.isFinished) {
+    if (finishDate) {
+      const diffMs = now.getTime() - finishDate.getTime();
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMinutes / 60);
       const diffDays = Math.floor(diffHours / 24);
 
       if (diffDays > 0) {
         const hoursLeft = diffHours % 24;
-        return `Comença en ${diffDays} ${diffDays > 1 ? "dies" : "dia"}${
+        return `Finalitzada fa ${diffDays} ${diffDays > 1 ? "dies" : "dia"}${
           hoursLeft > 0 ? ` i ${hoursLeft} h` : ""
         }`;
       } else if (diffHours > 0) {
-        return `Comença en ${diffHours} h${
-          diffMinutes > 0 ? ` i ${diffMinutes} min` : ""
+        const minutesLeft = diffMinutes % 60;
+        return `Finalitzada fa ${diffHours} h${
+          minutesLeft > 0 ? ` i ${minutesLeft} min` : ""
         }`;
+      } else if (diffMinutes > 0) {
+        return `Finalitzada fa ${diffMinutes} min`;
       } else {
-        return `Comença en ${diffMinutes} min`;
+        return "Finalitzada fa menys d’un minut";
       }
     }
 
-    if (now >= startDate && now < effectiveFinishDate) {
-      const diffMs = effectiveFinishDate.getTime() - now.getTime();
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffMinutes = Math.floor((diffMs / (1000 * 60)) % 60);
-      const diffDays = Math.floor(diffHours / 24);
-
-      if (diffDays > 0) {
-        const hoursLeft = diffHours % 24;
-        return `En curs, finalitza en ${diffDays} ${diffDays > 1 ? "dies" : "dia"}${
-          hoursLeft > 0 ? ` i ${hoursLeft} h` : ""
-        }`;
-      } else if (diffHours > 0) {
-        return `En curs, finalitza en ${diffHours} h${
-          diffMinutes > 0 ? ` i ${diffMinutes} min` : ""
-        }`;
-      } else {
-        return `En curs, finalitza en ${diffMinutes} min`;
-      }
-    }
-
-    // Si ya ha terminado
     return "Finalitzada";
-  };
+  }
+
+  const effectiveFinishDate = finishDate
+    ? finishDate
+    : new Date(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+        23,
+        59,
+        59,
+        999
+      );
+
+  if (now < startDate) {
+    const diffMs = startDate.getTime() - now.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs / (1000 * 60)) % 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) {
+      const hoursLeft = diffHours % 24;
+      return `Comença en ${diffDays} ${diffDays > 1 ? "dies" : "dia"}${
+        hoursLeft > 0 ? ` i ${hoursLeft} h` : ""
+      }`;
+    } else if (diffHours > 0) {
+      return `Comença en ${diffHours} h${
+        diffMinutes > 0 ? ` i ${diffMinutes} min` : ""
+      }`;
+    } else {
+      return `Comença en ${diffMinutes} min`;
+    }
+  }
+
+  if (now >= startDate && now < effectiveFinishDate) {
+    const diffMs = effectiveFinishDate.getTime() - now.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs / (1000 * 60)) % 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) {
+      const hoursLeft = diffHours % 24;
+      return `En curs, finalitza en ${diffDays} ${diffDays > 1 ? "dies" : "dia"}${
+        hoursLeft > 0 ? ` i ${hoursLeft} h` : ""
+      }`;
+    } else if (diffHours > 0) {
+      return `En curs, finalitza en ${diffHours} h${
+        diffMinutes > 0 ? ` i ${diffMinutes} min` : ""
+      }`;
+    } else {
+      return `En curs, finalitza en ${diffMinutes} min`;
+    }
+  }
+
+  // 🔚 Si ja ha acabat però no és "isFinished" o sense finishDate
+  if (finishDate) {
+    const diffMs = now.getTime() - finishDate.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) {
+      const hoursLeft = diffHours % 24;
+      return `Finalitzada fa ${diffDays} ${diffDays > 1 ? "dies" : "dia"}${
+        hoursLeft > 0 ? ` i ${hoursLeft} h.` : "."
+      } ${`Falta que es calculi el resultat.`}`;
+    } else if (diffHours > 0) {
+      const minutesLeft = diffMinutes % 60;
+      return `Finalitzada fa ${diffHours} h${
+        minutesLeft > 0 ? ` i ${minutesLeft} min.` : "."
+      } ${`Falta que es calculi el resultat.`}`;
+    } else if (diffMinutes > 0) {
+      return `Finalitzada fa ${diffMinutes} min. ${`Falta que es calculi el resultat.`}`;
+    } else {
+      return `Finalitzada fa menys d’un minut. ${`Falta que es calculi el resultat.`}`;
+    }
+  }
+
+  return "Finalitzada";
+};
+
 
   const handleImgLoad = () => {
     const img = imgRef.current;

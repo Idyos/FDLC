@@ -219,6 +219,7 @@ export abstract class Prova extends ProvaSummary {
 //#region 🧮 Implementaciones específicas de Challenge
 export class EmptyProva extends Prova {
   getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {
+    console.log(penyesInfo,"EmptyProva no implementada");
     return [];
   }
 }
@@ -329,7 +330,8 @@ export class ChallengeByDiscalification extends Prova {
   }
 
   getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {
-    console.log("Fase eliminatòria no implementada");
+    console.log(penyesInfo,"Fase eliminatòria no implementada");
+
     return [];
   }
 }
@@ -342,7 +344,7 @@ export class MultiChallenge extends Prova {
   }
 
   getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {
-    console.log("MultiProva no implementada");
+    console.log(penyesInfo,"MultiProva no implementada");
     return [];
   }
 }

@@ -1,7 +1,6 @@
 import { Input } from "@/components/ui/input";
-import { useAuth } from "@/routes/admin/AuthContext";
+import { isAdmin } from "@/services/authService";
 import React from "react";
-import { useLocation } from "react-router-dom";
 
 
 export type PointsInputProps = {
@@ -13,14 +12,11 @@ export type PointsInputProps = {
 };
 
 export const PointsInput: React.FC<PointsInputProps> = (props) => {
-  const { user } = useAuth();
-  const location = useLocation();
-  const isAdmin = user !== null && location.pathname.startsWith("/admin");
-
+  const admin = isAdmin();
     return (
         <Input
           type="number"
-          readOnly={!isAdmin}
+          readOnly={!admin}
           // className="text-center text-4xl px-4 py-2 rounded-md max-w-[100px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-100"
           value={props.value == -1 ? 0 : props.value}
           onChange={(e) => {
