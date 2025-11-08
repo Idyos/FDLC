@@ -8,7 +8,7 @@ import {
   serverTimestamp,
   updateDoc
 } from "firebase/firestore";
-import { Prova, ProvaResultData } from "@/interfaces/interfaces";
+import { Prova, PenyaProvaFinalResultData, PenyaProvaResultData } from "@/interfaces/interfaces";
 import { db } from "@/firebase/firebase";
 
 export async function generateProvaResults(year: number, provaId: string) {
@@ -21,7 +21,7 @@ export async function generateProvaResults(year: number, provaId: string) {
   // 1️⃣ Obtener participantes y resultados
   const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
   const participantsSnap = await getDocs(participantsRef);
-  const participants: ProvaResultData[] = participantsSnap.docs.map((d) => d.data() as ProvaResultData);
+  const participants: PenyaProvaResultData[] = participantsSnap.docs.map((d) => d.data() as PenyaProvaResultData);
 
   if (participants.length === 0) throw new Error("No hi ha participants.");
 
@@ -32,9 +32,10 @@ export async function generateProvaResults(year: number, provaId: string) {
     return 0;
   });
 
-  const results: ProvaResultData[] = sorted.map((p, index) => {
+  const results: PenyaProvaFinalResultData[] = sorted.map((p, index) => {
     let position = 0;
     let pointsAwarded = 0;
+    
     if(p.participates && p.result > -1){  
       position = index + 1;
       

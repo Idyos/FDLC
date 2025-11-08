@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { generateProvaResults, openProva } from "@/services/database/Admin/adminProvesDbServices";
+import { ConstructionIcon } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -29,7 +30,7 @@ export default function AdminFooter() {
   const onOpenProva = async () => {
     if (!prova) return;
 
-    if(!prova.isFinished){
+    if (!prova.isFinished) {
       toast.error("La prova ja està oberta!");
       return;
     }
@@ -38,9 +39,11 @@ export default function AdminFooter() {
       await openProva(selectedYear, prova.id);
       toast.success("Prova oberta correctament!");
 
-    prova.isFinished = false;
-    setProva(prova);
-
+      const updatedProva = Object.assign(
+        Object.create(Object.getPrototypeOf(prova)),
+        { ...prova, isFinished: false }
+      );
+      setProva(updatedProva);
     } catch (error: any) {
       toast.error("Error al obrir la prova: " + error.message);
     }
@@ -62,16 +65,18 @@ export default function AdminFooter() {
     try {
       await generateProvaResults(selectedYear, prova.id);
       toast.success("Resultats generats correctament!");
-
       setOpenAlert(false);
 
-      prova.isFinished = false;
-      setProva(prova);
+      const updatedProva = Object.assign(
+        Object.create(Object.getPrototypeOf(prova)),
+        { ...prova, isFinished: true }
+      );
+      setProva(updatedProva);
 
-      if(prova.id){
-          setTimeout(() => {
-              navigate(`/prova?id=${prova.id}`);
-          }, 2000);
+      if (prova.id) {
+        setTimeout(() => {
+          navigate(`/prova?provaId=${prova.id}`);
+        }, 2000);
       }
     } catch (error: any) {
       toast.error("Error al generar resultats: " + error.message);

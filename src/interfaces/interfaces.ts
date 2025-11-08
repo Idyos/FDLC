@@ -121,7 +121,7 @@ export class PenyaProvaSummary extends ProvaSummary {
 
 //#region 🧩 Datos de resultados
 
-export class ProvaResultData {
+export class PenyaProvaResultData {
   index?: number;
   provaReference: string;
   provaType: ProvaType;
@@ -149,11 +149,27 @@ export class ProvaResultData {
   }
 }
 
-export class ChallengeResult extends ProvaResultData {
+export class PenyaProvaFinalResultData {
+    penyaId: string;
+    name: string;
+    position?: number;
+    pointsAwarded?: number;
+    result: number;
+
+  constructor() {
+    this.penyaId = "";
+    this.name = "";
+    this.result = -1;
+    this.pointsAwarded = -1;
+    this.position = -1;
+  }
+}
+
+export class ChallengeResult extends PenyaProvaResultData {
   pointsAwarded: number;
 
   constructor(
-    base: ProvaResultData,
+    base: PenyaProvaResultData,
     pointsAwarded: number
   ) {
     super(
@@ -233,7 +249,7 @@ export class ChallengeByParticipation extends Prova {
   getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {
     return this.resultados.map((res, index) => {
       const penya = penyesInfo.find((p) => p.id === res.penyaId);
-      const base = new ProvaResultData(
+      const base = new PenyaProvaResultData(
         this.id,
         this.challengeType,
         res.penyaId,
@@ -259,7 +275,7 @@ export abstract class SortedChallenge extends Prova {
 
     return sorted.map((res, index) => {
       const penya = penyesInfo.find((p) => p.id === res.penyaId);
-      const base = new ProvaResultData(
+      const base = new PenyaProvaResultData(
         this.id,
         this.challengeType,
         res.penyaId,

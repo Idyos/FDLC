@@ -1,4 +1,4 @@
-import { Prova, PenyaInfo, ProvaType, ProvaResultData, WinDirection, EmptyProva } from "@/interfaces/interfaces";
+import { Prova, PenyaInfo, EmptyProva, PenyaProvaResultData, ParticipatingPenya } from "@/interfaces/interfaces";
 import { db } from "../../../firebase/firebase";
 import { collection, getDocs, doc, updateDoc, writeBatch, getDoc } from "firebase/firestore";
 import { toast } from "sonner";
@@ -169,26 +169,19 @@ export async function getProvaInfo(
     .filter((p) => p.participates);
 
   // 🔹 Convertir a objetos ProvaResultData
-  const results: ProvaResultData[] = participants.map(
-    (p, index) =>
-      new ProvaResultData(
-        p.provaReference,
-        prova.challengeType,
-        p.penyaId,
-        p.penyaName,
-        p.result,
-        p.participates,
-        index + 1
-      )
+  const results: ParticipatingPenya[] = participants.map(
+    (p, index) =>{
+      return {
+        penyaId: p.penyaId,
+        name: p.penyaName,
+        index: index + 1,
+        participates: p.participates,
+        result: p.result,
+      }
+    }
   );
 
-  // 🔹 Guardar penyes y resultados en la instancia
-  prova.penyes = participants.map((p) => ({
-    penyaId: p.penyaId,
-    name: p.penyaName,
-    participates: p.participates,
-    result: p.result,
-  }));
+  prova.penyes = results;
 
   // 🔹 Si el tipo de prova tiene resultados específicos, puedes asignarlos
   // (por ejemplo para ChallengeByTime)
