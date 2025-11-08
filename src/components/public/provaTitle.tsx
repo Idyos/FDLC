@@ -1,22 +1,19 @@
 import { motion, useAnimation } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { Prova } from "@/interfaces/interfaces";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import ProvaInfoCard from "../shared/Prova/provaInfoCard";
 import { Badge } from "../ui/badge";
+import { useProvaStore } from "../shared/Contexts/ProvaContext";
 const COLLAPSED_H = 250;
 const LONG_PRESS_MS = 200;
 
-interface ProvaInfoTitleProps {
-  prova: Prova;
-}
-
-export default function ProvaTitle({ prova }: ProvaInfoTitleProps) {
+export default function ProvaTitle() {
   const controls = useAnimation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const pressTimer = useRef<number | null>(null);
-
+  
+  const prova = useProvaStore((state) => state.prova);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [expandedH, setExpandedH] = useState(COLLAPSED_H);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -139,16 +136,16 @@ const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
       const hoursLeft = diffHours % 24;
       return `Finalitzada fa ${diffDays} ${diffDays > 1 ? "dies" : "dia"}${
         hoursLeft > 0 ? ` i ${hoursLeft} h.` : "."
-      } ${`Falta que es calculi el resultat.`}`;
+      } ${`Falta que es calculin els resultats.`}`;
     } else if (diffHours > 0) {
       const minutesLeft = diffMinutes % 60;
       return `Finalitzada fa ${diffHours} h${
         minutesLeft > 0 ? ` i ${minutesLeft} min.` : "."
-      } ${`Falta que es calculi el resultat.`}`;
+      } ${`Falta que es calculin els resultats.`}`;
     } else if (diffMinutes > 0) {
-      return `Finalitzada fa ${diffMinutes} min. ${`Falta que es calculi el resultat.`}`;
+      return `Finalitzada fa ${diffMinutes} min. ${`Falta que es calculin els resultats.`}`;
     } else {
-      return `Finalitzada fa menys d’un minut. ${`Falta que es calculi el resultat.`}`;
+      return `Finalitzada fa menys d’un minut. ${`Falta que es calculin els resultats.`}`;
     }
   }
 

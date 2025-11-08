@@ -2,11 +2,10 @@
 import {
   doc,
   getDoc,
-  setDoc,
   collection,
   getDocs,
   serverTimestamp,
-  updateDoc
+  writeBatch
 } from "firebase/firestore";
 import { Prova, PenyaProvaFinalResultData, PenyaProvaResultData } from "@/interfaces/interfaces";
 import { db } from "@/firebase/firebase";
@@ -18,7 +17,7 @@ export async function generateProvaResults(year: number, provaId: string) {
 
   const provaData = provaSnap.data() as Prova;
 
-  // 1️⃣ Obtener participantes y resultados
+  // 1️⃣ Obtener participantes
   const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
   const participantsSnap = await getDocs(participantsRef);
   const participants: PenyaProvaResultData[] = participantsSnap.docs.map((d) => d.data() as PenyaProvaResultData);
@@ -32,16 +31,15 @@ export async function generateProvaResults(year: number, provaId: string) {
     return 0;
   });
 
+  // 3️⃣ Calcular resultados finales
   const results: PenyaProvaFinalResultData[] = sorted.map((p, index) => {
     let position = 0;
     let pointsAwarded = 0;
     
-    if(p.participates && p.result > -1){  
+    if (p.participates && p.result > -1) {  
       position = index + 1;
-      
       const range = provaData.pointsRange.find(r => position >= r.from && position <= r.to);
-
-      if(range) pointsAwarded = range.points;
+      if (range) pointsAwarded = range.points;
     } 
 
     return {
@@ -53,9 +51,10 @@ export async function generateProvaResults(year: number, provaId: string) {
     };
   });
 
-  // 4️⃣ Guardar en Results
+  const batch = writeBatch(db);
   const resultRef = doc(db, `Circuit/${year}/Results/${provaId}`);
-  await setDoc(resultRef, {
+
+  batch.set(resultRef, {
     provaId,
     createdAt: serverTimestamp(),
     name: provaData.name,
@@ -63,12 +62,21 @@ export async function generateProvaResults(year: number, provaId: string) {
     results,
   });
 
-  await updateDoc(provaRef, { isFinished: true });
+  batch.update(provaRef, { isFinished: true });
+
+  await batch.commit();
 
   return results;
 }
 
 export async function openProva(year: number, provaId: string){
     const provaRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
-    await updateDoc(provaRef, { isFinished: false });
+    const resultsRef = doc(db, `Circuit/${year}/Results/${provaId}`);
+
+    const batch = writeBatch(db);
+    
+    batch.delete(resultsRef);
+    batch.update(provaRef, { isFinished: false });
+    
+    await batch.commit();
 }

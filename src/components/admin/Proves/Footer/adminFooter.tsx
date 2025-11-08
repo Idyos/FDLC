@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { generateProvaResults, openProva } from "@/services/database/Admin/adminProvesDbServices";
-import { ConstructionIcon } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -39,11 +38,7 @@ export default function AdminFooter() {
       await openProva(selectedYear, prova.id);
       toast.success("Prova oberta correctament!");
 
-      const updatedProva = Object.assign(
-        Object.create(Object.getPrototypeOf(prova)),
-        { ...prova, isFinished: false }
-      );
-      setProva(updatedProva);
+      setProva({ ...prova, isFinished: false });
     } catch (error: any) {
       toast.error("Error al obrir la prova: " + error.message);
     }
@@ -67,11 +62,8 @@ export default function AdminFooter() {
       toast.success("Resultats generats correctament!");
       setOpenAlert(false);
 
-      const updatedProva = Object.assign(
-        Object.create(Object.getPrototypeOf(prova)),
-        { ...prova, isFinished: true }
-      );
-      setProva(updatedProva);
+      setProva({ ...prova, isFinished: true });
+
 
       if (prova.id) {
         setTimeout(() => {
@@ -105,15 +97,17 @@ export default function AdminFooter() {
       </AlertDialog>
 
       {/* FOOTER FIJO */}
-      <footer className="z-30 fixed bottom-0 right-0 rounded-tl-3xl bg-black py-4 flex justify-end p-5">
+      <footer
+        className="
+          z-30 fixed bottom-0 right-0 bg-black py-4 flex justify-end p-5
+          w-full rounded-none
+          md:w-auto md:rounded-tl-3xl
+        "
+      >
         {prova.isFinished ? (
-         <Button onClick={onOpenProva}>
-          Tornar a obrir prova
-        </Button>
+          <Button onClick={onOpenProva}>Tornar a obrir prova</Button>
         ) : (
-          <Button onClick={onFinishProva}>
-          Tancar prova
-        </Button>
+          <Button onClick={onFinishProva}>Tancar prova</Button>
         )}
       </footer>
     </>

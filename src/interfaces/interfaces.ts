@@ -215,19 +215,6 @@ export abstract class Prova extends ProvaSummary {
     this.reference = reference;
     this.winDirection = winDirection;
   }
-
-  addTeam(penya: ParticipatingPenya): void {
-    this.penyes.push(penya);
-  }
-
-  getPointsForPosition(position: number): number {
-    const range = this.pointsRange.find(
-      (r) => position >= r.from && position <= r.to
-    );
-    return range ? range.points : 0;
-  }
-
-  abstract getResults(penyesInfo: PenyaInfo[]): ChallengeResult[];
 }
 
 //#endregion
@@ -245,90 +232,42 @@ export class ChallengeByParticipation extends Prova {
   constructor() {
     super("Participació", "Participació");
   }
-
-  getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {
-    return this.resultados.map((res, index) => {
-      const penya = penyesInfo.find((p) => p.id === res.penyaId);
-      const base = new PenyaProvaResultData(
-        this.id,
-        this.challengeType,
-        res.penyaId,
-        penya?.name || "Desconegut",
-        res.participation ? 1 : 0
-      );
-      return new ChallengeResult(base, this.getPointsForPosition(index + 1));
-    });
-  }
 }
 
-export abstract class SortedChallenge extends Prova {
-  abstract sortResults(
-    a: { penyaId: string; value: number },
-    b: { penyaId: string; value: number }
-  ): number;
-
-  computeResults(
-    penyesInfo: PenyaInfo[],
-    resultados: { penyaId: string; value: number }[]
-  ): ChallengeResult[] {
-    const sorted = [...resultados].sort((a, b) => this.sortResults(a, b));
-
-    return sorted.map((res, index) => {
-      const penya = penyesInfo.find((p) => p.id === res.penyaId);
-      const base = new PenyaProvaResultData(
-        this.id,
-        this.challengeType,
-        res.penyaId,
-        penya?.name || "Desconegut",
-        res.value
-      );
-      return new ChallengeResult(base, this.getPointsForPosition(index + 1));
-    });
-  }
-}
-
-export class ChallengeByTime extends SortedChallenge {
+export class ChallengeByTime extends Prova {
   resultados: { penyaId: string; tiempo: number }[] = [];
-
-  constructor() {
-    super("Temps", "Temps");
-  }
-
-  sortResults(a: any, b: any): number {
-    return this.winDirection === "ASC"
-      ? b.tiempo - a.tiempo
-      : a.tiempo - b.tiempo;
-  }
-
-  getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {
-    const results = this.resultados.map((r) => ({
-      penyaId: r.penyaId,
-      value: r.tiempo,
-    }));
-    return this.computeResults(penyesInfo, results);
+  constructor(reference: string = "",
+    name: string = "",
+    challengeType: ProvaType = "Participació",
+    startDate: Date = new Date(),
+    finishDate?: Date,
+    pointsRange: PointsRange[] = [],
+    penyes: ParticipatingPenya[] = [],
+    winDirection: WinDirection = "NONE",
+    location?: Ubication,
+    imageUrl?: string,
+    description?: string) {
+    super(reference, name, challengeType, startDate, finishDate, pointsRange, penyes, winDirection, location, imageUrl, description);
   }
 }
 
-export class ChallengeByPoints extends SortedChallenge {
+export class ChallengeByPoints extends Prova {
   resultados: { penyaId: string; puntos: number }[] = [];
 
-  constructor() {
-    super("Punts", "Punts");
+  constructor(reference: string = "",
+    name: string = "",
+    challengeType: ProvaType = "Participació",
+    startDate: Date = new Date(),
+    finishDate?: Date,
+    pointsRange: PointsRange[] = [],
+    penyes: ParticipatingPenya[] = [],
+    winDirection: WinDirection = "NONE",
+    location?: Ubication,
+    imageUrl?: string,
+    description?: string) {
+    super(reference, name, challengeType, startDate, finishDate, pointsRange, penyes, winDirection, location, imageUrl, description);
   }
 
-  sortResults(a: any, b: any): number {
-    return this.winDirection === "ASC"
-      ? b.value - a.value
-      : a.value - b.value;
-  }
-
-  getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {
-    const results = this.resultados.map((r) => ({
-      penyaId: r.penyaId,
-      value: r.puntos,
-    }));
-    return this.computeResults(penyesInfo, results);
-  }
 }
 
 export class ChallengeByDiscalification extends Prova {

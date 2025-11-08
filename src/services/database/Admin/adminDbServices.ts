@@ -1,4 +1,4 @@
-import { Prova, PenyaInfo, EmptyProva, PenyaProvaResultData, ParticipatingPenya } from "@/interfaces/interfaces";
+import { Prova, PenyaInfo, EmptyProva, ParticipatingPenya } from "@/interfaces/interfaces";
 import { db } from "../../../firebase/firebase";
 import { collection, getDocs, doc, updateDoc, writeBatch, getDoc } from "firebase/firestore";
 import { toast } from "sonner";

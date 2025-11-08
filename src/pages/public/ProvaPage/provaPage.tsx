@@ -114,7 +114,7 @@ export default function ProvaPage() {
         </AlertDialog>
             <YearSelector />
             <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
-              <ProvaTitle prova={provaInfo} />
+              <ProvaTitle />
 
               {admin ? (
               <div className="grid grid-cols-[repeat(auto-fit,_minmax(300px,_1fr))] gap-3 w-full">
