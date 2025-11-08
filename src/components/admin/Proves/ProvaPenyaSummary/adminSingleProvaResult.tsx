@@ -51,11 +51,13 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
   };
 
   const updateProvaResult = async (newSeconds: number) => {
-    if(prova.isFinished === false){
+    if(prova.isFinished === true){
       toast.error("La prova està finalitzada! Has de reobrir-la per modificar els resultats.");
       setValue(prevSeconds.current);
       return;
     }
+
+    console.log(prova);
 
     if(prevSeconds.current !== newSeconds){
         updateProvaTimeResult(prova.reference, provaResultSummary.penyaId, newSeconds, 

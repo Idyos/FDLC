@@ -32,7 +32,6 @@ export async function generateProvaResults(year: number, provaId: string) {
     return 0;
   });
 
-  // 3️⃣ Calcular posición y puntos
   const results: ProvaResultData[] = sorted.map((p, index) => {
     let position = 0;
     let pointsAwarded = 0;

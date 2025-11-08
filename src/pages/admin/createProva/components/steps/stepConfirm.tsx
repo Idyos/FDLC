@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
 import ProvaInfoCard from "@/components/shared/Prova/provaInfoCard";
 import { LoaderCircle } from "lucide-react";
-import { ProvaInfo } from "@/interfaces/interfaces";
+import { Prova } from "@/interfaces/interfaces";
 
 export default function StepConfirm({ provaInfo, creatingProva }:{
-  provaInfo: ProvaInfo; creatingProva: number;
+  provaInfo: Prova; creatingProva: number;
 }) {
   return (
     <>

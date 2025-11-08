@@ -141,6 +141,7 @@ export async function getProvaInfo(
   prova.id = provaSnap.id;
   prova.name = d.name || provaSnap.id;
   prova.description = d.description || "";
+  prova.reference = provaDocRef.path;
   prova.imageUrl = d.imageUrl || undefined;
   prova.isSecret = d.isSecret || false;
   prova.isFinished = d.isFinished || false;

@@ -1,6 +1,6 @@
 // pages/admin/createProva/challengeFactory.ts
 import {
-  BaseChallenge,
+  Prova,
   ChallengeByDiscalification,
   ChallengeByParticipation,
   ChallengeByPoints,
@@ -30,8 +30,8 @@ function normalizePointsRange(ranges: CreateChallenge["pointsRange"]): PointsRan
   }));
 }
 
-export function buildChallenge(data: CreateChallenge): BaseChallenge {
-  let challenge: BaseChallenge;
+export function buildChallenge(data: CreateChallenge): Prova {
+  let challenge: Prova;
   switch (data.challengeType) {
     case "Participació":
       challenge = new ChallengeByParticipation(); break;
@@ -56,9 +56,11 @@ export function buildChallenge(data: CreateChallenge): BaseChallenge {
   challenge.challengeType = data.challengeType;
   challenge.winDirection = data.winDirection!;
   challenge.penyes = (data.penyes ?? []).map(p => ({
-    penya: { penyaId: p.penya.id, name: p.penya.name },
-    participates: p.participates,
+      penyaId: p.penya.id,  
+      name: p.penya.name,
+      participates: p.participates,
   }));
+
   challenge.pointsRange = normalizePointsRange(data.pointsRange);
 
   return challenge;

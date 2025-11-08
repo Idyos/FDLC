@@ -66,7 +66,7 @@ export default function AdminPenyaSummary({ rankingInfo }: PenyaSummaryProps) {
         return;
     }
 
-    if (!rankingInfo || !rankingInfo.penyaId) {
+    if (!rankingInfo || !rankingInfo.id) {
         toast.error("No s'ha pogut actualitzar la penya: informació incompleta.");
         return;
     }
@@ -74,7 +74,7 @@ export default function AdminPenyaSummary({ rankingInfo }: PenyaSummaryProps) {
     setIsSaving(true);
 
     try {
-      updatePenyaInfo(selectedYear, rankingInfo.penyaId, penyaName, penyaSecret, penyaDescription, provaImage)
+      updatePenyaInfo(selectedYear, rankingInfo.id, penyaName, penyaSecret, penyaDescription, provaImage)
       .then(() => {
         toast.success("Penya actualitzada!");
         rankingInfo.name = penyaName;
@@ -100,7 +100,7 @@ export default function AdminPenyaSummary({ rankingInfo }: PenyaSummaryProps) {
 
   return rankingInfo != null ? (
     <motion.div
-      key={rankingInfo?.penyaId}
+      key={rankingInfo?.id}
       whileHover={{ scale: 1.02 }}
       className="bg-white/30 relative h-36 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
     >

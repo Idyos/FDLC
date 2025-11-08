@@ -53,7 +53,6 @@ export default function ProvaPage() {
     if (isAdmin) {
       getProvaInfo(selectedYear, provaId)
         .then((provaInfoResult) => {
-          console.log(provaInfoResult);
           if (!provaInfoResult) {
             setNoProbaAlert(true);
             return;
@@ -86,8 +85,8 @@ export default function ProvaPage() {
             provaInfoResult
           );
 
-          setProva(clonedProva);
-          setProvaInfo(clonedProva);
+          setProva(provaInfoResult);
+          setProvaInfo(provaInfoResult);
           document.title = `${provaInfoResult.name} ${selectedYear}`;
         } else {
           setNoProbaAlert(true);
