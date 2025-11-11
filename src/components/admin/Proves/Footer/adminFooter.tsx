@@ -72,6 +72,7 @@ export default function AdminFooter() {
       }
     } catch (error: any) {
       toast.error("Error al generar resultats: " + error.message);
+      console.error(error);
       setOpenAlert(false);
     }
   };

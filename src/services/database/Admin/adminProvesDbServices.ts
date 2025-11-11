@@ -20,37 +20,52 @@ export async function generateProvaResults(year: number, provaId: string) {
   // 1️⃣ Obtener participantes
   const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
   const participantsSnap = await getDocs(participantsRef);
-  const participants: PenyaProvaResultData[] = participantsSnap.docs.map((d) => d.data() as PenyaProvaResultData);
+  const participants: PenyaProvaResultData[] = participantsSnap.docs.map(
+    (d) => d.data() as PenyaProvaResultData
+  );
 
   if (participants.length === 0) throw new Error("No hi ha participants.");
 
-  // 2️⃣ Ordenar según tipo de prova
-  const sorted = [...participants].sort((a, b) => {
-    if (provaData.winDirection === "ASC") return a.result - b.result;
-    if (provaData.winDirection === "DESC") return b.result - a.result;
-    return 0;
-  });
+  // 2️⃣ Separar válidos e inválidos
+  const valid = participants.filter((p) => p.participates && p.result > -1);
+  const invalid = participants.filter((p) => !p.participates || p.result <= -1 || p.result == null);
 
-  // 3️⃣ Calcular resultados finales
+  // 3️⃣ Ordenar válidos según winDirection
+  if (provaData.winDirection === "ASC") {
+    valid.sort((a, b) => a.result - b.result);
+  } else if (provaData.winDirection === "DESC") {
+    valid.sort((a, b) => b.result - a.result);
+  }
+
+  // 4️⃣ Ordenar inválidos alfabéticamente
+  invalid.sort((a, b) => (a.penyaName || "").localeCompare(b.penyaName || ""));
+
+  // 5️⃣ Combinar ambos
+  const sorted = [...valid, ...invalid];
+
+  // 6️⃣ Calcular resultados finales
   const results: PenyaProvaFinalResultData[] = sorted.map((p, index) => {
     let position = 0;
     let pointsAwarded = 0;
-    
-    if (p.participates && p.result > -1) {  
+
+    if (p.participates && p.result > -1) {
       position = index + 1;
-      const range = provaData.pointsRange.find(r => position >= r.from && position <= r.to);
+      const range = provaData.pointsRange.find(
+        (r) => position >= r.from && position <= r.to
+      );
       if (range) pointsAwarded = range.points;
-    } 
+    }
 
     return {
       penyaId: p.penyaId,
       name: p.penyaName,
       position,
       pointsAwarded,
-      result: p.result
+      result: p.result,
     };
   });
 
+  // 7️⃣ Guardar en batch
   const batch = writeBatch(db);
   const resultRef = doc(db, `Circuit/${year}/Results/${provaId}`);
 

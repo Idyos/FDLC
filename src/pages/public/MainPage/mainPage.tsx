@@ -86,20 +86,6 @@ export default function MainPage() {
       document.title = `Ranking ${year}`;
 
       const unsubscribe = getRankingRealTime(year, (data) => {
-        // const newData = data.map((item, index) => {
-        //   const newPosition = index + 1;
-        //   const prev = previousRankingsRef.current.find(
-        //     (r) => r.id === item.id
-        //   );
-        //   let direction: "up" | "down" | "same" | null = null;
-        //   if (prev) {
-        //     if (prev.position > newPosition) direction = "up";
-        //     else if (prev.position < newPosition) direction = "down";
-        //     else direction = "same";
-        //   }
-        //   return { ...item, position: newPosition, directionChange: direction };
-        // });
-        console.log(data);
         previousRankingsRef.current = data;
         setRankings(data);
         setIsLoading(false);

@@ -31,44 +31,35 @@ export const getRankingRealTime = (
   callback: (data: PenyaInfo[]) => void
 ) => {
   const penyesRef = collection(db, `Circuit/${year}/Penyes`);
-  const resultsRef = collection(db, `Circuit/${year}/Results`);
 
-  // Estado local de ambas colecciones
   let penyes: PenyaInfo[] = [];
-  let resultsDocs: any[] = [];
+  let resultsDocs: ChallengeResult[] = [];
 
   // 🔁 Función que recalcula el ranking combinando penyes + results
   const recomputeRanking = () => {
     if (penyes.length === 0) return;
 
-    // 1️⃣ Crear mapa con puntos acumulados por penya
-    const penyaPoints = new Map<string, number>();
-    resultsDocs.forEach((docSnap) => {
-      const provaData = docSnap.data();
-      const results: ChallengeResult[] = provaData.results || [];
-      results.forEach((r) => {
-        penyaPoints.set(
-          r.penyaId,
-          (penyaPoints.get(r.penyaId) || 0) + (r.pointsAwarded || 0)
-        );
-      });
+    const penyaPoints = new Map<string, ChallengeResult[]>();
+    resultsDocs.forEach((resultPenya) => {
+      if(!penyaPoints.has(resultPenya.penyaId)){
+        penyaPoints.set(resultPenya.penyaId, []);
+      }
+      penyaPoints.get(resultPenya.penyaId)?.push(resultPenya);
     });
 
-    // 2️⃣ Combinar penyes + puntos
     const combined = penyes.map((p) => ({
       ...p,
-      totalPoints: penyaPoints.get(p.id) || 0,
+      totalPoints: penyaPoints.get(p.id)?.reduce((acc, curr) => acc + (curr.pointsAwarded || 0), 0) || 0,
     }));
 
     // 3️⃣ Ordenar y asignar posiciones
     const sorted = combined
-      .sort((a, b) => b.totalPoints - a.totalPoints)
+      .sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0))
       .map((item, index) => ({
         ...item,
         position: index + 1,
       }));
 
-    // 4️⃣ Emitir resultado al callback
     callback(sorted);
   };
 
@@ -86,9 +77,11 @@ export const getRankingRealTime = (
     recomputeRanking(); // 🔁 recalcula cuando cambian penyes
   });
 
+  
+
   // 2️⃣ Escucha de resultados
-  const unsubResults = onSnapshot(resultsRef, (snapshot) => {
-    resultsDocs = snapshot.docs;
+  const unsubResults = getResultsInfoRealTime(year, (results) => {
+    resultsDocs = results;
     recomputeRanking(); // 🔁 recalcula cuando cambian resultados
   });
 
@@ -145,7 +138,6 @@ export const getProvaInfoRealTime = (
     if (prova.id) callback(prova);
   };
 
-  // 🔹 Escucha del documento principal
   const unsubDoc = onSnapshot(provaDocRef, (snap) => {
     const d = snap.data();
     if (!d) return;
@@ -166,7 +158,6 @@ export const getProvaInfoRealTime = (
     prova.location = d.location || undefined;
     prova.pointsRange = d.pointsRange || [];
 
-    // 🧭 Solo recreamos el listener de participants si cambió el criterio de orden
     if (sort && oldWinDir !== prova.winDirection) {
       if (unsubParticipants) unsubParticipants();
 
@@ -179,8 +170,8 @@ export const getProvaInfoRealTime = (
           : participantsRef;
 
       unsubParticipants = onSnapshot(participantsQuery, (snap) => {
-        const newPenyes: ParticipatingPenya[] = [];
-        let penyaIndex = 0;
+        const validPenyes: ParticipatingPenya[] = [];
+        const invalidPenyes: ParticipatingPenya[] = [];
 
         snap.docs.forEach((p) => {
           const d = p.data();
@@ -197,16 +188,35 @@ export const getProvaInfoRealTime = (
           };
 
           if (!penya.participates) return;
-          penyaIndex++;
-          penya.index = penyaIndex;
-          newPenyes.push(penya);
+
+          if (penya.result === -1 || penya.result === undefined || penya.result === null) {
+            invalidPenyes.push(penya);
+          } else {
+            validPenyes.push(penya);
+          }
         });
 
-        prova.penyes = newPenyes;
+        if (sort && prova.winDirection !== "NONE") {
+          validPenyes.sort((a, b) => {
+            const resA = a.result ?? 0;
+            const resB = b.result ?? 0;
+            return prova.winDirection === "ASC" ? resA - resB : resB - resA;
+          });
+        }
+
+        invalidPenyes.sort((a, b) => a.name.localeCompare(b.name));
+
+        const combined = [...validPenyes, ...invalidPenyes];
+        combined.forEach((penya, index) => (penya.index = index + 1));
+
+        prova.penyes = combined;
         emit();
       });
     }
+
+    emit();
   });
+
 
   return () => {
     unsubDoc();
@@ -214,7 +224,33 @@ export const getProvaInfoRealTime = (
   };
 };
 
+export const getResultsInfoRealTime = (
+  year: number,
+  callback: (data: ChallengeResult[]) => void
+) => {
+  const resultsRef = collection(db, `Circuit/${year}/Results`);
 
+  return onSnapshot(resultsRef, (proves) => {
+    const resultsData: ChallengeResult[] = proves.docs
+      .flatMap((prova) => {
+        const d = prova.data();
+        const results: any[] = d.results || [];
+
+        return results.map((provaPenyaResult) => ({
+          index: provaPenyaResult.position ?? -1,
+          provaReference: prova.ref.path,
+          provaType: d.challengeType || "null", 
+          participates: provaPenyaResult.position > 0 ? true : false,
+          penyaId: provaPenyaResult.penyaId || "",
+          penyaName: provaPenyaResult.name || "NO_NAME",
+          result: provaPenyaResult.result || 0,
+          pointsAwarded: provaPenyaResult.pointsAwarded || 0,
+        }));
+      });
+
+    callback(resultsData);
+  });
+};
 
 
 export const getPenyaInfoRealTime = (year: number, penyaId: string, callback: (data: PenyaInfo | null) => void) => {

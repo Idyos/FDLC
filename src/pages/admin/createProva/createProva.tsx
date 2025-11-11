@@ -89,8 +89,8 @@ export default function CreateProva() {
   const challengeType = form.watch("challengeType") as ProvaType | undefined;
 
   const onImageAdded = async (file: File) => {
-    const allowed = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowed.includes(file.type)) { toast.error("Només .jpg .png .webp"); return; }
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) { toast.error("Només s'accepta .jpg .png .webp o .gif"); return; }
     if (form.getValues("name") === "") { toast.error("Primer omple el nom de la prova"); return; }
     provaImageState[1](file);
   };

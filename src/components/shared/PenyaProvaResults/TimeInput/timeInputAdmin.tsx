@@ -56,7 +56,7 @@ export const TimeInputAdmin: React.FC<TimeInputProps> = ({
   }
 
   function clearAll() {
-    emit(0);
+    emit(-1);
     onBlur?.(0);
   }
 
@@ -136,7 +136,7 @@ export const TimeInputAdmin: React.FC<TimeInputProps> = ({
             "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 "
         }
       />
-      {seconds > 0 && (
+      {seconds >= 0 && (
         <button
           type="button"
           onClick={clearAll}
