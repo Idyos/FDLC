@@ -267,7 +267,6 @@ export class ChallengeByPoints extends Prova {
     description?: string) {
     super(reference, name, challengeType, startDate, finishDate, pointsRange, penyes, winDirection, location, imageUrl, description);
   }
-
 }
 
 export class ChallengeByDiscalification extends Prova {

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import DynamicList from "@/components/shared/dynamicList";
 import LoadingAnimation from "@/components/shared/loadingAnim";
-import SingleProvaResult from "@/components/admin/singleProvaResult";
+import SingleProvaResult from "@/components/shared/PenyaProvaResults/singleProvaResult";
 import AdminSingleProvaResult from "@/components/admin/Proves/ProvaPenyaSummary/adminSingleProvaResult";
 import { getProvaInfo } from "@/services/database/Admin/adminDbServices";
 import ProvaTitle from "@/components/public/provaTitle";
@@ -23,6 +23,7 @@ import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
 import AdminFooter from "@/components/admin/Proves/Footer/adminFooter";
 import { EmptyProva, Prova } from "@/interfaces/interfaces";
 import { isAdmin } from "@/services/authService";
+import SingleProvaResultGrid from "@/components/shared/PenyaProvaResults/singleProvaResultGrid";
 
 export default function ProvaPage() {
     const location = useLocation();
@@ -141,6 +142,9 @@ export default function ProvaPage() {
                             key={provaResultSummary.penyaId}
                             provaResultSummary={provaResultSummary}
                           />
+                        )}
+                        renderGridItem={(item, index) => (
+                          <SingleProvaResultGrid key={index} provaResultSummary={item} />
                         )}
                       />
                     ) : (

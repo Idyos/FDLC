@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import SingleProvaResult from "@/components/admin/singleProvaResult";
+import SingleProvaResult from "@/components/shared/PenyaProvaResults/singleProvaResult";
 import DynamicList from "@/components/shared/dynamicList";
 import LoadingAnimation from "@/components/shared/loadingAnim";
 

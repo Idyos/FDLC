@@ -2,10 +2,10 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { MapPin, Clock, Trophy } from "lucide-react";
-import { ProvaInfo } from "@/interfaces/interfaces";
+import { Prova } from "@/interfaces/interfaces";
 
 interface ProvaInfoCardProps {
-  prova: ProvaInfo;
+  prova: Prova;
 }
 
 export default function ProvaInfoCard({ prova }: ProvaInfoCardProps) {

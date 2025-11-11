@@ -1,14 +1,14 @@
 // pages/admin/createProva/useProvaPreviewSync.ts
 import { useEffect } from "react";
-import { PointsRange, ProvaInfo } from "@/interfaces/interfaces";
+import { PointsRange, Prova } from "@/interfaces/interfaces";
 import { UseFormReturn } from "react-hook-form";
 import { CreateChallenge } from "./createProvaData";
 
 export function useProvaPreviewSync(
   form: UseFormReturn<CreateChallenge>,
   provaImage: File | null,
-  provaInfo: ProvaInfo,
-  setProvaInfo: (p: ProvaInfo) => void
+  provaInfo: Prova,
+  setProvaInfo: (p: Prova) => void
 ) {
   useEffect(() => {
     const sub = form.watch(values => {
@@ -36,8 +36,8 @@ export function useProvaPreviewSync(
         winDirection: values.winDirection ?? "NONE",
         imageUrl: provaImage ? URL.createObjectURL(provaImage) : provaInfo.imageUrl,
         isFinished: false,
-        results: provaInfo.results ?? [],
-        provaId: provaInfo.provaId ?? "",
+        penyes: provaInfo.penyes ?? [],
+        id: provaInfo.id ?? "",
       });
     });
 
