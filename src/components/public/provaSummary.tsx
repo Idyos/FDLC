@@ -1,34 +1,24 @@
-import { ProvaSummary, PenyaProvaSummary } from "@/interfaces/interfaces";
+import { PenyaProvaSummary } from "@/interfaces/interfaces";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../Theme/theme-provider";
 import { Badge } from "@/components/ui/badge";
 import PenyaProvaResult from "../shared/Prova/penyaProvaResult";
-
-type AnyProva = ProvaSummary | PenyaProvaSummary;
-
-function isPenyaProvaSummary(prova: AnyProva): prova is PenyaProvaSummary {
-  return "participates" in prova;
-}
+import { Trophy } from "lucide-react";
 
 interface ProvaSummaryProps {
-  provaSummary: AnyProva;
+  provaSummary: PenyaProvaSummary;
 }
 
 export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
   const { theme } = useTheme();
   const navigate = useNavigate();
 
-  // position y points solo existen si es PenyaProvaSummary
-  const isPenya = ("provaReference" in provaSummary);
-  const position = isPenya ? (provaSummary as PenyaProvaSummary).position : undefined;
-  const result   = isPenya ? (provaSummary as PenyaProvaSummary).result   : undefined;
-
   // Color de fondo en función de position (si existe)
   let bgColor = theme === "dark" ? "rgba(66, 66, 66, 1)" : "rgba(255, 255, 255, 1)";
-  if (position === 1) bgColor = theme === "dark" ? "rgba(255, 221, 51, 1)" : "rgba(255, 255, 0, 1)";
-  else if (position === 2) bgColor = "rgba(169, 169, 169, 1)";
-  else if (position === 3) bgColor = "rgba(255, 165, 0, 1)";
+  // if (provaSummary.position === 1) bgColor = theme === "dark" ? "rgba(255, 221, 51, 1)" : "rgba(255, 255, 0, 1)";
+  // else if (provaSummary.position === 2) bgColor = "rgba(169, 169, 169, 1)";
+  // else if (provaSummary.position === 3) bgColor = "rgba(255, 165, 0, 1)";
 
   const gradient = `linear-gradient(90deg, rgba(0, 0, 0, 0), ${bgColor} 26%)`;
 
@@ -43,7 +33,7 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
       style={{ background: bgColor }}
       whileHover={{ scale: 1.02 }}
     >
-      {isPenyaProvaSummary(provaSummary) && !provaSummary.participates && (
+      {!provaSummary.participates && (
         <div className="absolute z-20 inset-0 h-full w-full flex items-center justify-center dark:bg-black/60 bg-white/60">
           <h1 className="font-extrabold text-4xl">NO PARTICIPA</h1>
         </div>
@@ -82,8 +72,22 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
         </div>
 
         {/* Badge: si hay points los muestro; si no, se puede ocultar o mostrar otra info */}
-        {typeof result === "number" ? (
-          <PenyaProvaResult prova={provaSummary as PenyaProvaSummary} />
+        {typeof provaSummary.result === "number" && provaSummary.result > -1 ? (
+          <div className="flex flex-col items-center space-y-2">
+          <div>
+            <PenyaProvaResult prova={provaSummary} />
+          </div>
+          <div className="flex flex-row justify-end items-center p-3 pr-3 rounded-4xl dark:bg-black/50 bg-white/40">
+            {provaSummary.position && 
+                <p className="text-4xl font-extrabold">
+                  {provaSummary.position === 1 && <Trophy fill="yellow" color="yellow" />}
+                  {provaSummary.position === 2 && <Trophy fill="gray" color="gray" />}
+                  {provaSummary.position === 3 && <Trophy fill="orange" color="orange" />}
+                  {provaSummary.position > 3 ? `${provaSummary.position}.` : null}
+                </p>}
+            {provaSummary.points && <p className="text-right text-2xl font-bold">+{provaSummary.points}</p>}
+          </div>
+          </div>
         ) : null}
       </div>
     </motion.div>

@@ -51,6 +51,7 @@ export default function PenyaPage() {
                 document.title = `${penyaInfo.current.name} ${selectedYear}`;
 
                 getPenyaProvesRealTime(selectedYear, penyaId, (data) => {
+                    console.log(data);
                     setPenyaProves(data);
                     setIsProvesLoading(false);
                 });

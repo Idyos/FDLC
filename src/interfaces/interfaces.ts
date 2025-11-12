@@ -74,7 +74,6 @@ export interface ParticipatingPenya {
 }
 
 export class ProvaSummary extends BaseEntity {
-
   reference: string;
   imageUrl?: string;
   startDate: Date;
@@ -109,6 +108,7 @@ export class ProvaSummary extends BaseEntity {
 export class PenyaProvaSummary extends ProvaSummary {
   position?: number;
   result?: number;
+  points?: number;
   participates: boolean;
 
   constructor() {

@@ -1,7 +1,7 @@
 import PenyaSummary from "@/components/public/penyaSummary";
 import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/Contexts/YearContext";
-import { PenyaInfo, ProvaSummary} from "@/interfaces/interfaces";
+import { PenyaInfo, PenyaProvaSummary} from "@/interfaces/interfaces";
 import { getProvesRealTime, getRankingRealTime } from "@/services/database/publicDbService";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useRef, useState } from "react";
@@ -14,7 +14,7 @@ import LoadingAnimation from "@/components/shared/loadingAnim";
 export default function MainPage() {
   const previousRankingsRef = useRef<PenyaInfo[]>([]);
   const [rankings, setRankings] = useState<PenyaInfo[]>([]);
-  const [proves, setProves] = useState<ProvaSummary[]>([]);
+  const [proves, setProves] = useState<PenyaProvaSummary[]>([]);
 //   const [comunicats, setComunicats] = useState<any[]>([]);
   const { selectedYear: year } = useYear();
   const [isLoading, setIsLoading] = useState(true);
