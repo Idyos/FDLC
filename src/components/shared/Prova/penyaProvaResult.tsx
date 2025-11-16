@@ -13,7 +13,6 @@ export default function PenyaProvaResult({ prova }: PenyaProvaResultProps) {
             return (
                 <TimeRollingInput
                     value={prova.result || 0}
-                    maxHours={3}
                 />
             );
             case "Punts":

@@ -34,7 +34,6 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
           <TimeRollingInput
             value={value}
             onChange={setValue}
-            maxHours={3}
           />
         );
       case "Punts":

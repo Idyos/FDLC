@@ -33,7 +33,7 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
           <TimeRollingInput
             value={value}
             onChange={setValue}
-            maxHours={3}
+
             onBlur={(newSeconds) => updateProvaResult(newSeconds)}
           />
         );

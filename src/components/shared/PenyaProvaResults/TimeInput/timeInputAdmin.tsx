@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 export const TimeInputAdmin: React.FC<TimeInputProps> = ({
   value: valueSeconds,
   onChange: onChangeSeconds,
-  maxHours = 23,
   ariaLabel = "Temps en HH:MM:SS",
   onBlur,
 }) => {

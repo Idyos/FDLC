@@ -34,7 +34,6 @@ export default function SingleProvaResultGrid({ provaResultSummary }: SingleProv
           <TimeRollingInput
             value={value}
             onChange={setValue}
-            maxHours={3}
           />
         );
       case "Punts":
