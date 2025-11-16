@@ -1,21 +1,22 @@
 // src/components/timeInputPublic.tsx
 import React from "react";
 import { formatHHMMSS, TimeInputProps } from "./timeInput";
+import { Input } from "@/components/ui/input";
 
 export const TimeInputPublic: React.FC<TimeInputProps> = ({
   value: valueSeconds = 0,
-  className,
 }) => {
   const display = formatHHMMSS(valueSeconds);
 
   return (
-    <div
-      className={
-        className ??
-        "text-center text-lg px-4 py-2 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-100"
-      }
-    >
-      {display}
-    </div>
+      <Input
+        type="time"
+        step={1}
+        aria-label="Temps en HH:MM:SS"
+        className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+        readOnly={true}
+        value={valueSeconds === -1 ? "" : display}
+        placeholder="--:--:--"
+      />
   );
 };
