@@ -21,9 +21,10 @@ import { getProvaInfo } from "@/services/database/Admin/adminDbServices";
 import ProvaTitle from "@/components/public/provaTitle";
 import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
 import AdminFooter from "@/components/admin/Proves/Footer/adminFooter";
-import { EmptyProva, Prova } from "@/interfaces/interfaces";
+import { EmptyProva, ParticipatingPenya, Prova } from "@/interfaces/interfaces";
 import { isAdmin } from "@/services/authService";
 import SingleProvaResultGrid from "@/components/shared/PenyaProvaResults/singleProvaResultGrid";
+import { Input } from "@/components/ui/input";
 
 export default function ProvaPage() {
     const location = useLocation();
@@ -33,6 +34,8 @@ export default function ProvaPage() {
     const admin = isAdmin();
 
     const setProva = useProvaStore((state) => state.setProva);
+    const [penyesSearch, setPenyesSearch] = useState("");    
+    const [filteredPenyes, setFilteredPenyes] = useState<ParticipatingPenya[]>([]);
 
     const [noProvaAlert, setNoProbaAlert] = useState(false);
     const [provaInfo, setProvaInfo] = useState<Prova>(new EmptyProva());
@@ -40,6 +43,13 @@ export default function ProvaPage() {
 
     const searchParams = new URLSearchParams(location.search);
     const provaId = searchParams.get("provaId") || "";
+
+    useEffect(() => {
+        const newFilteredPenyes = penyesSearch.length == 0 ? provaInfo.penyes : provaInfo.penyes.filter((penya) =>
+            penya.name.toLowerCase().includes(penyesSearch.toLowerCase())
+        );
+        setFilteredPenyes(newFilteredPenyes);
+    }, [penyesSearch, provaInfo.penyes]);
 
   useEffect(() => {
     setIsProvaLoading(true);
@@ -118,17 +128,20 @@ export default function ProvaPage() {
               <ProvaTitle />
 
               {admin ? (
-              <div className="grid grid-cols-[repeat(auto-fit,_minmax(300px,_1fr))] gap-3 w-full">
-                  {isProvaLoading ? (
-                    <LoadingAnimation />
-                  ) : (
-                    provaInfo.penyes.length > 0 ? (
-                      provaInfo.penyes.map((penya) => (
-                        <AdminSingleProvaResult key={penya.penyaId} provaResultSummary={penya} />
-                      ))
-                    ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
-                  )}
-                </div>
+                <>
+                  <Input className="p-4 mb-4" type="search" value={penyesSearch} placeholder="Buscar penya..." onChange={(e) => setPenyesSearch(e.target.value)}/>
+                  <div className="grid grid-cols-[repeat(auto-fit,_minmax(300px,_1fr))] gap-3 w-full">
+                      {isProvaLoading ? (
+                        <LoadingAnimation />
+                      ) : (
+                        filteredPenyes.length > 0 ? (
+                          filteredPenyes.map((penya) => (
+                            <AdminSingleProvaResult key={penya.penyaId} provaResultSummary={penya} />
+                          ))
+                        ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
+                      )}
+                  </div>
+                </>
               ) : (
                 <div className="p-3.5 flex flex-col items-end justify-start ">
                   {isProvaLoading ? (

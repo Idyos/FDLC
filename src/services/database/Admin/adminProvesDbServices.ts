@@ -77,7 +77,7 @@ export async function generateProvaResults(year: number, provaId: string) {
     results,
   });
 
-  batch.update(provaRef, { isFinished: true });
+  batch.update(provaRef, { isFinished: true, finishDate: serverTimestamp() });
 
   await batch.commit();
 

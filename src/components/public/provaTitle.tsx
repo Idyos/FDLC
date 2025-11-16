@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import ProvaInfoCard from "../shared/Prova/provaInfoCard";
 import { Badge } from "../ui/badge";
 import { useProvaStore } from "../shared/Contexts/ProvaContext";
+import { Navigation } from "lucide-react";
+import { Link } from "react-router-dom";
 const COLLAPSED_H = 250;
 const LONG_PRESS_MS = 200;
 
@@ -250,6 +252,18 @@ const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
           onKeyUp={onKeyUp}
           className="min-h-[250px] relative border-gray-900 dark:border-gray-100 border-4 rounded-4xl flex flex-col justify-center space-y-4 mb-4 p-12 overflow-hidden select-none cursor-pointer"
         >
+          {prova.location?.lat && prova.location?.lng && (
+            <Badge
+              asChild
+              variant="secondary"
+              className="bg-blue-500 absolute z-10 top-2 left-5 mt-2 w-10 h-10 flex items-center justify-center rounded-full"
+            >
+              <Link to={`https://www.google.com/maps/dir/?api=1&destination=${prova.location.lat},${prova.location.lng}`} target="_blank" rel="noopener noreferrer">
+                <Navigation scale={500} />
+              </Link>
+            </Badge>
+          )}
+
           <Badge
             variant="secondary"
             className="absolute z-10 top-2 right-5 mt-2 text-sm font-medium rounded-4xl"

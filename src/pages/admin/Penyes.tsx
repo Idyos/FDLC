@@ -14,7 +14,7 @@ export default function Penyes() {
     const [penyes, setPenyes] = useState<PenyaInfo[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [penyesSearch, setPenyesSearch] = useState("");
-
+    const [filteredPenyes, setFilteredPenyes] = useState<PenyaInfo[]>([]);
     document.title = `Penyes ${selectedYear} - Admin`;
 
     // Info de penyes
@@ -27,9 +27,12 @@ export default function Penyes() {
         });
     }, [selectedYear]);
 
-    const filteredPenyes = penyes.filter((penya) =>
-        penya.name.toLowerCase().includes(penyesSearch.toLowerCase())
-    );
+    useEffect(() => {
+        const newFilteredPenyes = penyesSearch.length == 0 ? penyes : penyes.filter((penya) =>
+            penya.name.toLowerCase().includes(penyesSearch.toLowerCase())
+        );
+        setFilteredPenyes(newFilteredPenyes);
+    }, [penyesSearch, penyes]);
 
     return (
         <>

@@ -3,7 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { MapPin, Clock, Trophy } from "lucide-react";
 import { Prova } from "@/interfaces/interfaces";
-
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { LocationDisplay } from "@/components/public/locationDisplay";
 interface ProvaInfoCardProps {
   prova: Prova;
 }
@@ -22,16 +23,42 @@ export default function ProvaInfoCard({ prova }: ProvaInfoCardProps) {
   } = prova;
 
   return (
-    <Card className="max-h-[96svh] overflow-auto  shadow-md dark:bg-gray-900">
+    <Card className="max-h-[96svh] overflow-auto pt-0  shadow-md dark:bg-gray-900">
       {/* Imagen de cabecera */}
-      {imageUrl && (
-        <img
-          src={imageUrl}
-          alt={name}
-          className="w-full h-56 object-cover"
-        />
-      )}
+    <Carousel
+      className="w-full max-h-56"
+      opts={{
+        align: 'start',
+        watchDrag: false,
+      }}
+    >
+      <CarouselContent className="max-h-56">
+        {imageUrl && (
+          <CarouselItem>
+            <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+          </CarouselItem>
+        )}
 
+        {(location?.lat && location?.lng) && (
+          <CarouselItem>
+            <LocationDisplay location={location} height="224px" />
+          </CarouselItem>
+        )}
+      </CarouselContent>
+
+      {imageUrl && (location?.lat && location?.lng) && (
+        <>
+          <CarouselPrevious
+            variant={"secondary"}
+            className="absolute left-2 top-1/2 transform -translate-y-1/2"
+          />
+          <CarouselNext
+            variant={"secondary"}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2"
+          />
+        </>
+      )}
+    </Carousel>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-2xl font-bold">{name}</CardTitle>
