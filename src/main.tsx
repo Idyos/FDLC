@@ -8,8 +8,8 @@ import { Toaster } from './components/ui/toaster.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter basename='/FDLC'>
-    {/* <BrowserRouter> */}
+    {/* <BrowserRouter basename='/FDLC'> */}
+    <BrowserRouter>
       <AuthProvider>
         <App />
         <Toaster />

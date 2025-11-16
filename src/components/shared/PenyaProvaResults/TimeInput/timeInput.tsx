@@ -2,6 +2,7 @@ import React from "react";
 import { TimeInputAdmin } from "./timeInputAdmin";
 import { TimeInputPublic } from "./timeInputPublic";
 import { isAdmin } from "@/services/authService";
+import { TimeInputAdmin2 } from "./timeInputAdmin2";
 
 /** Formatea a HH:MM:SS (siempre 2 dígitos por bloque) */
 export function formatHHMMSS(totalSeconds: number): string {
@@ -71,6 +72,6 @@ export * from "./timeInputAdmin"; // si quieres reusar helpers (formatHHMMSS, et
 
 export const TimeRollingInput: React.FC<TimeInputProps> = (props) => {
   const admin = isAdmin();
-  return admin ? <TimeInputAdmin {...props} /> : <TimeInputPublic {...props} />;
+  return admin ? <TimeInputAdmin2 {...props} /> : <TimeInputPublic {...props} />;
 };
 
