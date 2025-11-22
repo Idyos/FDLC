@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useProvaStore } from "../Contexts/ProvaContext";
 import { useNavigate } from "react-router-dom";
 import { PointsInput } from "./PointsInput/pointsInput";
+import { ParticipatesInput } from "./ParticipatesInput/participatesInput";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: ParticipatingPenya;
@@ -43,6 +44,13 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
             onChange={setValue}
           />
         );
+      case "Participació":
+        return (
+          <ParticipatesInput
+            value={value}
+            onChange={setValue}
+          />
+        );
       default:
         return null;
     }
@@ -68,7 +76,8 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
       {/* Contenido */} 
       <div className="relative z-10 flex justify-between items-center h-full p-4 dark:text-white text-gray-900">
         <div className="text-left">
-          <p className={`${prova.isFinished ? "text-4xl font-extrabold" : "inline text-2xl font-bold opacity-20"}`}>{provaResultSummary.index}. </p>
+          {prova.challengeType !== "Participació" ? <p className={`${prova.isFinished ? "text-4xl font-extrabold" : "inline text-2xl font-bold opacity-20"}`}>{provaResultSummary.index}. </p> : null}
+          
           <span className="text-2xl font-bold">{provaResultSummary.name}</span>
         </div>
         <div className="flex flex-row items-center space-x-6">

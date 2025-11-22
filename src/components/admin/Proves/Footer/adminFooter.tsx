@@ -51,7 +51,7 @@ export default function AdminFooter() {
       .filter((r) => r.result == null || r.result === -1)
       .map((r) => r.name);
 
-    if (penyesWithoutResults.length > 0 && openAlert === false) {
+    if (penyesWithoutResults.length > 0 && openAlert === false && prova.challengeType != "Participació") {
       setMissingPenyes(penyesWithoutResults);
       setOpenAlert(true);
       return;

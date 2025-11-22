@@ -30,13 +30,6 @@ export default function PointsRangeEditor({
   };
 
   const addRange = () => {
-    if (challengeType === "Participació" && value.length > 0) {
-      toast.warning(
-        "No es pot afegir un rang més de punts, el tipus de prova és 'Participació'"
-      );
-      return;
-    }
-
     if (value.length > 0) {
       const last = value[value.length - 1];
       const newRange = {
@@ -58,6 +51,12 @@ export default function PointsRangeEditor({
     }
   };
 
+  const removeAllRange = () => {
+    const firstValue = value.length > 0 ? value[0] : null;
+    const vales = firstValue ? [firstValue] : [];
+    onChange(vales);
+  };
+
   return (
     <div>
       {value?.map((range, index) => (
@@ -70,22 +69,68 @@ export default function PointsRangeEditor({
             className="max-w-16"
             type="number"
             min={1}
-            max={range.to}
-            value={range.from}
-            onChange={(e) =>
-              handleFieldChange(index, "from", parseInt(e.target.value))
-            }
+            value={Number.isFinite(range.from) ? range.from : ""}
+            onChange={(e) => {
+              const raw = e.target.value;
+
+              if (raw.trim() === "") {
+                toast.error("El camp 'des de' no pot estar buit.");
+                return;
+              }
+
+              const parsed = parseInt(raw);
+
+              if (isNaN(parsed) || parsed <= 0 || !Number.isFinite(parsed)) {
+                toast.error("El valor de 'des de' ha de ser un número positiu.");
+                return;
+              }
+
+              handleFieldChange(index, "from", parsed);
+            }}
           />
           <p>fins a:</p>
           <Input
             className="max-w-16"
             type="number"
             min={range.from}
-            value={range.to}
-            onChange={(e) =>
-              handleFieldChange(index, "to", parseInt(e.target.value))
-            }
+            value={Number.isFinite(range.to) ? range.to : ""}
+            onChange={(e) => {
+              const raw = e.target.value;
+
+              // Caso 1: valor vacío → intentar poner Infinity
+              if (raw.trim() === "") {
+                const isLast = index === value.length - 1;
+
+                if (!isLast) {
+                  // Prohibido Infinity si NO es el último range
+                  toast.error("Només l'últim rang pot ser infinit.");
+                  return;
+                }
+
+                handleFieldChange(index, "to", Infinity);
+                return;
+              }
+
+              // Caso 2: valor numérico
+              const parsed = parseInt(raw);
+
+              if (isNaN(parsed)) {
+                const isLast = index === value.length - 1;
+
+                if (!isLast) {
+                  toast.error("Només l'últim rang pot ser infinit.");
+                  return;
+                }
+
+                handleFieldChange(index, "to", Infinity);
+                return;
+              }
+
+              // Número válido → guardar
+              handleFieldChange(index, "to", parsed);
+            }}
           />
+
           <p>guanyaran:</p>
           <Input
             className="max-w-16"
@@ -111,6 +156,12 @@ export default function PointsRangeEditor({
           onClick={removeRange}
         >
           -
+        </Badge>
+        <Badge
+          className="hover:cursor-pointer select-none"
+          onClick={removeAllRange}
+        >
+          Eliminar tots
         </Badge>
       </div>
     </div>

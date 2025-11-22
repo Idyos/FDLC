@@ -8,6 +8,7 @@ import { TimeRollingInput } from "@/components/shared/PenyaProvaResults/TimeInpu
 import { PointsInput } from "@/components/shared/PenyaProvaResults/PointsInput/pointsInput";
 import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
 import { toast } from "sonner";
+import { ParticipatesInput } from "@/components/shared/PenyaProvaResults/ParticipatesInput/participatesInput";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: ParticipatingPenya;
@@ -21,6 +22,8 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
   const prevSeconds = useRef(provaResultSummary.result);
   const [value, setValue] = useState(provaResultSummary.result);
 
+
+
   useEffect(() => {
     prevSeconds.current = provaResultSummary.result;
     setValue(provaResultSummary.result);
@@ -33,7 +36,6 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
           <TimeRollingInput
             value={value}
             onChange={setValue}
-
             onBlur={(newSeconds) => updateProvaResult(newSeconds)}
           />
         );
@@ -45,12 +47,21 @@ export default function AdminSingleProvaResult({ provaResultSummary }: SinglePro
             onBlur={(newPoints) => updateProvaResult(newPoints)}
           />
         );
+      case "Participació":
+        return (
+          <ParticipatesInput
+            value={value}
+            onChange={setValue}
+            onBlur={(newParticipation) => updateProvaResult(newParticipation)}
+          />
+        );
       default:
         return null;
     }
   };
 
   const updateProvaResult = async (newSeconds: number) => {
+    console.log("Updating prova result...", newSeconds);
     if(prova.isFinished === true){
       toast.error("La prova està finalitzada! Has de reobrir-la per modificar els resultats.");
       setValue(prevSeconds.current);

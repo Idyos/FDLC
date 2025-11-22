@@ -55,10 +55,9 @@ export const createChallengeSchema = z.object({
     invalid_type_error: "Tipus de prova no vàlid",
   }),
 
-  winDirection: z.enum(["ASC", "DESC"], {
-    required_error: "La direcció de guany és obligatòria",
-    invalid_type_error: "Direcció de guany no vàlida",
-  }),
+  winDirection: z
+    .enum(["ASC", "DESC", "NONE"])
+    .optional(),
 
   penyes: z
   .array(
@@ -87,8 +86,9 @@ export const createChallengeSchema = z.object({
       return data.length === new Set(sorted.map((item) => item.from)).size;
     }, "Les posicions inicials no poden repetir-se"),
 }).superRefine((data, ctx) => {
+  console.log("Validant winDirection per a tipus de prova:", data.challengeType, data.winDirection);
   const tiposQueRequierenWinDirection: ProvaType[] = ["Punts", "Temps"];
-  const direccionsValides: WinDirection[] = ["ASC", "DESC"];
+  const direccionsValides: WinDirection[] = ["ASC", "DESC", "NONE"];
 
   if (tiposQueRequierenWinDirection.includes(data.challengeType)) {
     if (!data.winDirection || !direccionsValides.includes(data.winDirection)) {
@@ -100,6 +100,5 @@ export const createChallengeSchema = z.object({
     }
   }
 });
-
 
 export type CreateChallenge = z.infer<typeof createChallengeSchema>;

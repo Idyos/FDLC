@@ -152,7 +152,7 @@ export const getProvaInfoRealTime = (
     prova.startDate = d.startDate?.toDate?.() ?? new Date(0);
     prova.finishDate = d.finishDate?.toDate?.() ?? undefined;
     prova.challengeType = d.challengeType || "null";
-    prova.winDirection = d.winDirection || "NONE";
+    prova.winDirection = d.winDirection || null;
     prova.location = d.location || undefined;
     prova.pointsRange = d.pointsRange || [];
 
@@ -167,12 +167,15 @@ export const getProvaInfoRealTime = (
             )
           : participantsRef;
 
+            console.log(participantsQuery, participantsRef);
+
       unsubParticipants = onSnapshot(participantsQuery, (snap) => {
         const validPenyes: ParticipatingPenya[] = [];
         const invalidPenyes: ParticipatingPenya[] = [];
 
         snap.docs.forEach((p) => {
           const d = p.data();
+          console.log(d);
           const penya: ParticipatingPenya = {
             penyaId: typeof d.penyaId === "string" ? d.penyaId : p.id,
             name: typeof d.penyaName === "string" ? d.penyaName : "Sense nom",

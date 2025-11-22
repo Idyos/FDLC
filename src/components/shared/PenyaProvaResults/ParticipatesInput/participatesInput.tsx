@@ -4,21 +4,20 @@ import React from "react";
 
 
 export type ParticipatesInputProps = {
-  value: boolean;
-  onChange?: (value: boolean) => void;
-  className?: string;
+  value?: number;
+  onChange?: (value: number) => void;
   ariaLabel?: string;
-  onBlur?: (value: boolean) => void;
+  onBlur?: (value: number) => void;
 };
 
 export const ParticipatesInput: React.FC<ParticipatesInputProps> = (props) => {
   const admin = isAdmin();
     return (
-        <Checkbox
-          disabled={!admin}
-          checked={props.value}
-          onCheckedChange={(checked) => props.onChange?.(checked === true)}
-          onBlur={() => props.onBlur?.(props.value)}
+        <Checkbox  
+        className="scale-150"
+          checked={props.value === 1}
+          onCheckedChange={admin ? (checked) => props.onChange?.(checked === true ? 1 : -1) : undefined}
+          onBlur={admin ? () => props.onBlur?.(props.value ?? 0) : undefined}
         />
     );
 };
