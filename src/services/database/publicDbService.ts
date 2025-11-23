@@ -373,13 +373,27 @@ export const getPenyaProvesRealTime = (
             }
 
             provisionalResults[provaId] = summary;
-            callback(Object.values(provisionalResults));
+
+            const sorted = Object.values(provisionalResults).sort((a, b) => {
+              const da = a.startDate?.getTime() ?? 0;
+              const db = b.startDate?.getTime() ?? 0;
+              return da - db;
+            });
+
+            callback(sorted);
           });
 
           unsubscribes.push(unsubResult);
         } else {
           provisionalResults[provaId] = summary;
-          callback(Object.values(provisionalResults));
+          
+          const sorted = Object.values(provisionalResults).sort((a, b) => {
+            const da = a.startDate?.getTime() ?? 0;
+            const db = b.startDate?.getTime() ?? 0;
+            return da - db;
+          });
+          
+          callback(sorted);
         }
       });
 

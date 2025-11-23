@@ -65,6 +65,20 @@ export default function PenyaPage() {
         return () => unsubscribe();
     }, [selectedYear]);
 
+    const groupedByDay = penyaProves.reduce((acc, prova) => {
+        const date = prova.startDate
+            ? prova.startDate.toLocaleDateString("ca-ES", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+            })
+            : "Data desconeguda";
+
+        if (!acc[date]) acc[date] = [];
+        acc[date].push(prova);
+        return acc;
+    }, {} as Record<string, PenyaProvaSummary[]>);
+
     return ( 
         <>
         <AlertDialog open={noPenyaAlert} onOpenChange={setNoPenyaAlert}>
@@ -84,16 +98,39 @@ export default function PenyaPage() {
             <YearSelector />
             <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
                 {isPenyaLoading ? <LoadingAnimation /> : <PenyaTitle {...penyaInfo.current} />}
-              <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
+              <div className="flex m-1 flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isProvesLoading ? (
                 <LoadingAnimation />
               ) : (
                 penyaProves.length > 0 ? (
-                    penyaProves.map((provaSummary) => (
-                      <ProvaSummaryCard key={provaSummary.id} provaSummary={provaSummary} />
-                    ))
-                ) : (<p>No s'han trobat proves per a aquesta penya.</p>)
-              )}
+                Object.entries(groupedByDay).map(([day, proves]) => (
+                    <div key={day} className="w-full">
+
+                    {/* Separador del día */}
+                    <div className="flex items-center my-4 w-full text-gray-500 dark:text-gray-400">
+                        <div className="flex-grow border-t border-gray-500"></div>
+                        <span className="px-4 whitespace-nowrap">
+                        {day}
+                        </span>
+                        <div className="flex-grow border-t border-gray-500"></div>
+                    </div>
+
+                    {/* Proves de ese día */}
+                    {proves.map((provaSummary) => (
+                        <div className="pl-2 pr-2">
+                            <ProvaSummaryCard
+                            key={provaSummary.id}
+                            provaSummary={provaSummary}
+                            />
+                        </div>
+                    ))}
+                    </div>
+                ))
+                ) : (
+                <p className="text-center text-gray-500 dark:text-gray-400">
+                    Aquesta penya no ha participat en cap prova aquest any.
+                </p>
+))}
               </div>
             </div>
         </>
