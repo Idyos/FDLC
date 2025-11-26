@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../Theme/theme-provider";
 import { Badge } from "@/components/ui/badge"
+import { navigateWithQuery } from "@/utils/url";
 
 interface PenyaSummaryProps {
     rankingInfo: PenyaInfo;
@@ -20,7 +21,7 @@ export default function PenyaSummaryGrid({ rankingInfo }: PenyaSummaryProps) {
     const navigate = useNavigate();
 
     const handleClick = () => {
-      navigate(`/penya?penyaId=${rankingInfo.id}`);
+      navigateWithQuery(navigate, "/penya", { penyaId: rankingInfo.id }); 
     };
 
     return (

@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ProvaSummary } from "@/interfaces/interfaces";
 import { useNavigate } from "react-router-dom";
+import { navigateWithQuery } from "@/utils/url";
 
 interface ProvaSummaryProps {
   provaSummary: ProvaSummary | null;
@@ -10,7 +11,7 @@ export default function AdminProvaSummary({ provaSummary }: ProvaSummaryProps) {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate(`/admin/prova?provaId=${provaSummary?.id}`);
+    navigateWithQuery(navigate, "/admin/prova", { provaId: provaSummary?.id || "" });
   };
 
   return provaSummary != null && (
@@ -25,7 +26,7 @@ export default function AdminProvaSummary({ provaSummary }: ProvaSummaryProps) {
             <img
               src={provaSummary?.imageUrl || undefined}
               alt="Imagen Prova"
-              className="absolute object-cover"
+              className="absolute w-full object-cover"
               style={provaSummary?.imageUrl == null ? { display: "none" } : {}}
             />
 

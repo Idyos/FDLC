@@ -40,6 +40,7 @@ export default function PenyaPage() {
         setIsPenyaLoading(true);
         setIsProvesLoading(true);
 
+        console.log(penyaId);
         const unsubscribe = getPenyaInfoRealTime(selectedYear, penyaId, (penyaInfoResult) => {
             if(penyaInfoResult!=null){
                 if(penyaInfoResult.isSecret){
@@ -50,8 +51,7 @@ export default function PenyaPage() {
                 penyaInfo.current = penyaInfoResult;
                 document.title = `${penyaInfo.current.name} ${selectedYear}`;
 
-                getPenyaProvesRealTime(selectedYear, penyaId, (data) => {
-                    console.log(data);
+                getPenyaProvesRealTime(selectedYear, penyaId, (data) => {                    
                     setPenyaProves(data);
                     setIsProvesLoading(false);
                 });
@@ -98,7 +98,7 @@ export default function PenyaPage() {
             <YearSelector />
             <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
                 {isPenyaLoading ? <LoadingAnimation /> : <PenyaTitle {...penyaInfo.current} />}
-              <div className="flex m-1 flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
+              <div className="flex m-1 p-2 flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isProvesLoading ? (
                 <LoadingAnimation />
               ) : (

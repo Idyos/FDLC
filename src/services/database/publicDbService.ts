@@ -175,7 +175,7 @@ export const getProvaInfoRealTime = (
 
         snap.docs.forEach((p) => {
           const d = p.data();
-          console.log(d);
+
           const penya: ParticipatingPenya = {
             penyaId: typeof d.penyaId === "string" ? d.penyaId : p.id,
             name: typeof d.penyaName === "string" ? d.penyaName : "Sense nom",
@@ -377,7 +377,7 @@ export const getPenyaProvesRealTime = (
             const sorted = Object.values(provisionalResults).sort((a, b) => {
               const da = a.startDate?.getTime() ?? 0;
               const db = b.startDate?.getTime() ?? 0;
-              return da - db;
+              return db - da;
             });
 
             callback(sorted);
@@ -390,7 +390,7 @@ export const getPenyaProvesRealTime = (
           const sorted = Object.values(provisionalResults).sort((a, b) => {
             const da = a.startDate?.getTime() ?? 0;
             const db = b.startDate?.getTime() ?? 0;
-            return da - db;
+            return db - da;
           });
           
           callback(sorted);

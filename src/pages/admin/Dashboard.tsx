@@ -6,6 +6,7 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
 } from "@/components/ui/navigation-menu";
+import { navigateWithQuery } from "@/utils/url";
 import { CalendarDays, CheckIcon, Trophy, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -27,7 +28,7 @@ export default function Dashboard() {
   }, []);
 
   const handleClick = (direction: string) => {
-    navigate(`/admin/${direction}`);
+    navigateWithQuery(navigate, `/admin/${direction}`, {}); 
   };
 
   return (

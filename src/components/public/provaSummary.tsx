@@ -7,6 +7,7 @@ import PenyaProvaResult from "../shared/Prova/penyaProvaResult";
 import { Trophy } from "lucide-react";
 import { Card } from "../ui/card";
 import { Separator } from "@/components/ui/separator"
+import { navigateWithQuery } from "@/utils/url";
 
 interface ProvaSummaryProps {
   provaSummary: PenyaProvaSummary;
@@ -25,7 +26,7 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
   const gradient = `linear-gradient(90deg, rgba(0, 0, 0, 0), ${bgColor} 26%)`;
 
   const handleClick = () => {
-    navigate(`/prova?provaId=${provaSummary.id}`);
+    navigateWithQuery(navigate, "/prova", { provaId: provaSummary.id }); 
   };
 
   return (
@@ -105,7 +106,7 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
                   {provaSummary.position === 1 && <Trophy fill="yellow" color="yellow" />}
                   {provaSummary.position === 2 && <Trophy fill="gray" color="gray" />}
                   {provaSummary.position === 3 && <Trophy fill="orange" color="orange" />}
-                  {provaSummary.position > 3 ? `Pos. ${provaSummary.position}.` : null}
+                  {provaSummary.position > 3 ? `${provaSummary.position}.` : null}
                 </p>}
             {provaSummary.points && <>
               <Separator orientation="vertical" />

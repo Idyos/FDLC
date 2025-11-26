@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { generateProvaResults, openProva } from "@/services/database/Admin/adminProvesDbServices";
+import { navigateWithQuery } from "@/utils/url";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -67,7 +68,7 @@ export default function AdminFooter() {
 
       if (prova.id) {
         setTimeout(() => {
-          navigate(`/prova?provaId=${prova.id}`);
+          navigateWithQuery(navigate, "/prova", { provaId: prova.id });
         }, 2000);
       }
     } catch (error: any) {

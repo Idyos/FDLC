@@ -16,7 +16,6 @@ type PointsRangeEditorProps = {
 export default function PointsRangeEditor({
   value,
   onChange,
-  challengeType,
 }: PointsRangeEditorProps) {
   const handleFieldChange = (
     index: number,

@@ -19,6 +19,7 @@ import { buildChallenge } from "./challengeFactory";
 import { useProvaPreviewSync } from "./useProvaPreviewSync";
 import LoadingAnimation from "@/components/shared/loadingAnim";
 import StepPointsRange from "./components/steps/stepPointsRange";
+import { navigateWithQuery } from "@/utils/url";
 
 export default function CreateProva() {
   const navigate = useNavigate();
@@ -103,7 +104,7 @@ export default function CreateProva() {
     createProva(selectedYear, challenge, provaImage, () => {
       toast.success("Prova creada correctament");
       setCreatingProva(2);
-      setTimeout(() => navigate(`/admin/prova?provaId=${form.getValues("name")}&year=${selectedYear}`), 2000);
+      setTimeout(() => navigateWithQuery(navigate, `/admin/prova`, { provaId: form.getValues("name"), year: selectedYear }), 2000); 
     }, (error) => {
       setCreatingProva(0);
       console.error(error);

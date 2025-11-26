@@ -59,7 +59,7 @@ export const TimeInputAdmin: React.FC<TimeInputProps> = ({
         <Button
           onClick={() => emit(-1)}
         >
-          Limpiar
+          Llimpiar
         </Button>
       )}
     </div>

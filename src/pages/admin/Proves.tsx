@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { useTheme } from "@/components/Theme/theme-provider";
 import { useNavigate } from "react-router-dom";
+import { navigateWithQuery } from "@/utils/url";
 
 export default function Proves() {
     const { theme } = useTheme();
@@ -41,7 +42,7 @@ export default function Proves() {
     );
 
     const onCreateNewProva = () => {
-        navigate(`/admin/createProva`);
+        navigateWithQuery(navigate, `/admin/createProva`, {}); 
     }
 
     return (
@@ -56,7 +57,7 @@ export default function Proves() {
                 <>
                     <Input className="p-4 mb-4" type="search" value={provesSearch} placeholder="Buscar prova..." onChange={(e) => setProvesSearch(e.target.value)}/>
 
-                    <div className="grid grid-cols-1 gap-3 w-full">
+                    <div className="grid grid-cols-[repeat(auto-fit,_minmax(500px,_1fr))] gap-3 w-full">
                         {provesSearch.length == 0 ? (
                             <motion.div
                                 whileHover={{ scale: 1.02 }}

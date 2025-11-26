@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useProvaStore } from "../Contexts/ProvaContext";
 import { useNavigate } from "react-router-dom";
 import { PointsInput } from "./PointsInput/pointsInput";
+import { navigateWithQuery } from "@/utils/url";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: ParticipatingPenya;
@@ -24,7 +25,7 @@ export default function SingleProvaResultGrid({ provaResultSummary }: SingleProv
   }, [provaResultSummary.penyaId, provaResultSummary.result]);
 
   const handleClick = () => {
-      navigate(`/penya?penyaId=${provaResultSummary.penyaId}`);
+      navigateWithQuery(navigate, "/penya", { penyaId: provaResultSummary.penyaId });  
   }
 
   const renderInput = () => {
@@ -73,7 +74,7 @@ export default function SingleProvaResultGrid({ provaResultSummary }: SingleProv
         </div>
         <div className="flex flex-row items-center space-x-6">
           {renderInput()}
-          <span className={`${!prova?.isFinished ? "text-2xl font-bold opacity-40 blur-[3px]" : "text-4xl font-extrabold"}`} >{prova.isFinished ? "+" : null}{getPointsForIndex(provaResultSummary.index || -1) ?? ""}</span>
+          {(provaResultSummary.participates && (provaResultSummary.result != null && provaResultSummary.result >= 0)) &&<span className={`${!prova?.isFinished ? "text-2xl font-bold opacity-40 blur-[3px]" : "text-4xl font-extrabold"}`} >{prova.isFinished ? "+" : null}{getPointsForIndex(provaResultSummary.index || -1) ?? ""}</span>}
         </div>
       </div>
     </motion.div>
