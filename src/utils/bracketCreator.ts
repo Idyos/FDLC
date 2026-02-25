@@ -83,6 +83,7 @@ export interface GenerateOptions {
   bestOfSets?: number; // por defecto 3
   tiebreakAt6All?: boolean; // por defecto true
   finalSetTiebreak?: boolean; // por defecto true
+  pairingMode?: 'balanced_seeded' | 'sequential';
   // Si prefieres orden de semillas custom, pásalo aquí (array de seeds en orden de colocación)
   customSeedOrder?: number[];
 }
@@ -155,6 +156,52 @@ function firstRoundPairs(P: number): [number, number][] {
   return pairs;
 }
 
+function sequentialPairs(P: number): [number, number][] {
+  const pairs: [number, number][] = [];
+  for (let i = 1; i <= P; i += 2) {
+    pairs.push([i, i + 1]);
+  }
+  return pairs;
+}
+
+/**
+ * Construye un tablero secuencial evitando partidos BYE vs BYE en ronda 1.
+ * Reparte primero partidos real vs real y luego real vs BYE.
+ */
+function buildSequentialByeSafeBoard(sortedTeams: Team[], P: number): (Team | 'BYE')[] {
+  const N = sortedTeams.length;
+  const totalPairs = P / 2;
+  const byes = P - N;
+  const byeMatches = byes;
+  const realRealMatches = totalPairs - byeMatches;
+
+  const pairSlots: [Team | 'BYE', Team | 'BYE'][] = [];
+  let cursor = 0;
+
+  // 1) Partidos real vs real
+  for (let i = 0; i < realRealMatches; i += 1) {
+    const teamA = sortedTeams[cursor++];
+    const teamB = sortedTeams[cursor++];
+    pairSlots.push([teamA, teamB]);
+  }
+
+  // 2) Partidos real vs BYE (alternando lado del BYE)
+  for (let i = 0; i < byeMatches; i += 1) {
+    const team = sortedTeams[cursor++];
+    const byeOnA = i % 2 === 0;
+    pairSlots.push(byeOnA ? ['BYE', team] : [team, 'BYE']);
+  }
+
+  const board = pairSlots.flatMap((pair) => pair);
+
+  // Fallback defensivo por si se dan inputs fuera de contrato.
+  while (board.length < P) {
+    board.push('BYE');
+  }
+
+  return board.slice(0, P);
+}
+
 
 /** Ordena equipos por seed ascendente (1 es mejor). Si faltan seeds, asigna por orden. */
 function normalizeAndSortTeams(teams: Team[]): Team[] {
@@ -207,6 +254,7 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
     bestOfSets = 3,
     tiebreakAt6All = true,
     finalSetTiebreak = true,
+    pairingMode = 'balanced_seeded',
     customSeedOrder,
   } = opts;
 
@@ -216,8 +264,10 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
   }
 
 
-  // 1) Normalizamos seeds y ordenamos (1 mejor)
-  const sorted = normalizeAndSortTeams(teams);
+  // 1) Normalizamos segun modo de emparejamiento
+  const sorted = pairingMode === 'sequential'
+    ? teams.map((team, index) => ({ ...team, seed: team.seed ?? index + 1 }))
+    : normalizeAndSortTeams(teams);
   const N = sorted.length;
 
 
@@ -226,24 +276,26 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
   const byes = P - N;
 
 
-  // 3) Posiciones de seedado (si el usuario da orden custom, lo respetamos)
-  const basePositions = customSeedOrder && customSeedOrder.length === P
-    ? customSeedOrder.slice()
-    : generateSeedPositions(P);
+  // 3) Tablero: posiciones 1..P con teams o BYE
+  let board: (Team | 'BYE')[] = new Array(P).fill('BYE');
 
+  if (pairingMode === 'sequential') {
+    board = buildSequentialByeSafeBoard(sorted, P);
+  } else {
+    const basePositions = customSeedOrder && customSeedOrder.length === P
+      ? customSeedOrder.slice()
+      : generateSeedPositions(P);
 
-  // 4) Tablero: posiciones 1..P con teams o BYE
-  //    Si hay customSeedOrder, colocamos por ese orden; si no, por seeds naturales 1..N
-  const board: (Team | 'BYE')[] = new Array(P).fill('BYE');
-  for (let i = 0; i < N; i++) {
-    const team = sorted[i]; // seed i+1 en orden
-    const seedPos = basePositions.indexOf(team.seed ?? (i + 1));
-    const placeIdx = seedPos >= 0 ? seedPos : board.findIndex(x => x === 'BYE');
-    board[placeIdx] = team;
+    for (let i = 0; i < N; i++) {
+      const team = sorted[i]; // seed i+1 en orden
+      const seedPos = basePositions.indexOf(team.seed ?? (i + 1));
+      const placeIdx = seedPos >= 0 ? seedPos : board.findIndex(x => x === 'BYE');
+      board[placeIdx] = team;
+    }
   }
 
 
-  // 5) Construimos rondas
+  // 4) Construimos rondas
   const totalRounds = Math.log2(P);
 
 
@@ -252,8 +304,10 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
   const matches: Match[] = [];
 
 
-  // Round 1 empareja según firstRoundPairs(P), que ya respeta seedado clásico
-  const r1Pairs = firstRoundPairs(P); // pares de posiciones (índices 1..P)
+  // Round 1: modo clásico por seeds o secuencial por orden de entrada
+  const r1Pairs = pairingMode === 'sequential'
+    ? sequentialPairs(P)
+    : firstRoundPairs(P); // pares de posiciones (índices 1..P)
 
 
   // Crea todos los matches vacíos por cada ronda y posición (IDs primero)

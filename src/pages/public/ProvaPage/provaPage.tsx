@@ -25,6 +25,7 @@ import { EmptyProva, ParticipatingPenya, Prova } from "@/interfaces/interfaces";
 import { isAdmin } from "@/services/authService";
 import SingleProvaResultGrid from "@/components/shared/PenyaProvaResults/singleProvaResultGrid";
 import { Input } from "@/components/ui/input";
+import AdminBracketPanel from "@/components/admin/Proves/Bracket/adminBracketPanel";
 
 export default function ProvaPage() {
     const location = useLocation();
@@ -128,20 +129,24 @@ export default function ProvaPage() {
               <ProvaTitle />
 
               {admin ? (
-                <>
-                  <Input className="p-4 mb-4" type="search" value={penyesSearch} placeholder="Buscar penya..." onChange={(e) => setPenyesSearch(e.target.value)}/>
-                  <div className="grid grid-cols-[repeat(auto-fit,_minmax(300px,_1fr))] gap-3 w-full">
-                      {isProvaLoading ? (
-                        <LoadingAnimation />
-                      ) : (
-                        filteredPenyes.length > 0 ? (
-                          filteredPenyes.map((penya) => (
-                            <AdminSingleProvaResult key={penya.penyaId} provaResultSummary={penya} />
-                          ))
-                        ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
-                      )}
-                  </div>
-                </>
+                provaInfo.challengeType === "Rondes" ? (
+                  <AdminBracketPanel year={selectedYear} prova={provaInfo} />
+                ) : (
+                  <>
+                    <Input className="p-4 mb-4" type="search" value={penyesSearch} placeholder="Buscar penya..." onChange={(e) => setPenyesSearch(e.target.value)}/>
+                    <div className="grid grid-cols-[repeat(auto-fit,_minmax(300px,_1fr))] gap-3 w-full">
+                        {isProvaLoading ? (
+                          <LoadingAnimation />
+                        ) : (
+                          filteredPenyes.length > 0 ? (
+                            filteredPenyes.map((penya) => (
+                              <AdminSingleProvaResult key={penya.penyaId} provaResultSummary={penya} />
+                            ))
+                          ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
+                        )}
+                    </div>
+                  </>
+                )
               ) : (
                 <div className="p-3.5 flex flex-col items-end justify-start ">
                   {isProvaLoading ? (

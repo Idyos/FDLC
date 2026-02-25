@@ -13,7 +13,6 @@ import Penyes from './pages/admin/Penyes';
 import Proves from './pages/admin/Proves';
 import { YearProvider } from './components/shared/Contexts/YearContext';
 import CreateProva from './pages/admin/createProva/createProva';
-import BracketTest from './pages/public/BracketTestPackage/BracketTest';
 import MainPage from './pages/public/MainPage/mainPage';
 import ProvaPage from './pages/public/ProvaPage/provaPage';
 import { AdminRoutes } from './routes/admin/AdminRoutes';
@@ -36,7 +35,6 @@ export default function App() {
           <Route path="/" element={<MainPage />} />
           <Route path="/penya" element={<PenyaPage />} />
           <Route path="/prova" element={<ProvaPage />} />
-          <Route path="/bracket" element={<BracketTest />} />
 
           {/* Admin */}
           <Route path="/admin/login" element={<Login />} />

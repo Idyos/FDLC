@@ -78,6 +78,24 @@ export default function AdminFooter() {
     }
   };
 
+  if (prova.challengeType === "Rondes") {
+    return (
+      <footer
+        className="
+          z-30 fixed bottom-0 right-0 bg-black py-4 flex flex-col items-end gap-2 p-5
+          w-full rounded-none
+          md:w-auto md:rounded-tl-3xl
+        "
+      >
+        <p className="text-sm text-white text-right max-w-md">
+          El tancament automatic de proves de Rondes esta deshabilitat en aquesta
+          versio.
+        </p>
+        <Button disabled>Tancar prova no disponible</Button>
+      </footer>
+    );
+  }
+
   return (
     <>
       {/* ALERTA */}
