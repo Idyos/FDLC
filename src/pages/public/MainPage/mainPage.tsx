@@ -32,6 +32,7 @@ export default function MainPage() {
               {isLoading ? (
                 <LoadingAnimation />
               ) : (
+                rankings.length > 0 ? (
                 <DynamicList
                   items={rankings}
                   renderItem={(item, index) => (
@@ -42,7 +43,9 @@ export default function MainPage() {
                   )}
                   breakIndex={10}
                 />
-              )}
+              ) : (
+                <p className="text-gray-500 dark:text-gray-400">{year === new Date().getFullYear() ? "Encara no hi han penyes afegides per aquest any." : `No s'han afegit penyes per a l'any ${year}.`}</p>
+              ))}
             </div>
           </div>
         </>
@@ -57,10 +60,13 @@ export default function MainPage() {
               {isLoading ? (
                 <LoadingAnimation />
               ) : (
+                proves.length > 0 ? (
                 proves.map((item, index) => {
                   return <ProvaSummaryCard key={index} provaSummary={item} />;
                 })
-              )}
+              ) : (
+                <p className="text-gray-500 dark:text-gray-400">{year === new Date().getFullYear() ? "Encara no hi han proves afegides per aquest any." : `No s'han afegit proves per a l'any ${year}.`}</p>
+              ))}
             </div>
           </div>
         </>

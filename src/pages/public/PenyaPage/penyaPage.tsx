@@ -51,7 +51,7 @@ export default function PenyaPage() {
                 penyaInfo.current = penyaInfoResult;
                 document.title = `${penyaInfo.current.name} ${selectedYear}`;
 
-                getPenyaProvesRealTime(selectedYear, penyaId, (data) => {                    
+                getPenyaProvesRealTime(selectedYear, penyaId, (data) => {
                     setPenyaProves(data);
                     setIsProvesLoading(false);
                 });
@@ -90,7 +90,7 @@ export default function PenyaPage() {
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                <AlertDialogCancel>D'acord</AlertDialogCancel>
+                <AlertDialogCancel onClick={() => navigate(`/`)}>D'acord</AlertDialogCancel>
                 {selectedYear == previousSelectedYear ? null : <AlertDialogAction onClick={() => setSelectedYear(previousSelectedYear)}>Tornar a l'any anterior</AlertDialogAction>}
                 </AlertDialogFooter>
             </AlertDialogContent>
@@ -127,10 +127,15 @@ export default function PenyaPage() {
                     </div>
                 ))
                 ) : (
+                    selectedYear === new Date().getFullYear() ? (
+                    <p className="text-center text-gray-500 dark:text-gray-400">
+                        Aquesta penya encara no ha participat en cap prova aquest any.
+                    </p>
+                    ) : (
                 <p className="text-center text-gray-500 dark:text-gray-400">
-                    Aquesta penya no ha participat en cap prova aquest any.
+                    No hi ha informació de proves per aquest any.
                 </p>
-))}
+                )))}
               </div>
             </div>
         </>

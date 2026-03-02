@@ -4,8 +4,6 @@ import { db } from "../../firebase/firebase";
 import { collection, getDocs, query, onSnapshot, orderBy, doc, Unsubscribe } from "firebase/firestore";
 import { toast } from "sonner";
 
-
-
 export const getYears = async (
   onSuccess: (data: number[]) => void,
   onError?: (error: unknown) => void
@@ -15,6 +13,9 @@ export const getYears = async (
   return getDocs(yearsRef)
     .then((snapshot) => {
       const years = snapshot.docs.map((doc) => parseInt(doc.id));
+      
+      if(!years.includes(new Date().getFullYear())) years.push(new Date().getFullYear());
+      
       onSuccess(years);
     })
     .catch((error) => {
@@ -37,7 +38,11 @@ export const getRankingRealTime = (
 
   // 🔁 Función que recalcula el ranking combinando penyes + results
   const recomputeRanking = () => {
-    if (penyes.length === 0) return;
+    if (penyes.length === 0) 
+    {
+      callback([]);
+      return;
+    }
 
     const penyaPoints = new Map<string, ChallengeResult[]>();
     resultsDocs.forEach((resultPenya) => {
@@ -327,6 +332,12 @@ export const getPenyaProvesRealTime = (
 
   // 🔹 1️⃣ Escuchar todas las proves
   const unsubscribeProves = onSnapshot(provesRef, (snapshot) => {
+    console.log("Received snapshot for proves:", snapshot.docs);
+    if(snapshot.docs.length === 0){
+      callback([]);
+      return;
+    }
+
     snapshot.docs.forEach((provaDoc) => {
       const provaId = provaDoc.id;
       const provaData = provaDoc.data();
