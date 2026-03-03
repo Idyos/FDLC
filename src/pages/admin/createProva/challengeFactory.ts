@@ -62,6 +62,8 @@ export function buildChallenge(data: CreateChallenge): Prova {
   }));
 
   challenge.pointsRange = normalizePointsRange(data.pointsRange);
+  challenge.intervalMinutes = data.intervalMinutes;
+  challenge.maxPenyesPerSlot = data.maxPenyesPerSlot;
 
   return challenge;
 }

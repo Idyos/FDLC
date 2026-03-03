@@ -160,6 +160,8 @@ export const getProvaInfoRealTime = (
     prova.winDirection = d.winDirection || null;
     prova.location = d.location || undefined;
     prova.pointsRange = d.pointsRange || [];
+    prova.intervalMinutes = d.intervalMinutes ?? undefined;
+    prova.maxPenyesPerSlot = d.maxPenyesPerSlot ?? undefined;
 
     if (sort && oldWinDir !== prova.winDirection) {
       if (unsubParticipants) unsubParticipants();
@@ -191,6 +193,7 @@ export const getProvaInfoRealTime = (
                 : d.result != null
                 ? Number(d.result)
                 : undefined,
+            participationTime: d.participationTime?.toDate?.() ?? null,
           };
 
           if (!penya.participates) return;

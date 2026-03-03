@@ -14,6 +14,8 @@ export const fieldStepMap: Record<keyof CreateChallenge, number> = {
   location: 0,
   startDate: 0,
   endDate: 0,
+  intervalMinutes: 0,
+  maxPenyesPerSlot: 0,
   challengeType: 1,
   winDirection: 1,
   penyes: 1,
@@ -49,6 +51,9 @@ export const createChallengeSchema = z.object({
       invalid_type_error: "La data d'inici ha de ser una cadena de text",
       }),
   endDate: z.date().optional(),
+
+  intervalMinutes: z.number().int().positive().optional(),
+  maxPenyesPerSlot: z.number().int().positive().optional(),
 
   challengeType: z.enum(provaTypes, {
     required_error: "El tipus de prova és obligatori",

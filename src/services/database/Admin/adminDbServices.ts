@@ -33,6 +33,8 @@ export const getProves = async (
       prova.location = d.location || undefined;
       prova.pointsRange = d.pointsRange || [];
       prova.penyes = Array.isArray(d.penyes) ? d.penyes : [];
+      prova.intervalMinutes = d.intervalMinutes ?? undefined;
+      prova.maxPenyesPerSlot = d.maxPenyesPerSlot ?? undefined;
 
       return prova;
     });
@@ -67,6 +69,8 @@ export const createProva = async (
           pointsRange: data.pointsRange,
           winDirection: data.winDirection ?? null,
           isFinished: false,
+          intervalMinutes: data.intervalMinutes ?? null,
+          maxPenyesPerSlot: data.maxPenyesPerSlot ?? null,
         });
 
         data.penyes.forEach((penyaInfo) => {
@@ -80,11 +84,13 @@ export const createProva = async (
             penyaName: string;
             participates: boolean;
             result?: number;
+            participationTime: null;
           } = {
             penyaId: penyaInfo.penyaId,
             penyaName: penyaInfo.name,
             participates: penyaInfo.participates,
             result: -1,
+            participationTime: null,
           }
 
           batch.set(participantRef, participantObject);
@@ -98,6 +104,23 @@ export const createProva = async (
         toast.error("Error al crear la prova: " + error);
         if (onError) onError(error);
       }
+};
+
+export const updateParticipationTime = async (
+  provaReference: string,
+  penyaId: string,
+  time: Date | null,
+  successCallback?: () => void,
+  errorCallback?: (error: unknown) => void
+) => {
+  const participantRef = doc(db, provaReference, "Participants", penyaId);
+  try {
+    await updateDoc(participantRef, { participationTime: time ?? null });
+    successCallback?.();
+  } catch (error) {
+    console.error("Error updating participation time:", error);
+    errorCallback?.(error);
+  }
 };
 
 export const updateProvaTimeResult = async (
@@ -151,6 +174,8 @@ export async function getProvaInfo(
   prova.winDirection = d.winDirection || "NONE";
   prova.location = d.location || undefined;
   prova.pointsRange = Array.isArray(d.pointsRange) ? d.pointsRange : [];
+  prova.intervalMinutes = d.intervalMinutes ?? undefined;
+  prova.maxPenyesPerSlot = d.maxPenyesPerSlot ?? undefined;
   prova.penyes = [];
 
   // 🔹 Cargar participantes
@@ -164,20 +189,22 @@ export async function getProvaInfo(
         penyaName: r.penyaName ?? "",
         penyaId: r.penyaId ?? p.id,
         result: r.result ?? 0,
+        participationTime: r.participationTime?.toDate?.() ?? null,
       };
     })
     .filter((p) => p.participates);
 
   // 🔹 Convertir a objetos ProvaResultData
   const results: ParticipatingPenya[] = participants.map(
-    (p, index) =>{
+    (p, index) => {
       return {
         penyaId: p.penyaId,
         name: p.penyaName,
         index: index + 1,
         participates: p.participates,
         result: p.result,
-      }
+        participationTime: p.participationTime,
+      };
     }
   );
 

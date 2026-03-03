@@ -26,6 +26,27 @@ import { isAdmin } from "@/services/authService";
 import SingleProvaResultGrid from "@/components/shared/PenyaProvaResults/singleProvaResultGrid";
 import { Input } from "@/components/ui/input";
 
+function computeSlotStatuses(
+  penyes: ParticipatingPenya[],
+  intervalMinutes: number,
+  maxPenyesPerSlot: number,
+  startDate: Date
+): Record<string, 'ok' | 'overflow'> {
+  const groups: Record<number, string[]> = {};
+  penyes.forEach((p) => {
+    if (!p.participationTime) return;
+    const diffMins = (p.participationTime.getTime() - startDate.getTime()) / 60000;
+    const slot = Math.floor(diffMins / intervalMinutes);
+    (groups[slot] ??= []).push(p.penyaId);
+  });
+  const out: Record<string, 'ok' | 'overflow'> = {};
+  Object.values(groups).forEach((group) => {
+    const status = group.length > maxPenyesPerSlot ? 'overflow' : 'ok';
+    group.forEach((id) => (out[id] = status));
+  });
+  return out;
+}
+
 export default function ProvaPage() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -34,8 +55,9 @@ export default function ProvaPage() {
     const admin = isAdmin();
 
     const setProva = useProvaStore((state) => state.setProva);
-    const [penyesSearch, setPenyesSearch] = useState("");    
+    const [penyesSearch, setPenyesSearch] = useState("");
     const [filteredPenyes, setFilteredPenyes] = useState<ParticipatingPenya[]>([]);
+    const [slotStatuses, setSlotStatuses] = useState<Record<string, 'ok' | 'overflow'>>({});
 
     const [noProvaAlert, setNoProbaAlert] = useState(false);
     const [provaInfo, setProvaInfo] = useState<Prova>(new EmptyProva());
@@ -50,6 +72,21 @@ export default function ProvaPage() {
         );
         setFilteredPenyes(newFilteredPenyes);
     }, [penyesSearch, provaInfo.penyes]);
+
+    useEffect(() => {
+        if (provaInfo.intervalMinutes && provaInfo.maxPenyesPerSlot) {
+            setSlotStatuses(
+                computeSlotStatuses(
+                    provaInfo.penyes,
+                    provaInfo.intervalMinutes,
+                    provaInfo.maxPenyesPerSlot,
+                    provaInfo.startDate
+                )
+            );
+        } else {
+            setSlotStatuses({});
+        }
+    }, [provaInfo.penyes, provaInfo.intervalMinutes, provaInfo.maxPenyesPerSlot]);
 
   useEffect(() => {
     setIsProvaLoading(true);
@@ -136,7 +173,7 @@ export default function ProvaPage() {
                       ) : (
                         filteredPenyes.length > 0 ? (
                           filteredPenyes.map((penya) => (
-                            <AdminSingleProvaResult key={penya.penyaId} provaResultSummary={penya} />
+                            <AdminSingleProvaResult key={penya.penyaId} provaResultSummary={penya} slotStatus={slotStatuses[penya.penyaId] ?? 'none'} />
                           ))
                         ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
                       )}

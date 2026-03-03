@@ -66,11 +66,12 @@ export class PenyaInfo extends BaseEntity {
 
 //#region 🧭 Proves base
 export interface ParticipatingPenya {
-  penyaId: string; 
+  penyaId: string;
   name: string;
   index?: number;
   participates: boolean;
   result?: number;
+  participationTime?: Date | null;
 }
 
 export class ProvaSummary extends BaseEntity {
@@ -79,8 +80,10 @@ export class ProvaSummary extends BaseEntity {
   startDate: Date;
   finishDate?: Date;
   challengeType: ProvaType;
-  isFinished: boolean;  
+  isFinished: boolean;
   isSecret: boolean;
+  intervalMinutes?: number;
+  maxPenyesPerSlot?: number;
 
   constructor(
     id: string = "",
