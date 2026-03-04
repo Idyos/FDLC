@@ -222,6 +222,39 @@ export async function getProvaInfo(
   return prova;
 }
 
+export const updateProvaScheduleConfig = async (
+  provaReference: string,
+  intervalMinutes: number,
+  maxPenyesPerSlot: number
+) => {
+  const provaRef = doc(db, provaReference);
+  await updateDoc(provaRef, { intervalMinutes, maxPenyesPerSlot });
+};
+
+export const clearAllParticipationTimes = async (
+  provaReference: string,
+  penyaIds: string[]
+) => {
+  const batch = writeBatch(db);
+  penyaIds.forEach((id) => {
+    const ref = doc(db, provaReference, "Participants", id);
+    batch.update(ref, { participationTime: null });
+  });
+  await batch.commit();
+};
+
+export const batchUpdateParticipationTimes = async (
+  provaReference: string,
+  assignments: { penyaId: string; time: Date | null }[]
+) => {
+  const batch = writeBatch(db);
+  assignments.forEach(({ penyaId, time }) => {
+    const ref = doc(db, provaReference, "Participants", penyaId);
+    batch.update(ref, { participationTime: time ?? null });
+  });
+  await batch.commit();
+};
+
 //#endregion
 
 //#region PENYES

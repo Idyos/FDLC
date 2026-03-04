@@ -3,7 +3,7 @@ import {
 } from "@/interfaces/interfaces";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { updateProvaTimeResult, updateParticipationTime } from "@/services/database/Admin/adminDbServices";
+import { updateProvaTimeResult } from "@/services/database/Admin/adminDbServices";
 import { TimeRollingInput } from "@/components/shared/PenyaProvaResults/TimeInput/timeInput";
 import { PointsInput } from "@/components/shared/PenyaProvaResults/PointsInput/pointsInput";
 import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
@@ -15,23 +15,16 @@ interface SingleProvaSummaryProp {
   slotStatus?: 'ok' | 'overflow' | 'none';
 }
 
-export default function AdminSingleProvaResult({ provaResultSummary, slotStatus = 'none' }: SingleProvaSummaryProp) {
+export default function AdminSingleProvaResult({ provaResultSummary}: SingleProvaSummaryProp) {
   const prova = useProvaStore((state) => state.prova);
 
   const prevSeconds = useRef(provaResultSummary.result);
   const [value, setValue] = useState(provaResultSummary.result);
-  const [participationTime, setParticipationTime] = useState<Date | null>(
-    provaResultSummary.participationTime ?? null
-  );
 
   useEffect(() => {
     prevSeconds.current = provaResultSummary.result;
     setValue(provaResultSummary.result);
   }, [provaResultSummary.penyaId, provaResultSummary.result]);
-
-  useEffect(() => {
-    setParticipationTime(provaResultSummary.participationTime ?? null);
-  }, [provaResultSummary.penyaId, provaResultSummary.participationTime]);
 
   const renderInput = () => {
     switch (prova.challengeType) {
@@ -83,26 +76,9 @@ export default function AdminSingleProvaResult({ provaResultSummary, slotStatus 
     }
   };
 
-  const handleParticipationTimeBlur = (time: Date | null) => {
-    if (prova.isFinished) {
-      toast.error("La prova està finalitzada! Has de reobrir-la per modificar els resultats.");
-      return;
-    }
-    updateParticipationTime(prova.reference, provaResultSummary.penyaId, time);
-  };
-
-  const borderClass =
-    slotStatus === 'overflow' ? 'border-2 border-red-500' :
-    slotStatus === 'ok'       ? 'border-2 border-green-500' :
-    '';
-
-  const timeValue = participationTime
-    ? `${String(participationTime.getHours()).padStart(2, '0')}:${String(participationTime.getMinutes()).padStart(2, '0')}`
-    : '';
-
   return (
     <motion.div
-      className={`relative w-full rounded-2xl overflow-hidden shadow-lg mb-6 cursor-pointer ${borderClass}`}
+      className={`relative w-full rounded-2xl overflow-hidden shadow-lg mb-6 cursor-pointer`}
       whileHover={{ scale: 1.02 }}
     >
       {/* Contenido */}
@@ -113,27 +89,6 @@ export default function AdminSingleProvaResult({ provaResultSummary, slotStatus 
         <div>
           {renderInput()}
         </div>
-        {prova.intervalMinutes != null && (
-          <div className="flex items-center gap-2 mt-2 w-full">
-            <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Hora:</span>
-            <input
-              type="time"
-              className="border rounded px-2 py-1 text-sm bg-transparent dark:text-white dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-400"
-              value={timeValue}
-              onChange={(e) => {
-                if (!e.target.value) {
-                  setParticipationTime(null);
-                  return;
-                }
-                const [h, m] = e.target.value.split(':').map(Number);
-                const d = new Date(prova.startDate);
-                d.setHours(h, m, 0, 0);
-                setParticipationTime(d);
-              }}
-              onBlur={() => handleParticipationTimeBlur(participationTime)}
-            />
-          </div>
-        )}
       </div>
     </motion.div>
   );

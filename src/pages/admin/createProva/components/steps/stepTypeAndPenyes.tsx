@@ -48,6 +48,48 @@ export default function StepTypeAndPenyes({
         )}
       </div>
 
+      {(challengeType === "Temps" || challengeType === "Participació") && (
+        <div className="flex flex-row space-x-8">
+          <FormField name="intervalMinutes" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Interval entre torns (min):</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="p. ex. 20"
+                  value={field.value ?? ""}
+                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          <FormField name="maxPenyesPerSlot" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Penyes simultànies màximes:</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="p. ex. 4"
+                  value={field.value ?? ""}
+                  onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
+      )}
+
       {(!challengeType || challengeType === "Participació")
         ? null
         : (

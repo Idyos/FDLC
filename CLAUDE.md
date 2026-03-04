@@ -79,3 +79,10 @@ Firebase is initialised in `src/firebase/firebase.ts` using `VITE_FIREBASE_*` en
 - **Forms:** react-hook-form + Zod for validation.
 - **Animations:** Framer Motion for transitions.
 - **Icons:** Lucide React.
+
+## Development Workflow & Expectations
+
+- **Clarification First:** If a request or feature specification is ambiguous, incomplete, or has potential edge cases (e.g., impact on existing Firestore schemas, polymorphic `Prova` types, or shared logic between Admin/Public), **ask for clarification before writing code.**
+- **Impact Analysis:** Before implementing a feature, briefly explain how it affects the `Admin` vs `Public` split and if any database schema changes are required.
+- **Strict Typing:** Always prioritize TypeScript interfaces from `src/interfaces/`. If a change requires a new type, define it there first.
+- **Safety:** When modifying Firebase services, ensure the changes respect the `{year}` pathing logic from `YearContext`.

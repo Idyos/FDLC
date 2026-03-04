@@ -18,9 +18,12 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Ban, Check, Loader, Plus } from "lucide-react";
 import { addPenyes } from "@/services/database/Admin/adminDbServices";
+import { useYear } from "@/components/shared/Contexts/YearContext";
 
 
 export default function AdminAddPenya() {
+    const { selectedYear } = useYear();
+
     const { theme } = useTheme();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [penyesNames, setPenyesNames] = useState<string[]>([]);
@@ -130,7 +133,7 @@ export default function AdminAddPenya() {
           const penyesState = penyesNames.map(() => "2");
           setUpdatePenyesNamesState(penyesState);
       
-          addPenyes(2025, penyesNames, (results) => {
+          addPenyes(selectedYear, penyesNames, (results) => {
             const updatedStates = results.map(success => (success ? "1" : "0"));
             setUpdatePenyesNamesState(updatedStates);
       
