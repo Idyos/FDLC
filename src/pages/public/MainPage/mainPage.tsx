@@ -1,5 +1,4 @@
 import PenyaSummary from "@/components/public/penyaSummary";
-import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { PenyaInfo, PenyaProvaSummary} from "@/interfaces/interfaces";
 import { getProvesRealTime, getRankingRealTime } from "@/services/database/publicDbService";
@@ -10,17 +9,23 @@ import ProvaSummaryCard from "@/components/public/provaSummary";
 import DynamicList from "@/components/shared/dynamicList";
 import PenyaSummaryGrid from "@/components/public/penyaSummaryGrid";
 import LoadingAnimation from "@/components/shared/loadingAnim";
+import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
+import { Separator } from "@/components/ui/separator";
 
 export default function MainPage() {
   const previousRankingsRef = useRef<PenyaInfo[]>([]);
   const [rankings, setRankings] = useState<PenyaInfo[]>([]);
   const [proves, setProves] = useState<PenyaProvaSummary[]>([]);
-//   const [comunicats, setComunicats] = useState<any[]>([]);
   const { selectedYear: year } = useYear();
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<number>(0);
+  const { favoritePenyes } = useFavoritePenyes();
 
   const unsubscribeRef = useRef<null | (() => void)>(null);
+
+  const favoriteRankings = rankings.filter((r) => favoritePenyes.some((f) => f.id === r.id));
+  const missingFavorites = favoritePenyes.filter((f) => !rankings.some((r) => r.id === f.id));
+  const hasFavoritesSection = favoritePenyes.length > 0 && !isLoading;
 
   const steps = [
     {
@@ -33,19 +38,40 @@ export default function MainPage() {
                 <LoadingAnimation />
               ) : (
                 rankings.length > 0 ? (
-                <DynamicList
-                  items={rankings}
-                  renderItem={(item, index) => (
-                    <PenyaSummary key={index} rankingInfo={item} />
-                  )}
-                  renderGridItem={(item, index) => (
-                    <PenyaSummaryGrid key={index} rankingInfo={item} />
-                  )}
-                  breakIndex={10}
-                />
-              ) : (
-                <p className="text-gray-500 dark:text-gray-400">{year === new Date().getFullYear() ? "Encara no hi han penyes afegides per aquest any." : `No s'han afegit penyes per a l'any ${year}.`}</p>
-              ))}
+                  <>
+                    {hasFavoritesSection && (
+                      <>
+                        <div className="w-full">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                            Les teves penyes
+                          </p>
+                          {favoriteRankings.map((item) => (
+                            <PenyaSummary key={item.id} rankingInfo={item} />
+                          ))}
+                          {missingFavorites.map((f) => (
+                            <p key={f.id} className="text-sm text-muted-foreground italic px-1 py-1">
+                              {f.name} no té dades per a l'any {year}
+                            </p>
+                          ))}
+                        </div>
+                        <Separator className="my-3" />
+                      </>
+                    )}
+                    <DynamicList
+                      items={rankings}
+                      renderItem={(item, index) => (
+                        <PenyaSummary key={index} rankingInfo={item} />
+                      )}
+                      renderGridItem={(item, index) => (
+                        <PenyaSummaryGrid key={index} rankingInfo={item} />
+                      )}
+                      breakIndex={10}
+                    />
+                  </>
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400">{year === new Date().getFullYear() ? "Encara no hi han penyes afegides per aquest any." : `No s'han afegit penyes per a l'any ${year}.`}</p>
+                )
+              )}
             </div>
           </div>
         </>
@@ -86,7 +112,7 @@ export default function MainPage() {
     unsubscribeRef.current?.();
     unsubscribeRef.current = null;
     setIsLoading(true);
-    
+
     //Ranking
     if (selectedTab === 0) {
       document.title = `Ranking ${year}`;
@@ -108,7 +134,7 @@ export default function MainPage() {
       unsubscribeRef.current = unsubscribe;
     }
     //Comunicats
-    else if(selectedTab === 2) { 
+    else if(selectedTab === 2) {
       document.title = `Comunicats ${year}`;
     }
 
@@ -120,7 +146,6 @@ export default function MainPage() {
 
   return (
     <>
-      <YearSelector />
       <Tabs
         defaultValue={steps[0].title}
         value={steps[selectedTab].title}
@@ -152,19 +177,6 @@ export default function MainPage() {
           {steps[selectedTab].content}
         </motion.div>
       </AnimatePresence>
-
-      {/* <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
-        <PageTitle title="Ranking" image="" />
-        <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
-          {isLoading ? (
-            <p className="text-gray-500 dark:text-gray-400">Cargando...</p>
-          ) : (
-            rankings.map((item, index) => {
-              return <PenyaSummary key={index} rankingInfo={item} />;
-            })
-          )}
-        </div>
-      </div> */}
     </>
   );
 }

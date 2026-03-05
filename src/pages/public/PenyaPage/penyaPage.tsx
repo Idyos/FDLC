@@ -1,4 +1,3 @@
-import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { PenyaInfo, PenyaProvaSummary } from "@/interfaces/interfaces";
 import { getPenyaInfoRealTime, getPenyaProvesRealTime } from "@/services/database/publicDbService";
@@ -95,7 +94,6 @@ export default function PenyaPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-            <YearSelector />
             <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
                 {isPenyaLoading ? <LoadingAnimation /> : <PenyaTitle {...penyaInfo.current} />}
               <div className="flex m-1 p-2 flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">

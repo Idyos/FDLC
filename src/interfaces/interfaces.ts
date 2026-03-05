@@ -1,3 +1,8 @@
+export interface FavoritePenya {
+  id: string;
+  name: string;
+}
+
 //#region 🔹 Tipos y constantes base
 
 export const winDirections = ["NONE", "ASC", "DESC"] as const;

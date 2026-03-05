@@ -1,4 +1,3 @@
-import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { getProvaInfoRealTime } from "@/services/database/publicDbService";
 import { useEffect, useState } from "react";
@@ -30,6 +29,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import AdminHoraris from "@/components/admin/Proves/Horaris/adminHoraris";
 import PublicHoraris from "@/components/public/Horaris/publicHoraris";
 import { SortMode, sortPenyes } from "@/utils/sorting";
+import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
+import { Separator } from "@/components/ui/separator";
 
 function computeSlotStatuses(
   penyes: ParticipatingPenya[],
@@ -75,6 +76,48 @@ function SortSelector({ provaInfo, sortMode, setSortMode }: {
         )}
       </SelectContent>
     </Select>
+  );
+}
+
+function PublicResultsList({ penyes }: { penyes: ParticipatingPenya[] }) {
+  const { favoritePenyes } = useFavoritePenyes();
+
+  const favoriteItems = penyes.filter((p) => favoritePenyes.some((f) => f.id === p.penyaId));
+  const missingFavorites = favoritePenyes.filter((f) => !penyes.some((p) => p.penyaId === f.id));
+  const hasFavoritesSection = favoritePenyes.length > 0;
+
+  if (penyes.length === 0) {
+    return <p>No s'han trobat penyes per a aquesta prova.</p>;
+  }
+
+  return (
+    <div className="w-full">
+      {hasFavoritesSection && (
+        <>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+            Les teves penyes
+          </p>
+          {favoriteItems.map((p) => (
+            <SingleProvaResult key={p.penyaId} provaResultSummary={p} />
+          ))}
+          {missingFavorites.map((f) => (
+            <p key={f.id} className="text-sm text-muted-foreground italic px-1 py-1">
+              {f.name} no participa en aquesta prova
+            </p>
+          ))}
+          <Separator className="my-3" />
+        </>
+      )}
+      <DynamicList
+        items={penyes}
+        renderItem={(provaResultSummary) => (
+          <SingleProvaResult key={provaResultSummary.penyaId} provaResultSummary={provaResultSummary} />
+        )}
+        renderGridItem={(item, index) => (
+          <SingleProvaResultGrid key={index} provaResultSummary={item} />
+        )}
+      />
+    </div>
   );
 }
 
@@ -193,7 +236,6 @@ export default function ProvaPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-            <YearSelector />
             <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
               <ProvaTitle />
 
@@ -225,22 +267,7 @@ export default function ProvaPage() {
                         {isProvaLoading ? (
                           <LoadingAnimation />
                         ) : (
-                          provaInfo.penyes.length > 0 ? (
-                            <DynamicList
-                              items={provaInfo.penyes}
-                              renderItem={(provaResultSummary) => (
-                                <SingleProvaResult
-                                  key={provaResultSummary.penyaId}
-                                  provaResultSummary={provaResultSummary}
-                                />
-                              )}
-                              renderGridItem={(item, index) => (
-                                <SingleProvaResultGrid key={index} provaResultSummary={item} />
-                              )}
-                            />
-                          ) : (
-                            <p>No s'han trobat penyes per a aquesta prova.</p>
-                          )
+                          <PublicResultsList penyes={provaInfo.penyes} />
                         )}
                       </div>
                     )}
@@ -291,22 +318,7 @@ export default function ProvaPage() {
                       {isProvaLoading ? (
                         <LoadingAnimation />
                       ) : (
-                        provaInfo.penyes.length > 0 ? (
-                          <DynamicList
-                            items={provaInfo.penyes}
-                            renderItem={(provaResultSummary) => (
-                              <SingleProvaResult
-                                key={provaResultSummary.penyaId}
-                                provaResultSummary={provaResultSummary}
-                              />
-                            )}
-                            renderGridItem={(item, index) => (
-                              <SingleProvaResultGrid key={index} provaResultSummary={item} />
-                            )}
-                          />
-                        ) : (
-                          <p>No s'han trobat penyes per a aquesta prova.</p>
-                        )
+                        <PublicResultsList penyes={provaInfo.penyes} />
                       )}
                     </div>
                   )}

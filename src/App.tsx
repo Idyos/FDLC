@@ -1,6 +1,5 @@
 import './App.css';
 import { ThemeProvider } from './components/Theme/theme-provider';
-import { ModeToggle } from './components/Theme/mode-toggle';
 import { Routes, Route } from 'react-router-dom';
 
 // Páginas públicas
@@ -17,37 +16,41 @@ import MainPage from './pages/public/MainPage/mainPage';
 import ProvaPage from './pages/public/ProvaPage/provaPage';
 import { AdminRoutes } from './routes/admin/AdminRoutes';
 import { AuthProvider } from './routes/admin/AuthContext';
+import { FavoritePenyesProvider } from './components/shared/Contexts/FavoritePenyesContext';
+import PublicHeader from './components/public/PublicHeader/publicHeader';
 
-// Protección de rutas
-// import { AdminRoutes } from './routes/admin/AdminRoutes';
+function PublicLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <PublicHeader />
+      {children}
+    </>
+  );
+}
 
 export default function App() {
-  // const location = useLocation();
-  // const isAdminRoute = location.pathname.startsWith('/admin');
-
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <AuthProvider>
         <YearProvider>
-        <ModeToggle />
-        <Routes>
-          {/* Public */}
-          <Route path="/" element={<MainPage />} />
-          <Route path="/penya" element={<PenyaPage />} />
-          <Route path="/prova" element={<ProvaPage />} />
+          <FavoritePenyesProvider>
+            <Routes>
+              {/* Public */}
+              <Route path="/" element={<PublicLayout><MainPage /></PublicLayout>} />
+              <Route path="/penya" element={<PublicLayout><PenyaPage /></PublicLayout>} />
+              <Route path="/prova" element={<PublicLayout><ProvaPage /></PublicLayout>} />
 
-          {/* Admin */}
-          <Route path="/admin/login" element={<Login />} />
-          <Route path="/admin" element={<AdminRoutes><Dashboard /></AdminRoutes>} />
-          <Route path="/admin/penyes" element={<AdminRoutes><Penyes /></AdminRoutes>} />
-          <Route path="/admin/proves" element={<AdminRoutes><Proves /></AdminRoutes>} />
-          <Route path="/admin/prova" element={<AdminRoutes><ProvaPage /></AdminRoutes>} />
-          <Route path="/admin/createProva" element={<AdminRoutes><CreateProva /></AdminRoutes>} />
-
-        </Routes>
+              {/* Admin */}
+              <Route path="/admin/login" element={<Login />} />
+              <Route path="/admin" element={<AdminRoutes><Dashboard /></AdminRoutes>} />
+              <Route path="/admin/penyes" element={<AdminRoutes><Penyes /></AdminRoutes>} />
+              <Route path="/admin/proves" element={<AdminRoutes><Proves /></AdminRoutes>} />
+              <Route path="/admin/prova" element={<AdminRoutes><ProvaPage /></AdminRoutes>} />
+              <Route path="/admin/createProva" element={<AdminRoutes><CreateProva /></AdminRoutes>} />
+            </Routes>
+          </FavoritePenyesProvider>
         </YearProvider>
       </AuthProvider>
     </ThemeProvider>
-
   );
 }

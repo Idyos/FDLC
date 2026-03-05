@@ -29,6 +29,7 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
     navigateWithQuery(navigate, "/prova", { provaId: provaSummary.id }); 
   };
 
+
   return (
     <motion.div
       onClick={handleClick}
