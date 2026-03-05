@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Prova, ParticipatingPenya } from "@/interfaces/interfaces";
+import { SortMode } from "@/utils/sorting";
 import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
 import {
   updateParticipationTime,
@@ -56,10 +57,11 @@ function formatTime(date: Date | null | undefined): string {
 
 interface Props {
   prova: Prova;
+  sortMode: SortMode;
   onProvaConfigUpdated: (intervalMinutes: number, maxPenyesPerSlot: number) => void;
 }
 
-export default function AdminHoraris({ prova, onProvaConfigUpdated }: Props) {
+export default function AdminHoraris({ prova, sortMode, onProvaConfigUpdated }: Props) {
   const setProva = useProvaStore((state) => state.setProva);
 
   const [localInterval, setLocalInterval] = useState(prova.intervalMinutes ?? 0);
@@ -179,12 +181,21 @@ export default function AdminHoraris({ prova, onProvaConfigUpdated }: Props) {
   };
 
   const sortedPenyes = [...prova.penyes].sort((a, b) => {
-    const aTime = committedTimes[a.penyaId] ?? "";
-    const bTime = committedTimes[b.penyaId] ?? "";
-    if (!aTime && !bTime) return a.name.localeCompare(b.name);
-    if (!aTime) return 1;
-    if (!bTime) return -1;
-    return aTime.localeCompare(bTime);
+    switch (sortMode) {
+      case "name-asc":    return a.name.localeCompare(b.name);
+      case "name-desc":   return b.name.localeCompare(a.name);
+      case "result-asc":  return (a.result ?? 0) - (b.result ?? 0);
+      case "result-desc": return (b.result ?? 0) - (a.result ?? 0);
+      case "time-asc":
+      case "time-desc": {
+        const aTime = committedTimes[a.penyaId] ?? "";
+        const bTime = committedTimes[b.penyaId] ?? "";
+        if (!aTime && !bTime) return a.name.localeCompare(b.name);
+        if (!aTime) return 1;
+        if (!bTime) return -1;
+        return sortMode === "time-asc" ? aTime.localeCompare(bTime) : bTime.localeCompare(aTime);
+      }
+    }
   });
 
   return (
