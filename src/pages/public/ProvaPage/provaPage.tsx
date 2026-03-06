@@ -218,7 +218,7 @@ export default function ProvaPage() {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [selectedYear, admin]);
+  }, [selectedYear, admin, provaId]);
 
     return (
         <>

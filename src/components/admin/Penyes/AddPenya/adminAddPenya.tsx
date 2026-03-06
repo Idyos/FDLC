@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/components/Theme/theme-provider";
-import { useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Ban, Check, Loader, Plus } from "lucide-react";
@@ -21,7 +21,7 @@ import { addPenyes } from "@/services/database/Admin/adminDbServices";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 
 
-export default function AdminAddPenya() {
+export default function AdminAddPenya({ triggerElement }: { triggerElement?: ReactNode } = {}) {
     const { selectedYear } = useYear();
 
     const { theme } = useTheme();
@@ -189,6 +189,99 @@ export default function AdminAddPenya() {
 //     setIsDialogOpen(false);
 //   }
 
+  const dialogContent = (
+    <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>Crear penya/es</DialogTitle>
+      </DialogHeader>
+      <DialogDescription>
+        Aquí pots crear penyes d'una en una o si ho tens, amb un excel. Els noms de les penyes han d'estar a la primera columna de l'excel.
+      </DialogDescription>
+      <div className="grid gap-4 py-4">
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="name" className="text-right">
+            Afegir llista de penyes
+          </Label>
+          <Input
+            type="file"
+            id="name"
+            className="col-span-3"
+            onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onFileAdded(file);
+            }}
+            />
+        </div>
+      </div>
+      <div className="max-h-[35vh] overflow-y-auto">
+            {penyesNames.map((penya, index) => (
+                <div key={index} className="flex flex-row items-center gap-4 mb-2">
+                  <Badge variant="outline" className="hover: cursor-pointer" onClick={() => {
+                    const updated = [...penyesNames];
+                    updated.splice(index, 1);
+                    setPenyesNames(updated);
+                  }}> - </Badge>
+                    <Label htmlFor="name" className="text-right">
+                        Penya {index + 1}
+                    </Label>
+                    <Input
+                        id="name"
+                        value={penya}
+                        className="col-span-3 flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === "Backspace") {
+                            const isEmpty = penyesNames[index] === "";
+                            if (isEmpty) {
+                              const updated = [...penyesNames];
+                              updated.splice(index, 1);
+                              setPenyesNames(updated);
+                            }
+                          }
+                        }}
+                        onChange={(e) => {
+                            const newPenyesNames = [...penyesNames];
+                            if(e.target.value.length > newPenyesNames[index].length && index == newPenyesNames.length - 1)
+                              newPenyesNames.push("");
+                            newPenyesNames[index] = e.target.value;
+                            setPenyesNames(newPenyesNames);
+                        }}
+                    />
+                    {index < updatePenyesNamesState.length && updatePenyesNamesState[index] != "3" ? (
+                        <Badge variant="default" className="h-7">
+                            {updatePenyesNamesState[index] == "2" ? <Loader className="h-8 w-4" /> : null}
+                            {updatePenyesNamesState[index] == "1" ? <Check color="green" size={30} /> : null}
+                            {updatePenyesNamesState[index] == "0" ? <Ban color="red" className="h-8 w-4" /> : null}
+                        </Badge>
+                    ) : null}
+                </div>
+            ))}
+      </div>
+      <div className="flex flex-row items-center mt-4">
+          <Button variant="default" className="mr-2" onClick={() => addNewPenya()}>+</Button>
+          <Button
+              variant="outline"
+              onMouseDown={handleMouseDown}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseOut}
+              >
+              -
+              </Button>
+      </div>
+      <DialogFooter>
+        <Button disabled={penyesNames.length == 0} type="submit" onClick={handleClick}>{penyesNames.length == 1 ? "Crear penya" : "Crear Penyes"}</Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+
+  if (triggerElement) {
+    return (
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogTrigger asChild>{triggerElement}</DialogTrigger>
+        {dialogContent}
+      </Dialog>
+    );
+  }
+
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
@@ -203,93 +296,7 @@ export default function AdminAddPenya() {
                 </div>
             </div>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Crear penya/es</DialogTitle>
-          </DialogHeader>
-          <DialogDescription>
-            Aquí pots crear penyes d'una en una o si ho tens, amb un excel. Els noms de les penyes han d'estar a la primera columna de l'excel.
-          </DialogDescription>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Afegir llista de penyes
-              </Label>
-              <Input
-                type="file"
-                id="name"
-                className="col-span-3"
-                onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) onFileAdded(file);
-                }}
-                />
-            </div>
-          </div>
-          <div className="max-h-[35vh] overflow-y-auto">
-                {penyesNames.map((penya, index) => (
-                    <div key={index} className="flex flex-row items-center gap-4 mb-2">
-                      <Badge variant="outline" className="hover: cursor-pointer" onClick={() => {
-                        const updated = [...penyesNames];
-                        updated.splice(index, 1);
-                        setPenyesNames(updated);
-                      }}> - </Badge>
-                        <Label htmlFor="name" className="text-right">
-                            Penya {index + 1}
-                        </Label>
-                        <Input
-                            id="name"
-                            value={penya}
-                            className="col-span-3 flex-1"
-                            onKeyDown={(e) => {
-                              if (e.key === "Backspace") {
-                                const isEmpty = penyesNames[index] === "";
-
-                                if (isEmpty) {
-                                  const updated = [...penyesNames];
-                                  updated.splice(index, 1);
-                                  setPenyesNames(updated);
-                                }
-                              }
-                            }}
-
-                            onChange={(e) => {
-                                const newPenyesNames = [...penyesNames];
-
-                                if(e.target.value.length > newPenyesNames[index].length && index == newPenyesNames.length - 1) 
-                                  newPenyesNames.push("");
-                                
-                                newPenyesNames[index] = e.target.value;
-                                setPenyesNames(newPenyesNames);
-                            }}
-                        />
-
-                        {index < updatePenyesNamesState.length && updatePenyesNamesState[index] != "3" ? (
-                            <Badge variant="default" className="h-7">
-                                {updatePenyesNamesState[index] == "2" ? <Loader className="h-8 w-4" /> : null}
-                                {updatePenyesNamesState[index] == "1" ? <Check color="green" size={30} /> : null}
-                                {updatePenyesNamesState[index] == "0" ? <Ban color="red" className="h-8 w-4" /> : null}
-                            </Badge>
-                        ) : null}
-
-                    </div>
-                ))}
-            </div>
-            <div className="flex flex-row items-center mt-4">
-                <Button variant="default" className="mr-2" onClick={() => addNewPenya()}>+</Button>
-                <Button
-                    variant="outline"
-                    onMouseDown={handleMouseDown}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseOut}
-                    >
-                    -
-                    </Button>
-            </div>
-          <DialogFooter>
-            <Button disabled={penyesNames.length == 0} type="submit" onClick={handleClick}>{penyesNames.length == 1 ? "Crear penya" : "Crear Penyes"}</Button>
-          </DialogFooter>
-        </DialogContent>
+        {dialogContent}
       </Dialog>
     </motion.div>
     );

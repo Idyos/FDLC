@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useMemo, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { updatePenyaInfo } from "@/services/database/Admin/adminDbServices";
@@ -21,9 +21,10 @@ import { Textarea } from "@/components/ui/textarea";
 
 interface PenyaSummaryProps {
   rankingInfo: PenyaInfo | null;
+  triggerElement?: ReactNode;
 }
 
-export default function AdminPenyaSummary({ rankingInfo }: PenyaSummaryProps) {
+export default function AdminPenyaSummary({ rankingInfo, triggerElement }: PenyaSummaryProps) {
   const { selectedYear } = useYear();    
 
   const [isSaving, setIsSaving] = useState(false);
@@ -96,6 +97,72 @@ export default function AdminPenyaSummary({ rankingInfo }: PenyaSummaryProps) {
   const closeDialog = () => {
     setIsDialogOpen(false);
     setPenyaName(rankingInfo?.name || "");
+  }
+
+  if (rankingInfo != null && triggerElement) {
+    return (
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogTrigger asChild>{triggerElement}</DialogTrigger>
+        <DialogContent className="sm:max-w-[500px] max-h-[88svh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Modificar {rankingInfo?.name}</DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            Aquí pots modificar la info de {rankingInfo?.name}.
+          </DialogDescription>
+          <div>
+            <Label htmlFor="image" className="text-right mb-2">
+              Imatge de la penya
+            </Label>
+            <div
+              className="h-43 w-full relative flex items-center justify-center border-2 border-dashed rounded-lg bg-center bg-contain bg-no-repeat"
+              style={{
+                backgroundImage: provaImageUrl ? `url(${provaImageUrl})` : rankingInfo.imageUrl ? `url(${rankingInfo.imageUrl})` : "none",
+              }}
+            >
+              {(!rankingInfo.imageUrl && !provaImageUrl) && (
+                <span className="text-sm text-gray-500">Arrossega una imatge o fes clic</span>
+              )}
+              <Input
+                id="image"
+                type="file"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onImageAdded(file);
+                }}
+              />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="name" className="text-right mb-2">Nom de la penya</Label>
+            <Input id="name" value={penyaName} onChange={(e) => setPenyaName(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="description" className="mb-2">Descripció de la penya</Label>
+            <Textarea
+              id="description"
+              placeholder="Descripció de la penya"
+              value={penyaDescription}
+              onChange={(e) => setPenyaDescription(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="secret" className="text-right">Informació secreta</Label>
+            <Checkbox
+              id="secret"
+              checked={penyaSecret}
+              onCheckedChange={(checked) => setPenyaSecret(checked === true)}
+            />
+          </div>
+          <DialogFooter>
+            <Button disabled={isSaving || penyaName.length === 0} type="submit" onClick={handleClick}>
+              Guardar canvis
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   return rankingInfo != null ? (

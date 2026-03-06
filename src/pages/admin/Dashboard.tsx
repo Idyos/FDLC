@@ -23,13 +23,6 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-} from "@/components/ui/navigation-menu";
-import YearSelector from "@/components/public/yearSelector";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { navigateWithQuery } from "@/utils/url";
 import { cn } from "@/lib/utils";
@@ -468,30 +461,11 @@ export default function Dashboard() {
     };
   }, [ranking, proves, results]);
 
-  const handleNav = (path: string) =>
-    navigateWithQuery(navigate, `/admin/${path}`, {});
   const handleProva = (id: string) =>
     navigateWithQuery(navigate, "/admin/prova", { provaId: id });
 
   return (
     <div className="space-y-6 p-4">
-      <YearSelector />
-
-      <NavigationMenu>
-        <NavigationMenuList>
-          <NavigationMenuItem className="cursor-pointer">
-            <NavigationMenuLink onClick={() => handleNav("penyes")}>
-              Penyes
-            </NavigationMenuLink>
-          </NavigationMenuItem>
-          <NavigationMenuItem className="cursor-pointer">
-            <NavigationMenuLink onClick={() => handleNav("proves")}>
-              Proves
-            </NavigationMenuLink>
-          </NavigationMenuItem>
-        </NavigationMenuList>
-      </NavigationMenu>
-
       {isLoading ? (
         <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
           Carregant dades…

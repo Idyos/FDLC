@@ -8,8 +8,6 @@ import PenyaPage from './pages/public/PenyaPage/penyaPage';
 // Páginas admin
 import Login from './pages/admin/Login';
 import Dashboard from './pages/admin/Dashboard';
-import Penyes from './pages/admin/Penyes';
-import Proves from './pages/admin/Proves';
 import { YearProvider } from './components/shared/Contexts/YearContext';
 import CreateProva from './pages/admin/createProva/createProva';
 import MainPage from './pages/public/MainPage/mainPage';
@@ -18,6 +16,7 @@ import { AdminRoutes } from './routes/admin/AdminRoutes';
 import { AuthProvider } from './routes/admin/AuthContext';
 import { FavoritePenyesProvider } from './components/shared/Contexts/FavoritePenyesContext';
 import PublicHeader from './components/public/PublicHeader/publicHeader';
+import AdminLayout from './components/admin/AdminLayout';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -42,10 +41,10 @@ export default function App() {
 
               {/* Admin */}
               <Route path="/admin/login" element={<Login />} />
-              <Route path="/admin" element={<AdminRoutes><Dashboard /></AdminRoutes>} />
-              <Route path="/admin/penyes" element={<AdminRoutes><Penyes /></AdminRoutes>} />
-              <Route path="/admin/proves" element={<AdminRoutes><Proves /></AdminRoutes>} />
-              <Route path="/admin/prova" element={<AdminRoutes><ProvaPage /></AdminRoutes>} />
+              <Route element={<AdminRoutes><AdminLayout /></AdminRoutes>}>
+                <Route path="/admin" element={<Dashboard />} />
+                <Route path="/admin/prova" element={<ProvaPage />} />
+              </Route>
               <Route path="/admin/createProva" element={<AdminRoutes><CreateProva /></AdminRoutes>} />
             </Routes>
           </FavoritePenyesProvider>
