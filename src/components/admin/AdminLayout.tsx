@@ -34,6 +34,7 @@ import { Prova, PenyaInfo } from "@/interfaces/interfaces";
 import YearSelector from "@/components/public/yearSelector";
 import AdminPenyaSummary from "@/components/admin/Penyes/PenyaSummary/adminPenyaSummary";
 import AdminAddPenya from "@/components/admin/Penyes/AddPenya/adminAddPenya";
+import AdminAddUser from "./Users/AddUser/AdminAddUser";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -193,6 +194,12 @@ export default function AdminLayout() {
                     <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible-usuaris:rotate-180" />
                   </CollapsibleTrigger>
                 </SidebarGroupLabel>
+                <AdminAddUser triggerElement={
+                  <SidebarGroupAction title="Crear nou usuari">
+                    <Plus />
+                    <span className="sr-only">Crear nou usuari</span>
+                  </SidebarGroupAction>
+                } />
                 <CollapsibleContent>
                   <SidebarGroupContent>
                     <p className="px-2 py-1 text-xs text-muted-foreground">

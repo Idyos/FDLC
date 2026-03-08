@@ -361,9 +361,7 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
       roundNumber: 1,
       roundName: roundName(1, totalRounds),
       position: i + 1,
-      status: participants.some(p => p.source.type === 'bye') && participants.every(p => p.source.type !== 'seed')
-        ? 'bye'
-        : 'scheduled',
+      status: 'scheduled',
       format: { bestOfSets, tiebreakAt6All, finalSetTiebreak },
       teams: participants,
       winnerSlot: null,

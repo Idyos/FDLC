@@ -1,12 +1,16 @@
 import {
   generateSingleElimBracket,
+  type Match,
+  type Slot,
   type Team,
 } from "@/utils/bracketCreator";
 import type {
   BracketTeamSnapshot,
   FinalEntrant,
   FinalStageState,
+  GroupMatch,
   GroupStageState,
+  GroupStanding,
 } from "@/features/bracket/types";
 
 const MIN_GROUP_SIZE = 4;
@@ -69,6 +73,96 @@ export function fisherYatesShuffle<T>(items: T[]): T[] {
   return shuffled;
 }
 
+function generateGroupMatches(groupId: string, teamIds: string[]): GroupMatch[] {
+  const matches: GroupMatch[] = [];
+  for (let i = 0; i < teamIds.length; i += 1) {
+    for (let j = i + 1; j < teamIds.length; j += 1) {
+      matches.push({
+        matchId: `G${groupId}_${i}v${j}`,
+        teamAId: teamIds[i],
+        teamBId: teamIds[j],
+        scoreA: null,
+        scoreB: null,
+        winnerTeamId: null,
+        isDraw: false,
+      });
+    }
+  }
+  return matches;
+}
+
+export function calculateGroupStandings(
+  matches: GroupMatch[],
+  teamIds: string[],
+): GroupStanding[] {
+  const map = new Map<string, GroupStanding>();
+  for (const teamId of teamIds) {
+    map.set(teamId, {
+      teamId,
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      points: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      goalDiff: 0,
+    });
+  }
+
+  for (const match of matches) {
+    if (match.scoreA === null || match.scoreB === null) continue;
+    const a = map.get(match.teamAId);
+    const b = map.get(match.teamBId);
+    if (!a || !b) continue;
+
+    a.played += 1;
+    b.played += 1;
+    a.goalsFor += match.scoreA;
+    a.goalsAgainst += match.scoreB;
+    b.goalsFor += match.scoreB;
+    b.goalsAgainst += match.scoreA;
+
+    if (match.isDraw) {
+      a.draws += 1;
+      b.draws += 1;
+      a.points += 1;
+      b.points += 1;
+    } else if (match.winnerTeamId === match.teamAId) {
+      a.wins += 1;
+      b.losses += 1;
+      a.points += 3;
+    } else if (match.winnerTeamId === match.teamBId) {
+      b.wins += 1;
+      a.losses += 1;
+      b.points += 3;
+    }
+  }
+
+  const standings = Array.from(map.values());
+  standings.forEach((s) => {
+    s.goalDiff = s.goalsFor - s.goalsAgainst;
+  });
+
+  standings.sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    if (b.goalDiff !== a.goalDiff) return b.goalDiff - a.goalDiff;
+    return b.goalsFor - a.goalsFor;
+  });
+
+  return standings;
+}
+
+export function allGroupMatchesPlayed(matches: GroupMatch[]): boolean {
+  return matches.length > 0 && matches.every((m) => m.scoreA !== null && m.scoreB !== null);
+}
+
+export function getSuggestedGroupWinner(standings: GroupStanding[]): string | null {
+  if (standings.length < 2) return standings[0]?.teamId ?? null;
+  if (standings[0].points > standings[1].points) return standings[0].teamId;
+  return null;
+}
+
 export function chooseGroupCount(teamCount: number): number | null {
   if (teamCount < MIN_TEAMS_FOR_GROUP_STAGE) {
     return null;
@@ -126,6 +220,7 @@ export function createRandomBalancedGroupStage(
       groupId,
       groupName: `Grup ${groupId}`,
       teamIds: [] as string[],
+      matches: [] as GroupMatch[],
       winnerTeamId: null,
     };
   });
@@ -133,6 +228,10 @@ export function createRandomBalancedGroupStage(
   shuffledTeams.forEach((team, index) => {
     const groupIndex = index % groupCount;
     groups[groupIndex].teamIds.push(team.teamId);
+  });
+
+  groups.forEach((group) => {
+    group.matches = generateGroupMatches(group.groupId, group.teamIds);
   });
 
   return {
@@ -218,4 +317,112 @@ export function buildFinalStageFromEntrants(
     entrants,
     bracket,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Bracket match resolution helpers
+// ---------------------------------------------------------------------------
+
+/** Propagates known winners (from BYE or finished matches) to the next match's
+ *  participant slot, so subsequent matches show the real team name.
+ *  Runs iteratively until no more slots can be filled. */
+export function propagateBracketByes(matches: Match[]): Match[] {
+  const updated = matches.map((m) => ({ ...m, teams: [...m.teams] }));
+  const byId = new Map(updated.map((m) => [m.id, m]));
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const match of updated) {
+      if (!match.winnerTeamId || !match.advanceTo) continue;
+      const next = byId.get(match.advanceTo.matchId);
+      if (!next) continue;
+      const slotIdx: number = match.advanceTo.slot === "A" ? 0 : 1;
+      if (next.teams[slotIdx].teamId == null) {
+        const winner = match.teams.find((t) => t.teamId === match.winnerTeamId);
+        next.teams = [...next.teams];
+        next.teams[slotIdx] = {
+          ...next.teams[slotIdx],
+          teamId: match.winnerTeamId,
+          displayName: winner?.displayName ?? match.winnerTeamId,
+        };
+        changed = true;
+      }
+    }
+  }
+
+  return updated;
+}
+
+/** Records the result of a bracket match and propagates the winner to the next
+ *  match slot. scoreA / scoreB must differ (no draws in knockout). */
+export function resolveMatchWinner(
+  matches: Match[],
+  matchId: string,
+  scoreA: number,
+  scoreB: number,
+): Match[] {
+  const updated = matches.map((m) => ({ ...m, teams: [...m.teams] }));
+  const idx = updated.findIndex((m) => m.id === matchId);
+  if (idx === -1) return updated;
+
+  const winnerSlot: Slot = scoreA > scoreB ? "A" : "B";
+  const loserSlot: Slot = winnerSlot === "A" ? "B" : "A";
+  const winnerIdx = winnerSlot === "A" ? 0 : 1;
+  const loserIdx = loserSlot === "A" ? 0 : 1;
+
+  updated[idx] = {
+    ...updated[idx],
+    status: "finished",
+    winnerSlot,
+    winnerTeamId: updated[idx].teams[winnerIdx].teamId ?? null,
+    teams: updated[idx].teams.map((t, i) => ({
+      ...t,
+      score: { ...t.score, gamesWon: i === 0 ? scoreA : scoreB },
+    })),
+  };
+
+  // Silence unused variable – needed to set loser score symmetrically above
+  void loserIdx;
+
+  return propagateBracketByes(updated);
+}
+
+/** Resets a finished match back to 'scheduled' and clears the winner from the
+ *  next match slot. If the next match was also finished, it is reset too
+ *  (one level of cascading). */
+export function clearMatchResult(matches: Match[], matchId: string): Match[] {
+  const updated = matches.map((m) => ({ ...m, teams: [...m.teams] }));
+  const idx = updated.findIndex((m) => m.id === matchId);
+  if (idx === -1) return updated;
+
+  const match = updated[idx];
+
+  // Clear the next match's participant slot that came from this match
+  if (match.advanceTo) {
+    const nextIdx = updated.findIndex((m) => m.id === match.advanceTo!.matchId);
+    if (nextIdx !== -1) {
+      const slotIdx = match.advanceTo.slot === "A" ? 0 : 1;
+      updated[nextIdx] = {
+        ...updated[nextIdx],
+        status: updated[nextIdx].status === "finished" ? "scheduled" : updated[nextIdx].status,
+        winnerSlot: updated[nextIdx].status === "finished" ? null : updated[nextIdx].winnerSlot,
+        winnerTeamId: updated[nextIdx].status === "finished" ? null : updated[nextIdx].winnerTeamId,
+        teams: updated[nextIdx].teams.map((t, i) =>
+          i === slotIdx ? { ...t, teamId: undefined, displayName: undefined, score: undefined } : t,
+        ),
+      };
+    }
+  }
+
+  // Reset the match itself
+  updated[idx] = {
+    ...match,
+    status: "scheduled",
+    winnerSlot: null,
+    winnerTeamId: null,
+    teams: match.teams.map((t) => ({ ...t, score: undefined })),
+  };
+
+  return updated;
 }

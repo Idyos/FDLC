@@ -2,7 +2,9 @@ import type {
   BracketMode,
   BracketTeamSnapshot,
   FinalStageState,
+  GroupMatch,
   GroupStageState,
+  GroupState,
   StoredProvaBracketDoc,
 } from "@/features/bracket/types";
 import { db } from "@/firebase/firebase";
@@ -20,6 +22,54 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function sanitizeBracketMode(value: unknown): BracketMode {
   return value === "groups_to_final" ? "groups_to_final" : "simple_final";
+}
+
+function sanitizeGroupMatches(value: unknown): GroupMatch[] {
+  if (!Array.isArray(value)) return [];
+  const matches: GroupMatch[] = [];
+  value.forEach((item) => {
+    if (!isRecord(item)) return;
+    if (typeof item.matchId !== "string") return;
+    if (typeof item.teamAId !== "string") return;
+    if (typeof item.teamBId !== "string") return;
+    matches.push({
+      matchId: item.matchId,
+      teamAId: item.teamAId,
+      teamBId: item.teamBId,
+      scoreA: typeof item.scoreA === "number" ? item.scoreA : null,
+      scoreB: typeof item.scoreB === "number" ? item.scoreB : null,
+      winnerTeamId: typeof item.winnerTeamId === "string" ? item.winnerTeamId : null,
+      isDraw: item.isDraw === true,
+    });
+  });
+  return matches;
+}
+
+function sanitizeGroupStage(value: unknown): GroupStageState | null {
+  if (!isRecord(value)) return null;
+  if (!Array.isArray(value.groups)) return null;
+
+  const groups: GroupState[] = [];
+  value.groups.forEach((item: unknown) => {
+    if (!isRecord(item)) return;
+    if (typeof item.groupId !== "string") return;
+    if (typeof item.groupName !== "string") return;
+    if (!Array.isArray(item.teamIds)) return;
+    groups.push({
+      groupId: item.groupId,
+      groupName: item.groupName,
+      teamIds: item.teamIds.filter((id: unknown) => typeof id === "string"),
+      matches: sanitizeGroupMatches(item.matches),
+      winnerTeamId: typeof item.winnerTeamId === "string" ? item.winnerTeamId : null,
+    });
+  });
+
+  return {
+    assignmentPolicy: "random_balanced_4_6",
+    winnerPolicy: "manual_with_placeholders",
+    pairingPolicy: "adjacent_groups",
+    groups,
+  };
 }
 
 function sanitizeTeamSnapshot(value: unknown): BracketTeamSnapshot[] {
@@ -74,10 +124,8 @@ export async function getProvaBracket(
     challengeType: "Rondes",
     mode: sanitizeBracketMode(data.mode),
     teamSnapshot: sanitizeTeamSnapshot(data.teamSnapshot),
-    groupStage: (isRecord(data.groupStage)
-      ? (data.groupStage as GroupStageState)
-      : null),
-    finalStage: data.finalStage as FinalStageState,
+    groupStage: sanitizeGroupStage(data.groupStage),
+    finalStage: data.finalStage as unknown as FinalStageState,
     updatedAt,
     updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : null,
   };
@@ -94,8 +142,11 @@ export async function saveProvaBracket(
     `Circuit/${year}/Proves/${provaId}/Bracket/current`,
   );
 
+  // JSON round-trip strips undefined values, which Firestore rejects
+  const sanitized = JSON.parse(JSON.stringify(data));
+
   await setDoc(bracketRef, {
-    ...data,
+    ...sanitized,
     updatedAt: serverTimestamp(),
     updatedBy: userId ?? null,
   });

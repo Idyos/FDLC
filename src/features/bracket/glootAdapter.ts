@@ -4,6 +4,7 @@ import type { GeneratedBracketSerializable } from "@/features/bracket/types";
 export interface GlootParticipant {
   id: string;
   name: string;
+  score: number | null;
   isWinner: boolean;
   status: null;
   resultText: string | null;
@@ -11,6 +12,8 @@ export interface GlootParticipant {
 
 export interface GlootMatchData {
   id: number;
+  internalId: string;
+  clickable: boolean;
   name: string;
   nextMatchId: number | null;
   tournamentRoundText: string;
@@ -51,14 +54,22 @@ export function toGlootMatches(
           participant.teamId ??
           `${match.id}-${participant.slot}-${participantIndex + 1}`,
         name: getParticipantName(participant.source.type, participant.displayName),
+        score: participant.score?.gamesWon ?? null,
         isWinner: match.winnerSlot === slot,
         status: null,
         resultText: null,
       };
     });
 
+    const clickable =
+      match.status !== "bye" &&
+      match.teams[0].teamId != null &&
+      match.teams[1].teamId != null;
+
     return {
       id: index + 1,
+      internalId: match.id,
+      clickable,
       name: `${match.roundName} ${match.position}`,
       nextMatchId: match.advanceTo
         ? matchIdMap.get(match.advanceTo.matchId) ?? null

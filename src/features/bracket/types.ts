@@ -8,10 +8,33 @@ export interface BracketTeamSnapshot {
   name: string;
 }
 
+export interface GroupMatch {
+  matchId: string;
+  teamAId: string;
+  teamBId: string;
+  scoreA: number | null;
+  scoreB: number | null;
+  winnerTeamId: string | null;
+  isDraw: boolean;
+}
+
+export interface GroupStanding {
+  teamId: string;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDiff: number;
+}
+
 export interface GroupState {
   groupId: string;
   groupName: string;
   teamIds: string[];
+  matches: GroupMatch[];
   winnerTeamId: string | null;
 }
 

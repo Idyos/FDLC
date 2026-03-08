@@ -1,14 +1,15 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { GlootMatchData } from "@/features/bracket/glootAdapter";
 
 interface BracketViewerProps {
   matches: GlootMatchData[];
+  onScoreChange?: (internalId: string, scoreA: number | null, scoreB: number | null) => void;
 }
 
 const S = 80;    // slot spacing (px): distance between adjacent first-round match tops
 const MH = 60;   // match card height (px)
-const MW = 180;  // match card width (px)
+const MW = 220;  // match card width (px)
 const CG = 40;   // column gap (px)
 const HDR = 28;  // column header height (px)
 
@@ -22,7 +23,96 @@ function matchTop(roundNum: number, matchIndex: number): number {
   return HDR + ((matchIndex * 2 * step + step - 1) * S) / 2;
 }
 
-export function BracketViewer({ matches }: BracketViewerProps) {
+interface BracketMatchCardProps {
+  match: GlootMatchData;
+  top: number;
+  onScoreChange?: (internalId: string, scoreA: number | null, scoreB: number | null) => void;
+}
+
+function BracketMatchCard({ match, top, onScoreChange }: BracketMatchCardProps) {
+  const p0 = match.participants[0];
+  const p1 = match.participants[1];
+
+  const [rawA, setRawA] = useState(p0.score != null ? String(p0.score) : "");
+  const [rawB, setRawB] = useState(p1.score != null ? String(p1.score) : "");
+
+  useEffect(() => {
+    setRawA(p0.score != null ? String(p0.score) : "");
+  }, [p0.score]);
+
+  useEffect(() => {
+    setRawB(p1.score != null ? String(p1.score) : "");
+  }, [p1.score]);
+
+  const parsedA = rawA === "" ? null : parseInt(rawA, 10);
+  const parsedB = rawB === "" ? null : parseInt(rawB, 10);
+  const isDraw = parsedA !== null && parsedB !== null && parsedA === parsedB;
+
+  const handleChange = (slot: "A" | "B", value: string) => {
+    if (value !== "" && !/^\d+$/.test(value)) return;
+
+    let nextA = parsedA;
+    let nextB = parsedB;
+
+    if (slot === "A") {
+      setRawA(value);
+      nextA = value === "" ? null : parseInt(value, 10);
+    } else {
+      setRawB(value);
+      nextB = value === "" ? null : parseInt(value, 10);
+    }
+
+    onScoreChange?.(match.internalId, nextA, nextB);
+  };
+
+  const isFinished = p0.isWinner || p1.isWinner;
+
+  return (
+    <div
+      className={cn(
+        "absolute border rounded-md overflow-hidden bg-card shadow-sm",
+        isFinished ? "border-green-500/40" : "border-border",
+      )}
+      style={{ top, left: 0, width: MW, height: MH }}
+    >
+      {([p0, p1] as const).map((p, idx) => {
+        const raw = idx === 0 ? rawA : rawB;
+        const slot = idx === 0 ? "A" : "B";
+        return (
+          <div
+            key={p.id}
+            className={cn(
+              "flex items-center px-2 text-xs h-1/2 border-b last:border-b-0 gap-1",
+              p.isWinner
+                ? "bg-primary/10 font-semibold text-primary"
+                : "text-foreground/60",
+            )}
+          >
+            <span className="truncate flex-1">{p.name}</span>
+            {match.clickable && (
+              <div className="w-8 shrink-0">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={raw}
+                  placeholder="—"
+                  onChange={(e) => handleChange(slot, e.target.value)}
+                  className={cn(
+                    "w-full h-5 text-center text-xs rounded border bg-background px-0",
+                    "focus:outline-none focus:ring-1 focus:ring-primary",
+                    isDraw && "border-destructive",
+                  )}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function BracketViewer({ matches, onScoreChange }: BracketViewerProps) {
   const rounds = useMemo(() => {
     const map = new Map<number, GlootMatchData[]>();
     for (const m of matches) {
@@ -97,30 +187,14 @@ export function BracketViewer({ matches }: BracketViewerProps) {
               >
                 {label}
               </div>
-              {ms.map((match, i) => {
-                const top = matchTop(roundNum, i);
-                return (
-                  <div
-                    key={match.id}
-                    className="absolute border rounded-md overflow-hidden bg-card shadow-sm"
-                    style={{ top, left: 0, width: MW, height: MH }}
-                  >
-                    {match.participants.map((p) => (
-                      <div
-                        key={p.id}
-                        className={cn(
-                          "flex items-center px-2 text-xs h-1/2 border-b last:border-b-0",
-                          p.isWinner
-                            ? "bg-primary/10 font-semibold text-primary"
-                            : "text-foreground/60",
-                        )}
-                      >
-                        <span className="truncate">{p.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
+              {ms.map((match, i) => (
+                <BracketMatchCard
+                  key={match.id}
+                  match={match}
+                  top={matchTop(roundNum, i)}
+                  onScoreChange={onScoreChange}
+                />
+              ))}
             </div>
           );
         })}

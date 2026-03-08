@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BracketViewer } from "./BracketViewer";
+import { GroupMatchesDialog } from "./GroupMatchesDialog";
 import { useAuth } from "@/routes/admin/AuthContext";
 import type { Prova } from "@/interfaces/interfaces";
 import { toast } from "sonner";
@@ -7,24 +8,29 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
-  MIN_TEAMS_FOR_GROUP_STAGE,
   buildFinalStageFromEntrants,
+  calculateGroupStandings,
+  clearMatchResult,
   createGroupFinalEntrants,
-  createRandomBalancedGroupStage,
   createSimpleFinalEntrants,
+  getSuggestedGroupWinner,
+  propagateBracketByes,
+  resolveMatchWinner,
   sanitizeTeamSnapshot,
 } from "@/features/bracket/bracketDomain";
+import type { GroupMatch } from "@/features/bracket/types";
 import { toGlootMatches } from "@/features/bracket/glootAdapter";
 import type {
-  BracketMode,
   BracketTeamSnapshot,
   FinalStageState,
   GroupStageState,
@@ -35,7 +41,7 @@ import {
   saveProvaBracket,
 } from "@/services/database/Admin/adminBracketsDbServices";
 
-type BracketStep = "groups" | "final";
+type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 interface AdminBracketPanelProps {
   year: number;
@@ -53,12 +59,10 @@ function buildTeamSnapshot(prova: Prova): BracketTeamSnapshot[] {
   );
 }
 
-function formatSavedAt(date: Date | null): string {
-  if (!date) {
-    return "Guardat";
-  }
-
-  return `Guardat: ${date.toLocaleString("ca-ES")}`;
+function formatSavedAt(date: Date): string {
+  const hh = date.getHours().toString().padStart(2, "0");
+  const mm = date.getMinutes().toString().padStart(2, "0");
+  return `Guardat: ${hh}:${mm}`;
 }
 
 export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProps) {
@@ -70,31 +74,48 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
     return map;
   }, [teams]);
 
-  const [mode, setMode] = useState<BracketMode>("simple_final");
+  // Bracket state
   const [groupStage, setGroupStage] = useState<GroupStageState | null>(null);
   const [finalStage, setFinalStage] = useState<FinalStageState | null>(null);
-  const [activeStep, setActiveStep] = useState<BracketStep>("final");
   const [isLoadingSavedBracket, setIsLoadingSavedBracket] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [hasSavedBracket, setHasSavedBracket] = useState(false);
+
+  // Save state
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const finalStageRef = useRef<FinalStageState | null>(null);
+
+  // Dialog state
+  const [showOverwriteAlert, setShowOverwriteAlert] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+
+  // Keep ref in sync with state for debounced save
+  useEffect(() => {
+    finalStageRef.current = finalStage;
+  }, [finalStage]);
+
+  // Stable key: only changes when group winners change, not on every match result
+  const groupWinnersKey = useMemo(
+    () =>
+      groupStage
+        ? groupStage.groups.map((g) => `${g.groupId}:${g.winnerTeamId ?? ""}`).join("|")
+        : "",
+    [groupStage],
+  );
 
   const glootMatches = useMemo(
     () => (finalStage ? toGlootMatches(finalStage.bracket) : []),
     [finalStage],
   );
 
+  // Load bracket from Firestore on mount
   useEffect(() => {
     let isCancelled = false;
 
     const loadSavedBracket = async () => {
       if (!prova.id) {
-        setHasSavedBracket(false);
-        setSavedAt(null);
-        setMode("simple_final");
         setGroupStage(null);
         setFinalStage(null);
-        setActiveStep("final");
         setIsLoadingSavedBracket(false);
         return;
       }
@@ -103,30 +124,28 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
 
       try {
         const saved = await getProvaBracket(year, prova.id);
-        if (isCancelled) {
-          return;
-        }
+        if (isCancelled) return;
 
         if (!saved) {
-          setHasSavedBracket(false);
-          setSavedAt(null);
-          setMode("simple_final");
           setGroupStage(null);
           setFinalStage(null);
-          setActiveStep("final");
           return;
         }
 
-        setHasSavedBracket(true);
-        setMode(saved.mode);
         setGroupStage(saved.groupStage);
-        setFinalStage(saved.finalStage);
+        setFinalStage({
+          ...saved.finalStage,
+          bracket: {
+            ...saved.finalStage.bracket,
+            matches: propagateBracketByes([...saved.finalStage.bracket.matches]),
+          },
+        });
         setSavedAt(saved.updatedAt ? saved.updatedAt.toDate() : null);
-        setActiveStep(saved.mode === "groups_to_final" ? "groups" : "final");
+        setSaveStatus("saved");
       } catch (error) {
         if (!isCancelled) {
-          toast.error("No s'ha pogut carregar el quadre guardat.");
-          console.error(error);
+          toast.error("Ha hagut un error al carregar el quadre: " + error);
+          console.error("loadSavedBracket error:", error);
         }
       } finally {
         if (!isCancelled) {
@@ -136,144 +155,220 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
     };
 
     loadSavedBracket();
-
-    return () => {
-      isCancelled = true;
-    };
+    return () => { isCancelled = true; };
   }, [year, prova.id]);
 
+  // Regenerate final bracket when group winners change (groups_to_final mode)
   useEffect(() => {
-    if (mode !== "groups_to_final" || !groupStage) {
-      return;
-    }
+    if (!groupStage) return;
 
     const entrants = createGroupFinalEntrants(groupStage, teams);
     const nextFinalStage = buildFinalStageFromEntrants(entrants);
-    setFinalStage(nextFinalStage);
-  }, [mode, groupStage, teams]);
+    if (!nextFinalStage) return;
+    setFinalStage({
+      ...nextFinalStage,
+      bracket: {
+        ...nextFinalStage.bracket,
+        matches: propagateBracketByes([...nextFinalStage.bracket.matches]),
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupWinnersKey, teams]);
 
-  const onGenerate = () => {
+  // ─── Save helpers ───────────────────────────────────────────────────────────
+
+  const buildPayload = (fs: FinalStageState): StoredProvaBracketDoc => ({
+    schemaVersion: 1,
+    challengeType: "Rondes",
+    mode: "simple_final",
+    teamSnapshot: teams,
+    groupStage: null,
+    finalStage: fs,
+    updatedAt: null,
+    updatedBy: user?.uid ?? null,
+  });
+
+  const doSave = async (fs: FinalStageState) => {
+    if (!prova.id) return;
+    setSaveStatus("saving");
+    try {
+      console.log("Saving bracket with payload:", buildPayload(fs));
+      await saveProvaBracket(year, prova.id, buildPayload(fs), user?.uid);
+      const now = new Date();
+      setSavedAt(now);
+      setSaveStatus("saved");
+    } catch (error) {
+      setSaveStatus("error");
+      toast.error("No s'ha pogut guardar el quadre.");
+      console.error(error);
+    }
+  };
+
+  const scheduleSave = () => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    setSaveStatus("saving");
+    saveTimeoutRef.current = setTimeout(() => {
+      if (finalStageRef.current) {
+        doSave(finalStageRef.current);
+      }
+    }, 800);
+  };
+
+  // ─── Generate ───────────────────────────────────────────────────────────────
+
+  const doGenerate = () => {
     if (teams.length < 2) {
-      setGroupStage(null);
-      setFinalStage(null);
-      setHasSavedBracket(false);
-      setSavedAt(null);
+      toast.error("Calen almenys 2 equips per generar el quadre.");
+      return null;
+    }
+    const entrants = createSimpleFinalEntrants(teams);
+    const next = buildFinalStageFromEntrants(entrants);
+    return next
+      ? {
+          ...next,
+          bracket: {
+            ...next.bracket,
+            matches: propagateBracketByes([...next.bracket.matches]),
+          },
+        }
+      : null;
+  };
+
+  const onGenerate = async () => {
+    if (teams.length < 2) {
       toast.error("Calen almenys 2 equips per generar el quadre.");
       return;
     }
-
-    if (mode === "groups_to_final") {
-      if (teams.length < MIN_TEAMS_FOR_GROUP_STAGE) {
-        const entrants = createSimpleFinalEntrants(teams);
-        const nextFinalStage = buildFinalStageFromEntrants(entrants);
-
-        setMode("simple_final");
-        setGroupStage(null);
-        setFinalStage(nextFinalStage);
-        setActiveStep("final");
-        setHasSavedBracket(false);
-        setSavedAt(null);
-
-        toast.error(
-          "No hi ha suficients equips per fer grups (minim 8). S'ha creat un quadre final simple.",
-        );
+    // Check if bracket already exists in Firestore
+    if (prova.id) {
+      const existing = await getProvaBracket(year, prova.id);
+      if (existing) {
+        setShowOverwriteAlert(true);
         return;
       }
-
-      const nextGroupStage = createRandomBalancedGroupStage(teams);
-      if (!nextGroupStage) {
-        toast.error("No s'han pogut generar els grups.");
-        return;
-      }
-
-      setGroupStage(nextGroupStage);
-      setActiveStep("groups");
-      setHasSavedBracket(false);
-      setSavedAt(null);
-      return;
     }
+    handleConfirmGenerate();
+  };
 
-    const entrants = createSimpleFinalEntrants(teams);
-    const nextFinalStage = buildFinalStageFromEntrants(entrants);
+  const handleConfirmGenerate = () => {
+    setShowOverwriteAlert(false);
+    const next = doGenerate();
+    if (!next) return;
     setGroupStage(null);
-    setFinalStage(nextFinalStage);
-    setActiveStep("final");
-    setHasSavedBracket(false);
-    setSavedAt(null);
+    setFinalStage(next);
+    // Save immediately
+    doSave(next);
   };
 
-  const onSave = async () => {
-    if (!prova.id || !finalStage) {
-      toast.error("Has de generar un quadre abans de guardar.");
-      return;
-    }
+  // ─── Inline bracket score handler ───────────────────────────────────────────
 
-    const payload: StoredProvaBracketDoc = {
-      schemaVersion: 1,
-      challengeType: "Rondes",
-      mode,
-      teamSnapshot: teams,
-      groupStage: mode === "groups_to_final" ? groupStage : null,
-      finalStage,
-      updatedAt: null,
-      updatedBy: user?.uid ?? null,
-    };
+  const handleBracketScoreUpdate = (
+    internalId: string,
+    scoreA: number | null,
+    scoreB: number | null,
+  ) => {
+    setFinalStage((prev) => {
+      if (!prev) return prev;
 
-    setIsSaving(true);
-
-    try {
-      await saveProvaBracket(year, prova.id, payload, user?.uid);
-      const persisted = await getProvaBracket(year, prova.id);
-      setHasSavedBracket(true);
-      setSavedAt(persisted?.updatedAt ? persisted.updatedAt.toDate() : new Date());
-      toast.success("Quadre guardat correctament.");
-    } catch (error) {
-      toast.error("No s'ha pogut guardar el quadre.");
-      console.error(error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const onWinnerChange = (groupId: string, teamId: string) => {
-    setHasSavedBracket(false);
-    setSavedAt(null);
-    setGroupStage((previous) => {
-      if (!previous) {
-        return previous;
+      let updatedMatches;
+      if (scoreA !== null && scoreB !== null && scoreA !== scoreB) {
+        // Valid result: resolve winner and propagate through bracket
+        updatedMatches = resolveMatchWinner(prev.bracket.matches, internalId, scoreA, scoreB);
+      } else if (scoreA === null && scoreB === null) {
+        // Both cleared: reset match
+        updatedMatches = clearMatchResult(prev.bracket.matches, internalId);
+      } else {
+        // Partial input or draw: update scores but don't declare winner
+        updatedMatches = prev.bracket.matches.map((m) => {
+          if (m.id !== internalId) return m;
+          return {
+            ...m,
+            teams: m.teams.map((t, i) => {
+              const newScore = i === 0 ? scoreA : scoreB;
+              if (newScore === null) return t;
+              return { ...t, score: { ...t.score, gamesWon: newScore } };
+            }),
+          };
+        });
       }
 
+      return { ...prev, bracket: { ...prev.bracket, matches: updatedMatches } };
+    });
+
+    scheduleSave();
+  };
+
+  // ─── Group match handlers (kept for groups_to_final future use) ─────────────
+
+  const onWinnerChange = (groupId: string, teamId: string | null) => {
+    setGroupStage((previous) => {
+      if (!previous) return previous;
       return {
         ...previous,
         groups: previous.groups.map((group) => {
-          if (group.groupId !== groupId) {
-            return group;
-          }
-
-          return {
-            ...group,
-            winnerTeamId: teamId === "__NONE__" ? null : teamId,
-          };
+          if (group.groupId !== groupId) return group;
+          const resolved = teamId === "__NONE__" ? null : teamId;
+          return { ...group, winnerTeamId: resolved };
         }),
       };
     });
   };
 
-  const onModeChange = (newMode: BracketMode) => {
-    setMode(newMode);
-    setGroupStage(null);
-    setFinalStage(null);
-    setHasSavedBracket(false);
-    setSavedAt(null);
-    setActiveStep(newMode === "groups_to_final" ? "groups" : "final");
+  const onMatchResultChange = (
+    groupId: string,
+    matchId: string,
+    scoreA: number | null,
+    scoreB: number | null,
+  ) => {
+    setGroupStage((previous) => {
+      if (!previous) return previous;
+      return {
+        ...previous,
+        groups: previous.groups.map((group) => {
+          if (group.groupId !== groupId) return group;
+
+          const updatedMatches: GroupMatch[] = group.matches.map((match) => {
+            if (match.matchId !== matchId) return match;
+            if (scoreA === null || scoreB === null) {
+              return { ...match, scoreA: null, scoreB: null, winnerTeamId: null, isDraw: false };
+            }
+            const isDraw = scoreA === scoreB;
+            const winnerTeamId = isDraw
+              ? null
+              : scoreA > scoreB
+                ? match.teamAId
+                : match.teamBId;
+            return { ...match, scoreA, scoreB, isDraw, winnerTeamId };
+          });
+
+          const standings = calculateGroupStandings(updatedMatches, group.teamIds);
+          const allPlayed = updatedMatches.every(
+            (m) => m.scoreA !== null && m.scoreB !== null,
+          );
+          const suggested = allPlayed ? getSuggestedGroupWinner(standings) : null;
+          const winnerTeamId = suggested ?? group.winnerTeamId;
+
+          return { ...group, matches: updatedMatches, winnerTeamId };
+        }),
+      };
+    });
   };
 
-  let saveStatus = "No guardat";
-  if (isLoadingSavedBracket) {
-    saveStatus = "Carregant...";
-  } else if (hasSavedBracket) {
-    saveStatus = savedAt ? formatSavedAt(savedAt) : "Guardat";
-  }
+  // ─── Render helpers ─────────────────────────────────────────────────────────
+
+  const renderSaveStatus = () => {
+    if (saveStatus === "idle") return null;
+    if (saveStatus === "saving") {
+      return <Badge variant="outline">Guardant...</Badge>;
+    }
+    if (saveStatus === "saved" && savedAt) {
+      return <Badge variant="secondary">{formatSavedAt(savedAt)}</Badge>;
+    }
+    if (saveStatus === "error") {
+      return <Badge variant="destructive">Error en guardar</Badge>;
+    }
+    return null;
+  };
 
   const renderFinalBracket = () => {
     if (!finalStage || glootMatches.length === 0) {
@@ -298,7 +393,10 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
         </div>
 
         <div className="w-full overflow-auto rounded-lg border p-4">
-          <BracketViewer matches={glootMatches} />
+          <BracketViewer
+            matches={glootMatches}
+            onScoreChange={handleBracketScoreUpdate}
+          />
         </div>
       </div>
     );
@@ -307,127 +405,60 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
   return (
     <Card className="py-4">
       <CardHeader className="gap-2">
-        <CardTitle>Configuracio del quadre de Rondes</CardTitle>
+        <CardTitle>Configuració del quadre de Rondes</CardTitle>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={hasSavedBracket ? "secondary" : "outline"}>
-            {saveStatus}
-          </Badge>
           <Badge variant="outline">{`Equips actius: ${teams.length}`}</Badge>
+          {renderSaveStatus()}
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Mode de quadre</p>
-            <Select
-              value={mode}
-              onValueChange={(value) => onModeChange(value as BracketMode)}
-            >
-              <SelectTrigger className="w-[260px]">
-                <SelectValue placeholder="Selecciona mode" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="simple_final">Quadre final simple</SelectItem>
-                <SelectItem value="groups_to_final">Fase de grups + final</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={onGenerate} disabled={isLoadingSavedBracket}>
-              Generar
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={onSave}
-              disabled={isLoadingSavedBracket || isSaving || !finalStage}
-            >
-              {isSaving ? "Guardant..." : "Guardar"}
-            </Button>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={onGenerate} disabled={isLoadingSavedBracket}>
+            Generar
+          </Button>
         </div>
 
-        {mode === "groups_to_final" ? (
-          <Tabs
-            value={activeStep}
-            onValueChange={(value) => setActiveStep(value as BracketStep)}
-          >
-            <TabsList className="w-full">
-              <TabsTrigger value="groups">Pas 1: Grups</TabsTrigger>
-              <TabsTrigger value="final">Pas 2: Quadre final</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="groups" className="space-y-4 pt-2">
-              {!groupStage ? (
-                <p className="text-sm text-muted-foreground">
-                  Genera primer la fase de grups.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                  {groupStage.groups.map((group) => (
-                    <Card key={group.groupId} className="py-4">
-                      <CardHeader className="pb-2">
-                        <CardTitle>{group.groupName}</CardTitle>
-                      </CardHeader>
-
-                      <CardContent className="space-y-3">
-                        <ul className="list-disc space-y-1 pl-5 text-sm">
-                          {group.teamIds.map((teamId) => (
-                            <li key={teamId}>
-                              {teamById.get(teamId)?.name ?? teamId}
-                            </li>
-                          ))}
-                        </ul>
-
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">Guanyador del grup</p>
-                          <Select
-                            value={group.winnerTeamId ?? "__NONE__"}
-                            onValueChange={(value) =>
-                              onWinnerChange(group.groupId, value)
-                            }
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Sense seleccionar" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__NONE__">
-                                Sense seleccionar
-                              </SelectItem>
-                              {group.teamIds.map((teamId) => (
-                                <SelectItem key={teamId} value={teamId}>
-                                  {teamById.get(teamId)?.name ?? teamId}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="final" className="pt-2">
-              {renderFinalBracket()}
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Pas 2: Quadre final</p>
-            {renderFinalBracket()}
-          </div>
-        )}
-
-        {mode === "groups_to_final" && teams.length < MIN_TEAMS_FOR_GROUP_STAGE ? (
-          <p className="text-xs text-muted-foreground">
-            Amb menys de 8 equips, el sistema passa automaticament a quadre final
-            simple.
-          </p>
-        ) : null}
+        <div className="space-y-2">
+          {renderFinalBracket()}
+        </div>
       </CardContent>
+
+      {/* AlertDialog: confirm overwrite existing bracket */}
+      <AlertDialog open={showOverwriteAlert} onOpenChange={setShowOverwriteAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ja existeix un quadre</AlertDialogTitle>
+            <AlertDialogDescription>
+              Si generes un nou quadre, el quadre actual i tots els resultats es perdran. Vols continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel·lar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmGenerate}>
+              Generar de nou
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* GroupMatchesDialog (groups_to_final mode, future use) */}
+      {groupStage && selectedGroupId && (() => {
+        const group = groupStage.groups.find((g) => g.groupId === selectedGroupId);
+        if (!group) return null;
+        return (
+          <GroupMatchesDialog
+            open={true}
+            onOpenChange={(open) => { if (!open) setSelectedGroupId(null); }}
+            group={group}
+            teamById={teamById}
+            onMatchResultChange={(matchId, scoreA, scoreB) =>
+              onMatchResultChange(selectedGroupId, matchId, scoreA, scoreB)
+            }
+            onWinnerChange={onWinnerChange}
+          />
+        );
+      })()}
     </Card>
   );
 }
