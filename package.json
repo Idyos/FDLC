@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@g-loot/react-tournament-brackets": "^1.0.31-rc",
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-accordion": "^1.2.8",
     "@radix-ui/react-alert-dialog": "^1.1.13",
@@ -41,9 +42,10 @@
     "react-hook-form": "^7.56.1",
     "react-router-dom": "^7.5.2",
     "react-spinners": "^0.17.0",
-    "react-tournament-bracket": "^0.2.4",
+    "react-svg-pan-zoom": "^3.10.0",
     "recharts": "^2.15.4",
     "sonner": "^2.0.3",
+    "styled-components": "^6.1.19",
     "tailwind-merge": "^3.2.0",
     "tailwindcss": "^4.1.3",
     "tw-animate-css": "^1.2.5",

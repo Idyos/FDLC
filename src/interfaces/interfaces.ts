@@ -5,6 +5,8 @@ export interface FavoritePenya {
 
 //#region 🔹 Tipos y constantes base
 
+import { Match } from "@/utils/bracketCreator";
+
 export const winDirections = ["NONE", "ASC", "DESC"] as const;
 export type WinDirection = (typeof winDirections)[number];
 
@@ -278,25 +280,20 @@ export class ChallengeByPoints extends Prova {
 }
 
 export class ChallengeByDiscalification extends Prova {
-  fases: {
-    ronda: number;
-    partidos: {
-      penyaA: string;
-      penyaB: string;
-      ganador: string;
-    }[];
-  }[] = [];
+  challengeType: ProvaType = "Rondes";
 
-  constructor() {
-    super("Rondes", "Rondes");
-  }
+  bracket?: {
+    matches: Match[];
+    rounds: { roundNumber: number; roundName: string; matchCount: number }[];
+    bracketSize: number;
+    byes: number;
+  };
 
-  getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {
-    console.log(penyesInfo,"Fase eliminatòria no implementada");
-
-    return [];
+  getResults(penyesInfo: PenyaInfo[]) {
+    // Lo calculas leyendo los winnerTeamId de cada match
   }
 }
+
 
 export class MultiChallenge extends Prova {
   subproves: Prova[] = [];
