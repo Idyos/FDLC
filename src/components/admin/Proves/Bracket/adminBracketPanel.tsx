@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Match, SVGViewer, SingleEliminationBracket } from "@g-loot/react-tournament-brackets";
+import { useEffect, useMemo, useState } from "react";
+import { BracketViewer } from "./BracketViewer";
 import { useAuth } from "@/routes/admin/AuthContext";
 import type { Prova } from "@/interfaces/interfaces";
 import { toast } from "sonner";
@@ -298,18 +298,7 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
         </div>
 
         <div className="w-full overflow-auto rounded-lg border p-4">
-          <SingleEliminationBracket
-            matches={glootMatches}
-            matchComponent={Match}
-            svgWrapper={({
-              children,
-              ...props
-            }: { children: ReactNode } & Record<string, unknown>) => (
-              <SVGViewer width={1600} height={1200} {...props}>
-                {children}
-              </SVGViewer>
-            )}
-          />
+          <BracketViewer matches={glootMatches} />
         </div>
       </div>
     );
