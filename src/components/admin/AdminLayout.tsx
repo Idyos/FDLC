@@ -35,6 +35,8 @@ import YearSelector from "@/components/public/yearSelector";
 import AdminPenyaSummary from "@/components/admin/Penyes/PenyaSummary/adminPenyaSummary";
 import AdminAddPenya from "@/components/admin/Penyes/AddPenya/adminAddPenya";
 import AdminAddUser from "./Users/AddUser/AdminAddUser";
+import { User } from "@/interfaces/userInterface";
+import { getUsers } from "@/services/usersService";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -44,9 +46,9 @@ export default function AdminLayout() {
 
   const [proves, setProves] = useState<Prova[]>([]);
   const [penyes, setPenyes] = useState<PenyaInfo[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [penyaFilter, setPenyaFilter] = useState("");
 
-  // Redirect to dashboard when year changes while viewing a specific prova
   const isInitialYearMount = useRef(true);
   useEffect(() => {
     if (isInitialYearMount.current) {
@@ -61,6 +63,7 @@ export default function AdminLayout() {
   useEffect(() => {
     getProves(selectedYear, setProves);
     getPenyes(selectedYear, setPenyes);
+    getUsers(setUsers);
     setPenyaFilter("");
   }, [selectedYear]);
 
@@ -128,7 +131,7 @@ export default function AdminLayout() {
                               })
                             }
                           >
-                            {prova.isSecret ? "Secreta" : prova.name}
+                            {prova.name}
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       ))}
@@ -188,7 +191,7 @@ export default function AdminLayout() {
             <Collapsible className="group/collapsible-usuaris">
               <SidebarGroup>
                 <SidebarGroupLabel asChild>
-                  <CollapsibleTrigger className="flex w-full items-center opacity-60">
+                  <CollapsibleTrigger className="flex w-full items-center pr-8">
                     <Users className="mr-2 h-4 w-4" />
                     Usuaris
                     <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible-usuaris:rotate-180" />
@@ -202,9 +205,15 @@ export default function AdminLayout() {
                 } />
                 <CollapsibleContent>
                   <SidebarGroupContent>
-                    <p className="px-2 py-1 text-xs text-muted-foreground">
-                      Pròximament...
-                    </p>
+                    <SidebarMenu>
+                      {users.map((user) => (
+                        <SidebarMenuItem key={user.uid}>
+                          <SidebarMenuButton>
+                            {user.email}
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
                   </SidebarGroupContent>
                 </CollapsibleContent>
               </SidebarGroup>
