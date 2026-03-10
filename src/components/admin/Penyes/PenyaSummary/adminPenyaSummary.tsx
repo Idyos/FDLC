@@ -22,9 +22,11 @@ import { Textarea } from "@/components/ui/textarea";
 interface PenyaSummaryProps {
   rankingInfo: PenyaInfo | null;
   triggerElement?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export default function AdminPenyaSummary({ rankingInfo, triggerElement }: PenyaSummaryProps) {
+export default function AdminPenyaSummary({ rankingInfo, triggerElement, open, onOpenChange }: PenyaSummaryProps) {
   const { selectedYear } = useYear();    
 
   const [isSaving, setIsSaving] = useState(false);
@@ -101,7 +103,7 @@ export default function AdminPenyaSummary({ rankingInfo, triggerElement }: Penya
 
   if (rankingInfo != null && triggerElement) {
     return (
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={open !== undefined ? open : isDialogOpen} onOpenChange={onOpenChange ?? setIsDialogOpen}>
         <DialogTrigger asChild>{triggerElement}</DialogTrigger>
         <DialogContent className="sm:max-w-[500px] max-h-[88svh] overflow-y-auto">
           <DialogHeader>

@@ -28,15 +28,15 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { useAuth } from "@/routes/admin/AuthContext";
-import { navigateWithQuery } from "@/utils/url";
 import { getPenyes, getProves } from "@/services/database/Admin/adminDbServices";
 import { Prova, PenyaInfo } from "@/interfaces/interfaces";
 import YearSelector from "@/components/public/yearSelector";
-import AdminPenyaSummary from "@/components/admin/Penyes/PenyaSummary/adminPenyaSummary";
 import AdminAddPenya from "@/components/admin/Penyes/AddPenya/adminAddPenya";
 import AdminAddUser from "./Users/AddUser/AdminAddUser";
 import { User } from "@/interfaces/userInterface";
 import { getUsers } from "@/services/usersService";
+import AdminProvaContextMenu from "@/components/admin/Proves/SidebarItem/adminProvaContextMenu";
+import AdminPenyaContextMenu from "@/components/admin/Penyes/SidebarItem/adminPenyaContextMenu";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -123,17 +123,14 @@ export default function AdminLayout() {
                   <SidebarGroupContent>
                     <SidebarMenu>
                       {proves.map((prova) => (
-                        <SidebarMenuItem key={prova.id}>
-                          <SidebarMenuButton
-                            onClick={() =>
-                              navigateWithQuery(navigate, "/admin/prova", {
-                                provaId: prova.id,
-                              })
-                            }
-                          >
-                            {prova.name}
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
+                        <AdminProvaContextMenu
+                          key={prova.id}
+                          prova={prova}
+                          year={selectedYear}
+                          onDeleted={(id) =>
+                            setProves((prev) => prev.filter((p) => p.id !== id))
+                          }
+                        />
                       ))}
                     </SidebarMenu>
                   </SidebarGroupContent>
@@ -170,16 +167,14 @@ export default function AdminLayout() {
                     </div>
                     <SidebarMenu>
                       {filteredPenyes.map((penya) => (
-                        <SidebarMenuItem key={penya.id}>
-                          <AdminPenyaSummary
-                            rankingInfo={penya}
-                            triggerElement={
-                              <SidebarMenuButton>
-                                {penya.name}
-                              </SidebarMenuButton>
-                            }
-                          />
-                        </SidebarMenuItem>
+                        <AdminPenyaContextMenu
+                          key={penya.id}
+                          penya={penya}
+                          year={selectedYear}
+                          onDeleted={(id) =>
+                            setPenyes((prev) => prev.filter((p) => p.id !== id))
+                          }
+                        />
                       ))}
                     </SidebarMenu>
                   </SidebarGroupContent>

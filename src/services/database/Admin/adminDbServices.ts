@@ -1,6 +1,6 @@
 import { Prova, PenyaInfo, EmptyProva, ParticipatingPenya } from "@/interfaces/interfaces";
 import { db } from "../../../firebase/firebase";
-import { collection, getDocs, doc, updateDoc, writeBatch, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, deleteDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { addImageToChallenges, addImageToPenyes } from "../../storageService";
 
@@ -332,5 +332,40 @@ export const updatePenyaInfo = async (year: number, penyaId: string, name: strin
     console.error("Error updating penya:", error);
   }
 }
+
+export const deletePenya = async (year: number, penyaId: string): Promise<void> => {
+  const penyaRef = doc(db, `Circuit/${year}/Penyes/${penyaId}`);
+  try {
+    await deleteDoc(penyaRef);
+  } catch (error) {
+    console.error("Error eliminant la penya:", error);
+    toast.error("Error al eliminar la penya: " + error);
+    throw error;
+  }
+};
+
+export const deleteProva = async (year: number, provaId: string): Promise<void> => {
+  const provaRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
+  const resultsRef = doc(db, `Circuit/${year}/Results/${provaId}`);
+  const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
+
+  try {
+    const participantsSnap = await getDocs(participantsRef);
+    const batch = writeBatch(db);
+
+    participantsSnap.docs.forEach((participantDoc) => {
+      batch.delete(participantDoc.ref);
+    });
+
+    batch.delete(resultsRef);
+    batch.delete(provaRef);
+
+    await batch.commit();
+  } catch (error) {
+    console.error("Error eliminant la prova:", error);
+    toast.error("Error al eliminar la prova: " + error);
+    throw error;
+  }
+};
 
 //#endregion
