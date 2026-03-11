@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, Home, LogOut, Plus, Users } from "lucide-react";
+import { ChevronDown, Flag, Home, LogOut, Plus, Users, Trophy } from "lucide-react";
 
 import {
   Collapsible,
@@ -37,6 +37,7 @@ import { User } from "@/interfaces/userInterface";
 import { getUsers } from "@/services/usersService";
 import AdminProvaContextMenu from "@/components/admin/Proves/SidebarItem/adminProvaContextMenu";
 import AdminPenyaContextMenu from "@/components/admin/Penyes/SidebarItem/adminPenyaContextMenu";
+import AdminUserContextMenu from "@/components/admin/Users/SidebarItem/AdminUserContextMenu";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -108,6 +109,7 @@ export default function AdminLayout() {
               <SidebarGroup>
                 <SidebarGroupLabel asChild>
                   <CollapsibleTrigger className="flex w-full items-center pr-8">
+                    <Trophy className="mr-2 h-4 w-4" />
                     Proves
                     <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible-proves:rotate-180" />
                   </CollapsibleTrigger>
@@ -143,6 +145,7 @@ export default function AdminLayout() {
               <SidebarGroup>
                 <SidebarGroupLabel asChild>
                   <CollapsibleTrigger className="flex w-full items-center pr-8">
+                    <Flag className="mr-2 h-4 w-4" />
                     Penyes
                     <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible-penyes:rotate-180" />
                   </CollapsibleTrigger>
@@ -201,12 +204,19 @@ export default function AdminLayout() {
                 <CollapsibleContent>
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      {users.map((user) => (
-                        <SidebarMenuItem key={user.uid}>
-                          <SidebarMenuButton>
-                            {user.email}
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
+                      {users.map((u) => (
+                        <AdminUserContextMenu
+                          key={u.uid}
+                          user={u}
+                          onDeleted={(uid) =>
+                            setUsers((prev) => prev.filter((x) => x.uid !== uid))
+                          }
+                          onUpdated={(updated) =>
+                            setUsers((prev) =>
+                              prev.map((x) => (x.uid === updated.uid ? updated : x))
+                            )
+                          }
+                        />
                       ))}
                     </SidebarMenu>
                   </SidebarGroupContent>

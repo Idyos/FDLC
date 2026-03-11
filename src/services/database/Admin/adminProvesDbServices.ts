@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { Prova, PenyaProvaFinalResultData, PenyaProvaResultData } from "@/interfaces/interfaces";
 import { db } from "@/firebase/firebase";
+import { deleteUsersWithProva } from "@/services/usersService";
 
 export async function generateProvaResults(year: number, provaId: string) {
   const provaRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
@@ -80,6 +81,9 @@ export async function generateProvaResults(year: number, provaId: string) {
   batch.update(provaRef, { isFinished: true, finishDate: serverTimestamp() });
 
   await batch.commit();
+
+  // Delete temporary users whose access was limited to this prova
+  await deleteUsersWithProva(provaId);
 
   return results;
 }

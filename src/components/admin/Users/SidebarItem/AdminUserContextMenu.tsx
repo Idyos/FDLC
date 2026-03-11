@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Pencil, Trash2 } from "lucide-react";
 
 import {
@@ -23,41 +22,33 @@ import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { buttonVariants } from "@/components/ui/button";
 import { toast } from "sonner";
 
-import { Prova } from "@/interfaces/interfaces";
-import { navigateWithQuery } from "@/utils/url";
-import { deleteProva } from "@/services/database/Admin/adminDbServices";
+import { User } from "@/interfaces/userInterface";
+import { deleteUser } from "@/services/usersService";
+import AdminAddUser from "../AddUser/AdminAddUser";
 
-interface AdminProvaContextMenuProps {
-  prova: Prova;
-  year: number;
-  onDeleted: (provaId: string) => void;
+interface AdminUserContextMenuProps {
+  user: User;
+  onDeleted: (uid: string) => void;
+  onUpdated: (user: User) => void;
 }
 
-export default function AdminProvaContextMenu({
-  prova,
-  year,
+export default function AdminUserContextMenu({
+  user,
   onDeleted,
-}: AdminProvaContextMenuProps) {
-  const navigate = useNavigate();
+  onUpdated,
+}: AdminUserContextMenuProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const navigateToProva = () => {
-    navigateWithQuery(navigate, "/admin/prova", { provaId: prova.id });
-  };
-
-  const navigateToEditProva = () => {
-    navigateWithQuery(navigate, "/admin/editProva", { provaId: prova.id });
-  };
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await deleteProva(year, prova.id);
-      toast.success(`Prova "${prova.name}" eliminada.`);
-      onDeleted(prova.id);
+      await deleteUser(user.uid);
+      toast.success(`Usuari "${user.displayName || user.email}" eliminat.`);
+      onDeleted(user.uid);
     } catch {
-      // toast already shown by service
+      toast.error("Error al eliminar l'usuari.");
     } finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);
@@ -69,13 +60,13 @@ export default function AdminProvaContextMenu({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={navigateToProva}>
-              {prova.isSecret ? "Secreta" : prova.name}
+            <SidebarMenuButton onClick={() => setEditDialogOpen(true)}>
+              {user.displayName || user.email}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </ContextMenuTrigger>
         <ContextMenuContent>
-          <ContextMenuItem onClick={navigateToEditProva}>
+          <ContextMenuItem onClick={() => setEditDialogOpen(true)}>
             <Pencil />
             Editar
           </ContextMenuItem>
@@ -90,15 +81,22 @@ export default function AdminProvaContextMenu({
         </ContextMenuContent>
       </ContextMenu>
 
+      <AdminAddUser
+        editMode
+        existingUser={user}
+        externalOpen={editDialogOpen}
+        onExternalOpenChange={setEditDialogOpen}
+        onUpdated={onUpdated}
+      />
+
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Eliminar "{prova.isSecret ? "Secreta" : prova.name}"?
+              Eliminar "{user.displayName || user.email}"?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              S'eliminaran tots els participants i resultats d'aquesta prova.
-              Aquesta acció és irreversible.
+              S'eliminarà l'usuari del sistema. Aquesta acció és irreversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

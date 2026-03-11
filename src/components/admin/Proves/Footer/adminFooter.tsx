@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { generateProvaResults, openProva } from "@/services/database/Admin/adminProvesDbServices";
+import { generateMultiProvaResults } from "@/services/database/Admin/adminMultiProvaDbServices";
 import { navigateWithQuery } from "@/utils/url";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -48,6 +49,23 @@ export default function AdminFooter() {
   const onFinishProva = async () => {
     if (!prova || !prova.penyes) return;
 
+    if (prova.challengeType === "MultiProva") {
+      try {
+        await generateMultiProvaResults(selectedYear, prova.id);
+        toast.success("Resultats generats correctament!");
+        setProva({ ...prova, isFinished: true });
+        if (prova.id) {
+          setTimeout(() => {
+            navigateWithQuery(navigate, "/prova", { provaId: prova.id });
+          }, 2000);
+        }
+      } catch (error: any) {
+        toast.error("Error al generar resultats: " + error.message);
+        console.error(error);
+      }
+      return;
+    }
+
     const penyesWithoutResults = prova.penyes
       .filter((r) => r.result == null || r.result === -1)
       .map((r) => r.name);
@@ -64,7 +82,6 @@ export default function AdminFooter() {
       setOpenAlert(false);
 
       setProva({ ...prova, isFinished: true });
-
 
       if (prova.id) {
         setTimeout(() => {

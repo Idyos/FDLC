@@ -42,7 +42,9 @@ export function buildChallenge(data: CreateChallenge): Prova {
     case "Rondes":
       challenge = new ChallengeByDiscalification(); break;
     case "MultiProva":
-      challenge = new MultiChallenge(); break;
+      challenge = new MultiChallenge();
+      data.winDirection = "DESC";
+      break;
     default:
       // nunca debería pasar tras Zod, pero por si acaso:
       challenge = new ChallengeByParticipation();

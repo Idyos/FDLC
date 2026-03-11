@@ -1,12 +1,13 @@
 export interface User {
   uid: string;
-  displayName: string;
   email: string;
+  displayName: string;
   photoURL: string;
   isTemporary: boolean;
   permissions: {
     penyes: PenyesPermissions[];
-    proves:  ProvesPermissions[];
+    proves: ProvesPermissions[];
+    specificProvaId?: string; // if set, proves permissions apply only to this specific prova
     users: UsersPermissions[];
   };
 }

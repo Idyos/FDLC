@@ -3,6 +3,7 @@ import { db } from "../../../firebase/firebase";
 import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, deleteDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { addImageToChallenges, addImageToPenyes } from "../../storageService";
+import { deleteUsersWithProva } from "../../usersService";
 
 //#region PROVES
 export const getProves = async (
@@ -361,9 +362,78 @@ export const deleteProva = async (year: number, provaId: string): Promise<void> 
     batch.delete(provaRef);
 
     await batch.commit();
+    await deleteUsersWithProva(provaId);
   } catch (error) {
     console.error("Error eliminant la prova:", error);
     toast.error("Error al eliminar la prova: " + error);
+    throw error;
+  }
+};
+
+export const updateProva = async (
+  year: number,
+  provaId: string,
+  data: Prova,
+  image: File | null
+): Promise<void> => {
+  const provaRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
+  const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
+
+  try {
+    // Upload new image only if provided; otherwise keep existing imageUrl
+    let imageUrl: string | null = data.imageUrl ?? null;
+    if (image !== null) {
+      const uploaded = await addImageToChallenges(image, year, provaId);
+      imageUrl = uploaded || null;
+    }
+
+    await updateDoc(provaRef, {
+      name: data.name ?? "",
+      description: data.description ?? "",
+      startDate: data.startDate ?? null,
+      finishDate: data.finishDate ?? null,
+      location: data.location ?? null,
+      pointsRange: data.pointsRange,
+      winDirection: data.winDirection ?? null,
+      intervalMinutes: data.intervalMinutes ?? null,
+      maxPenyesPerSlot: data.maxPenyesPerSlot ?? null,
+      imageUrl,
+    });
+
+    // Diff participants
+    const existingSnap = await getDocs(participantsRef);
+    const existingIds = new Set(existingSnap.docs.map((d) => d.id));
+    const newIds = new Set(data.penyes.map((p) => p.penyaId));
+
+    const batch = writeBatch(db);
+
+    // Add new or update existing participants
+    for (const p of data.penyes) {
+      const participantRef = doc(db, `Circuit/${year}/Proves/${provaId}/Participants/${p.penyaId}`);
+      if (!existingIds.has(p.penyaId)) {
+        batch.set(participantRef, {
+          penyaId: p.penyaId,
+          penyaName: p.name,
+          participates: p.participates,
+          result: -1,
+          participationTime: null,
+        });
+      } else {
+        batch.update(participantRef, { participates: p.participates, penyaName: p.name });
+      }
+    }
+
+    // Remove participants no longer in the list
+    for (const d of existingSnap.docs) {
+      if (!newIds.has(d.id)) {
+        batch.delete(d.ref);
+      }
+    }
+
+    await batch.commit();
+  } catch (error) {
+    console.error("Error actualitzant la prova:", error);
+    toast.error("Error al actualitzar la prova: " + error);
     throw error;
   }
 };

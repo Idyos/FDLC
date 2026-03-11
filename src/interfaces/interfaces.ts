@@ -295,16 +295,21 @@ export class ChallengeByDiscalification extends Prova {
 }
 
 
+export interface SubProvaConfig {
+  id: string;
+  name: string;
+  challengeType: "Participació" | "Temps" | "Punts";
+  winDirection: WinDirection;
+  order: number;
+  intervalMinutes?: number;
+  maxPenyesPerSlot?: number;
+}
+
 export class MultiChallenge extends Prova {
-  subproves: Prova[] = [];
+  subProves: SubProvaConfig[] = [];
 
   constructor() {
     super("MultiProva", "MultiProva");
-  }
-
-  getResults(penyesInfo: PenyaInfo[]): ChallengeResult[] {
-    console.log(penyesInfo,"MultiProva no implementada");
-    return [];
   }
 }
 

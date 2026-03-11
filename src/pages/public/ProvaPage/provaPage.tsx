@@ -121,6 +121,9 @@ function PublicResultsList({ penyes }: { penyes: ParticipatingPenya[] }) {
   );
 }
 import AdminBracketPanel from "@/components/admin/Proves/Bracket/adminBracketPanel";
+import PublicBracketPanel from "@/components/admin/Proves/Bracket/PublicBracketPanel";
+import AdminMultiProvaPanel from "@/components/admin/Proves/MultiProva/AdminMultiProvaPanel";
+import PublicMultiProvaPanel from "@/components/admin/Proves/MultiProva/PublicMultiProvaPanel";
 
 export default function ProvaPage() {
     const location = useLocation();
@@ -301,9 +304,11 @@ export default function ProvaPage() {
                 <>
                   {admin ? (
                     provaInfo.challengeType === "Rondes" ? (
-                  <AdminBracketPanel year={selectedYear} prova={provaInfo} />
-                ) : (
-                  <>
+                      <AdminBracketPanel year={selectedYear} prova={provaInfo} />
+                    ) : provaInfo.challengeType === "MultiProva" ? (
+                      <AdminMultiProvaPanel year={selectedYear} prova={provaInfo} />
+                    ) : (
+                      <>
                         <Input className="p-4 mb-4" type="search" value={penyesSearch} placeholder="Buscar penya..." onChange={(e) => setPenyesSearch(e.target.value)}/>
                         <div className="grid grid-cols-[repeat(auto-fit,_minmax(300px,_1fr))] gap-3 w-full">
                           {isProvaLoading ? (
@@ -318,14 +323,20 @@ export default function ProvaPage() {
                         </div>
                       </>
                     )
-              ) : (
-                    <div className="p-3.5 flex flex-col items-end justify-start ">
-                      {isProvaLoading ? (
-                        <LoadingAnimation />
-                      ) : (
-                        <PublicResultsList penyes={provaInfo.penyes} />
-                      )}
-                    </div>
+                  ) : (
+                    provaInfo.challengeType === "Rondes" ? (
+                      <PublicBracketPanel year={selectedYear} prova={provaInfo} />
+                    ) : provaInfo.challengeType === "MultiProva" ? (
+                      <PublicMultiProvaPanel year={selectedYear} provaId={provaInfo.id} />
+                    ) : (
+                      <div className="p-3.5 flex flex-col items-end justify-start ">
+                        {isProvaLoading ? (
+                          <LoadingAnimation />
+                        ) : (
+                          <PublicResultsList penyes={provaInfo.penyes} />
+                        )}
+                      </div>
+                    )
                   )}
                 </>
               )}

@@ -10,6 +10,7 @@ import Login from './pages/admin/Login';
 import Dashboard from './pages/admin/Dashboard';
 import { YearProvider } from './components/shared/Contexts/YearContext';
 import CreateProva from './pages/admin/createProva/createProva';
+import EditProva from './pages/admin/editProva/editProva';
 import MainPage from './pages/public/MainPage/mainPage';
 import ProvaPage from './pages/public/ProvaPage/provaPage';
 import { AdminRoutes } from './routes/admin/AdminRoutes';
@@ -46,6 +47,7 @@ export default function App() {
                 <Route path="/admin/prova" element={<ProvaPage />} />
               </Route>
               <Route path="/admin/createProva" element={<AdminRoutes><CreateProva /></AdminRoutes>} />
+              <Route path="/admin/editProva" element={<AdminRoutes><EditProva /></AdminRoutes>} />
             </Routes>
           </FavoritePenyesProvider>
         </YearProvider>

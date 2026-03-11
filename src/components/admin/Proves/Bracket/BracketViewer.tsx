@@ -5,6 +5,7 @@ import type { GlootMatchData } from "@/features/bracket/glootAdapter";
 interface BracketViewerProps {
   matches: GlootMatchData[];
   onScoreChange?: (internalId: string, scoreA: number | null, scoreB: number | null) => void;
+  readOnly?: boolean;
 }
 
 const S = 80;    // slot spacing (px): distance between adjacent first-round match tops
@@ -26,10 +27,12 @@ function matchTop(roundNum: number, matchIndex: number): number {
 interface BracketMatchCardProps {
   match: GlootMatchData;
   top: number;
+  locked?: boolean;
+  readOnly?: boolean;
   onScoreChange?: (internalId: string, scoreA: number | null, scoreB: number | null) => void;
 }
 
-function BracketMatchCard({ match, top, onScoreChange }: BracketMatchCardProps) {
+function BracketMatchCard({ match, top, locked, readOnly, onScoreChange }: BracketMatchCardProps) {
   const p0 = match.participants[0];
   const p1 = match.participants[1];
 
@@ -89,7 +92,7 @@ function BracketMatchCard({ match, top, onScoreChange }: BracketMatchCardProps) 
             )}
           >
             <span className="truncate flex-1">{p.name}</span>
-            {match.clickable && (
+            {match.clickable && !readOnly && !locked && (
               <div className="w-8 shrink-0">
                 <input
                   type="text"
@@ -105,6 +108,9 @@ function BracketMatchCard({ match, top, onScoreChange }: BracketMatchCardProps) 
                 />
               </div>
             )}
+            {match.clickable && (readOnly || locked) && raw !== "" && (
+              <span className="w-8 shrink-0 text-center text-xs text-muted-foreground">{raw}</span>
+            )}
           </div>
         );
       })}
@@ -112,7 +118,22 @@ function BracketMatchCard({ match, top, onScoreChange }: BracketMatchCardProps) 
   );
 }
 
-export function BracketViewer({ matches, onScoreChange }: BracketViewerProps) {
+export function BracketViewer({ matches, onScoreChange, readOnly }: BracketViewerProps) {
+  // Build set of match internalIds that feed into a next-round match which already has scores.
+  // Those matches must be locked (non-editable) to prevent inconsistent bracket state.
+  const lockedMatchIds = useMemo(() => {
+    const byId = new Map(matches.map((m) => [m.id, m]));
+    const locked = new Set<string>();
+    for (const m of matches) {
+      if (m.nextMatchId == null) continue;
+      const next = byId.get(m.nextMatchId);
+      if (!next) continue;
+      const nextHasScore = next.participants.some((p) => p.score !== null);
+      if (nextHasScore) locked.add(m.internalId);
+    }
+    return locked;
+  }, [matches]);
+
   const rounds = useMemo(() => {
     const map = new Map<number, GlootMatchData[]>();
     for (const m of matches) {
@@ -192,6 +213,8 @@ export function BracketViewer({ matches, onScoreChange }: BracketViewerProps) {
                   key={match.id}
                   match={match}
                   top={matchTop(roundNum, i)}
+                  locked={lockedMatchIds.has(match.internalId)}
+                  readOnly={readOnly}
                   onScoreChange={onScoreChange}
                 />
               ))}
