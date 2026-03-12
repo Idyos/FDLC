@@ -11,7 +11,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { generateProvaResults, openProva } from "@/services/database/Admin/adminProvesDbServices";
+import { generateProvaResults, generateBracketResults, openProva } from "@/services/database/Admin/adminProvesDbServices";
 import { generateMultiProvaResults } from "@/services/database/Admin/adminMultiProvaDbServices";
 import { navigateWithQuery } from "@/utils/url";
 import { useState } from "react";
@@ -95,20 +95,37 @@ export default function AdminFooter() {
     }
   };
 
+  const onFinishRondes = async () => {
+    if (!prova) return;
+    try {
+      await generateBracketResults(selectedYear, prova.id);
+      toast.success("Resultats generats correctament!");
+      setProva({ ...prova, isFinished: true });
+      if (prova.id) {
+        setTimeout(() => {
+          navigateWithQuery(navigate, "/prova", { provaId: prova.id });
+        }, 2000);
+      }
+    } catch (error: any) {
+      toast.error(error.message ?? "Error al generar resultats.");
+      console.error(error);
+    }
+  };
+
   if (prova.challengeType === "Rondes") {
     return (
       <footer
         className="
-          z-30 fixed bottom-0 right-0 bg-black py-4 flex flex-col items-end gap-2 p-5
+          z-30 fixed bottom-0 right-0 bg-black py-4 flex justify-end p-5
           w-full rounded-none
           md:w-auto md:rounded-tl-3xl
         "
       >
-        <p className="text-sm text-white text-right max-w-md">
-          El tancament automatic de proves de Rondes esta deshabilitat en aquesta
-          versio.
-        </p>
-        <Button disabled>Tancar prova no disponible</Button>
+        {prova.isFinished ? (
+          <Button onClick={onOpenProva}>Tornar a obrir prova</Button>
+        ) : (
+          <Button onClick={onFinishRondes}>Tancar prova</Button>
+        )}
       </footer>
     );
   }

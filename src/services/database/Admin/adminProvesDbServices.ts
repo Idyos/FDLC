@@ -10,6 +10,7 @@ import {
 import { Prova, PenyaProvaFinalResultData, PenyaProvaResultData } from "@/interfaces/interfaces";
 import { db } from "@/firebase/firebase";
 import { deleteUsersWithProva } from "@/services/usersService";
+import { getProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";
 
 export async function generateProvaResults(year: number, provaId: string) {
   const provaRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
@@ -93,9 +94,98 @@ export async function openProva(year: number, provaId: string){
     const resultsRef = doc(db, `Circuit/${year}/Results/${provaId}`);
 
     const batch = writeBatch(db);
-    
+
     batch.delete(resultsRef);
     batch.update(provaRef, { isFinished: false });
-    
+
     await batch.commit();
+}
+
+export async function generateBracketResults(year: number, provaId: string) {
+  // 1. Load prova
+  const provaRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
+  const provaSnap = await getDoc(provaRef);
+  if (!provaSnap.exists()) throw new Error("No s'ha trobat la prova.");
+  const provaData = provaSnap.data() as Prova;
+
+  // 2. Load bracket
+  const saved = await getProvaBracket(year, provaId);
+  if (!saved) throw new Error("No hi ha cap quadre generat.");
+
+  const { bracket, thirdPlaceMatch } = saved.finalStage;
+  const { matches, bracketSize } = bracket;
+
+  // 3. Load participants
+  const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
+  const participantsSnap = await getDocs(participantsRef);
+  const participants = participantsSnap.docs.map((d) => d.data() as PenyaProvaResultData);
+
+  if (participants.length === 0) throw new Error("No hi ha participants.");
+
+  // 4. Find the final match and validate it has been played
+  const totalRounds = Math.max(...matches.map((m) => m.roundNumber));
+  const finalMatch = matches.find((m) => m.roundNumber === totalRounds);
+  if (!finalMatch?.winnerTeamId) throw new Error("La final encara no s'ha jugat.");
+
+  // 5. Build teamId → position map
+  const positionMap = new Map<string, number>();
+  const semifinalRound = totalRounds - 1;
+
+  // Final: winner → 1, loser → 2
+  positionMap.set(finalMatch.winnerTeamId, 1);
+  const finalLoserIdx = finalMatch.winnerSlot === "A" ? 1 : 0;
+  const finalLoserTeamId = finalMatch.teams[finalLoserIdx]?.teamId;
+  if (finalLoserTeamId) positionMap.set(finalLoserTeamId, 2);
+
+  // 3rd place match (when played): winner → 3, loser → 4
+  if (thirdPlaceMatch?.status === "finished" && thirdPlaceMatch.winnerTeamId) {
+    positionMap.set(thirdPlaceMatch.winnerTeamId, 3);
+    if (thirdPlaceMatch.loserTeamId) positionMap.set(thirdPlaceMatch.loserTeamId, 4);
+  }
+
+  // All other rounds: loser gets startPos = bracketSize / 2^round + 1
+  for (let r = totalRounds - 1; r >= 1; r--) {
+    const roundMatches = matches.filter((m) => m.roundNumber === r && m.status === "finished");
+    for (const m of roundMatches) {
+      if (!m.winnerSlot || !m.winnerTeamId) continue;
+      const loserIdx = m.winnerSlot === "A" ? 1 : 0;
+      const loserTeamId = m.teams[loserIdx]?.teamId;
+      if (!loserTeamId || positionMap.has(loserTeamId)) continue;
+
+      if (r === semifinalRound) {
+        // Semifinal losers: 3rd place match not played → share position 3
+        positionMap.set(loserTeamId, 3);
+      } else {
+        const startPos = bracketSize / Math.pow(2, r) + 1;
+        positionMap.set(loserTeamId, startPos);
+      }
+    }
+  }
+
+  // 6. Build result entries
+  const results: PenyaProvaFinalResultData[] = participants.map((p) => {
+    const position = positionMap.get(p.penyaId) ?? 0;
+    let pointsAwarded = 0;
+    if (position > 0) {
+      const range = provaData.pointsRange?.find((r) => position >= r.from && position <= r.to);
+      if (range) pointsAwarded = range.points;
+    }
+    return { penyaId: p.penyaId, name: p.penyaName, position, pointsAwarded, result: p.result ?? -1 };
+  });
+
+  // 7. Batch write results + mark finished
+  const batch = writeBatch(db);
+  const resultRef = doc(db, `Circuit/${year}/Results/${provaId}`);
+  batch.set(resultRef, {
+    provaId,
+    createdAt: serverTimestamp(),
+    name: provaData.name,
+    challengeType: provaData.challengeType,
+    results,
+  });
+  batch.update(provaRef, { isFinished: true, finishDate: serverTimestamp() });
+  await batch.commit();
+
+  await deleteUsersWithProva(provaId);
+  return results;
 }

@@ -27,6 +27,8 @@ import {
   propagateBracketByes,
   resolveMatchWinner,
   sanitizeTeamSnapshot,
+  shouldHaveThirdPlaceMatch,
+  syncThirdPlaceFromSemifinals,
 } from "@/features/bracket/bracketDomain";
 import type { GroupMatch } from "@/features/bracket/types";
 import { toGlootMatches } from "@/features/bracket/glootAdapter";
@@ -35,6 +37,7 @@ import type {
   FinalStageState,
   GroupStageState,
   StoredProvaBracketDoc,
+  ThirdPlaceMatch,
 } from "@/features/bracket/types";
 import {
   getProvaBracket,
@@ -46,6 +49,7 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 interface AdminBracketPanelProps {
   year: number;
   prova: Prova;
+  readOnly?: boolean;
 }
 
 function buildTeamSnapshot(prova: Prova): BracketTeamSnapshot[] {
@@ -65,7 +69,7 @@ function formatSavedAt(date: Date): string {
   return `Guardat: ${hh}:${mm}`;
 }
 
-export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProps) {
+export default function AdminBracketPanel({ year, prova, readOnly = false }: AdminBracketPanelProps) {
   const { user } = useAuth();
   const teams = useMemo(() => buildTeamSnapshot(prova), [prova]);
   const teamById = useMemo(() => {
@@ -77,6 +81,7 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
   // Bracket state
   const [groupStage, setGroupStage] = useState<GroupStageState | null>(null);
   const [finalStage, setFinalStage] = useState<FinalStageState | null>(null);
+  const [thirdPlaceMatch, setThirdPlaceMatch] = useState<ThirdPlaceMatch | null>(null);
   const [isLoadingSavedBracket, setIsLoadingSavedBracket] = useState(true);
 
   // Save state
@@ -84,15 +89,20 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finalStageRef = useRef<FinalStageState | null>(null);
+  const thirdPlaceMatchRef = useRef<ThirdPlaceMatch | null>(null);
 
   // Dialog state
   const [showOverwriteAlert, setShowOverwriteAlert] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
-  // Keep ref in sync with state for debounced save
+  // Keep refs in sync with state for debounced save
   useEffect(() => {
     finalStageRef.current = finalStage;
   }, [finalStage]);
+
+  useEffect(() => {
+    thirdPlaceMatchRef.current = thirdPlaceMatch;
+  }, [thirdPlaceMatch]);
 
   // Stable key: only changes when group winners change, not on every match result
   const groupWinnersKey = useMemo(
@@ -132,14 +142,16 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
           return;
         }
 
+        const propagatedMatches = propagateBracketByes([...saved.finalStage.bracket.matches]);
         setGroupStage(saved.groupStage);
         setFinalStage({
           ...saved.finalStage,
-          bracket: {
-            ...saved.finalStage.bracket,
-            matches: propagateBracketByes([...saved.finalStage.bracket.matches]),
-          },
+          bracket: { ...saved.finalStage.bracket, matches: propagatedMatches },
         });
+        setThirdPlaceMatch(
+          saved.finalStage.thirdPlaceMatch ??
+            syncThirdPlaceFromSemifinals(propagatedMatches, null),
+        );
         setSavedAt(saved.updatedAt ? saved.updatedAt.toDate() : null);
         setSaveStatus("saved");
       } catch (error) {
@@ -177,23 +189,22 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
 
   // ─── Save helpers ───────────────────────────────────────────────────────────
 
-  const buildPayload = (fs: FinalStageState): StoredProvaBracketDoc => ({
+  const buildPayload = (fs: FinalStageState, tpm: ThirdPlaceMatch | null): StoredProvaBracketDoc => ({
     schemaVersion: 1,
     challengeType: "Rondes",
     mode: "simple_final",
     teamSnapshot: teams,
     groupStage: null,
-    finalStage: fs,
+    finalStage: { ...fs, thirdPlaceMatch: tpm },
     updatedAt: null,
     updatedBy: user?.uid ?? null,
   });
 
-  const doSave = async (fs: FinalStageState) => {
+  const doSave = async (fs: FinalStageState, tpm: ThirdPlaceMatch | null) => {
     if (!prova.id) return;
     setSaveStatus("saving");
     try {
-      console.log("Saving bracket with payload:", buildPayload(fs));
-      await saveProvaBracket(year, prova.id, buildPayload(fs), user?.uid);
+      await saveProvaBracket(year, prova.id, buildPayload(fs, tpm), user?.uid);
       const now = new Date();
       setSavedAt(now);
       setSaveStatus("saved");
@@ -209,7 +220,7 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
     setSaveStatus("saving");
     saveTimeoutRef.current = setTimeout(() => {
       if (finalStageRef.current) {
-        doSave(finalStageRef.current);
+        doSave(finalStageRef.current, thirdPlaceMatchRef.current);
       }
     }, 800);
   };
@@ -256,8 +267,9 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
     if (!next) return;
     setGroupStage(null);
     setFinalStage(next);
+    setThirdPlaceMatch(null);
     // Save immediately
-    doSave(next);
+    doSave(next, null);
   };
 
   // ─── Inline bracket score handler ───────────────────────────────────────────
@@ -272,13 +284,10 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
 
       let updatedMatches;
       if (scoreA !== null && scoreB !== null && scoreA !== scoreB) {
-        // Valid result: resolve winner and propagate through bracket
         updatedMatches = resolveMatchWinner(prev.bracket.matches, internalId, scoreA, scoreB);
       } else if (scoreA === null && scoreB === null) {
-        // Both cleared: reset match
         updatedMatches = clearMatchResult(prev.bracket.matches, internalId);
       } else {
-        // Partial input or draw: update scores but don't declare winner
         updatedMatches = prev.bracket.matches.map((m) => {
           if (m.id !== internalId) return m;
           return {
@@ -291,6 +300,10 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
           };
         });
       }
+
+      // Sync 3rd-place match participants from updated semifinal results
+      const synced = syncThirdPlaceFromSemifinals(updatedMatches, thirdPlaceMatchRef.current);
+      setThirdPlaceMatch(synced);
 
       return { ...prev, bracket: { ...prev.bracket, matches: updatedMatches } };
     });
@@ -354,6 +367,21 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
     });
   };
 
+  // ─── 3rd place match handler ────────────────────────────────────────────────
+
+  const handleThirdPlaceScoreUpdate = (scoreA: number | null, scoreB: number | null) => {
+    setThirdPlaceMatch((prev) => {
+      if (!prev) return prev;
+      if (scoreA !== null && scoreB !== null && scoreA !== scoreB) {
+        const winnerTeamId = scoreA > scoreB ? prev.teamA.teamId : prev.teamB.teamId;
+        const loserTeamId = scoreA > scoreB ? prev.teamB.teamId : prev.teamA.teamId;
+        return { ...prev, scoreA, scoreB, winnerTeamId, loserTeamId, status: "finished" };
+      }
+      return { ...prev, scoreA, scoreB, winnerTeamId: null, loserTeamId: null, status: "scheduled" };
+    });
+    scheduleSave();
+  };
+
   // ─── Render helpers ─────────────────────────────────────────────────────────
 
   const renderSaveStatus = () => {
@@ -395,8 +423,64 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
         <div className="w-full overflow-auto rounded-lg border p-4">
           <BracketViewer
             matches={glootMatches}
-            onScoreChange={handleBracketScoreUpdate}
+            onScoreChange={readOnly ? undefined : handleBracketScoreUpdate}
+            readOnly={readOnly}
           />
+        </div>
+      </div>
+    );
+  };
+
+  const renderThirdPlaceMatch = () => {
+    if (!finalStage || !shouldHaveThirdPlaceMatch(finalStage.bracket.matches)) return null;
+
+    const tpm = thirdPlaceMatch;
+    const teamAName = tpm?.teamA.displayName ?? "Pendent de semifinal";
+    const teamBName = tpm?.teamB.displayName ?? "Pendent de semifinal";
+    const pending = !tpm?.teamA.teamId || !tpm?.teamB.teamId;
+
+    return (
+      <div className="rounded-lg border p-4 space-y-3">
+        <p className="font-semibold text-sm">Partit pel 3r lloc</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm min-w-[120px]">{teamAName}</span>
+          {!readOnly && !pending ? (
+            <>
+              <input
+                type="number"
+                min={0}
+                className="w-14 rounded border px-2 py-1 text-center text-sm bg-background"
+                value={tpm?.scoreA ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value === "" ? null : Number(e.target.value);
+                  handleThirdPlaceScoreUpdate(val, tpm?.scoreB ?? null);
+                }}
+              />
+              <span className="text-muted-foreground text-sm">–</span>
+              <input
+                type="number"
+                min={0}
+                className="w-14 rounded border px-2 py-1 text-center text-sm bg-background"
+                value={tpm?.scoreB ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value === "" ? null : Number(e.target.value);
+                  handleThirdPlaceScoreUpdate(tpm?.scoreA ?? null, val);
+                }}
+              />
+            </>
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              {tpm?.status === "finished"
+                ? `${tpm.scoreA} – ${tpm.scoreB}`
+                : "–"}
+            </span>
+          )}
+          <span className="text-sm min-w-[120px]">{teamBName}</span>
+          {tpm?.status === "finished" && tpm.winnerTeamId && (
+            <Badge variant="secondary">
+              Guanyador: {tpm.winnerTeamId === tpm.teamA.teamId ? teamAName : teamBName}
+            </Badge>
+          )}
         </div>
       </div>
     );
@@ -405,22 +489,25 @@ export default function AdminBracketPanel({ year, prova }: AdminBracketPanelProp
   return (
     <Card className="py-4">
       <CardHeader className="gap-2">
-        <CardTitle>Configuració del quadre de Rondes</CardTitle>
+        <CardTitle>Quadre de Rondes</CardTitle>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{`Equips actius: ${teams.length}`}</Badge>
-          {renderSaveStatus()}
+          {!readOnly && renderSaveStatus()}
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={onGenerate} disabled={isLoadingSavedBracket}>
-            Generar
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={onGenerate} disabled={isLoadingSavedBracket}>
+              Generar
+            </Button>
+          </div>
+        )}
 
-        <div className="space-y-2">
+        <div className="space-y-4">
           {renderFinalBracket()}
+          {renderThirdPlaceMatch()}
         </div>
       </CardContent>
 

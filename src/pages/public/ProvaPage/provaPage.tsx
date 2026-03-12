@@ -304,7 +304,33 @@ export default function ProvaPage() {
                 <>
                   {admin ? (
                     provaInfo.challengeType === "Rondes" ? (
-                      <AdminBracketPanel year={selectedYear} prova={provaInfo} />
+                      provaInfo.isFinished ? (
+                        <Tabs defaultValue="resultats" className="p-4">
+                          <TabsList>
+                            <TabsTrigger value="resultats">Resultats</TabsTrigger>
+                            <TabsTrigger value="quadre">Quadre</TabsTrigger>
+                          </TabsList>
+                          <TabsContent value="resultats">
+                            <Input className="p-4 mb-4" type="search" value={penyesSearch} placeholder="Buscar penya..." onChange={(e) => setPenyesSearch(e.target.value)}/>
+                            <div className="grid grid-cols-[repeat(auto-fit,_minmax(300px,_1fr))] gap-3 w-full">
+                              {isProvaLoading ? (
+                                <LoadingAnimation />
+                              ) : (
+                                filteredPenyes.length > 0 ? (
+                                  filteredPenyes.map((penya) => (
+                                    <AdminSingleProvaResult key={penya.penyaId} provaResultSummary={penya} />
+                                  ))
+                                ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
+                              )}
+                            </div>
+                          </TabsContent>
+                          <TabsContent value="quadre">
+                            <AdminBracketPanel year={selectedYear} prova={provaInfo} readOnly />
+                          </TabsContent>
+                        </Tabs>
+                      ) : (
+                        <AdminBracketPanel year={selectedYear} prova={provaInfo} />
+                      )
                     ) : provaInfo.challengeType === "MultiProva" ? (
                       <AdminMultiProvaPanel year={selectedYear} prova={provaInfo} />
                     ) : (
@@ -325,7 +351,28 @@ export default function ProvaPage() {
                     )
                   ) : (
                     provaInfo.challengeType === "Rondes" ? (
-                      <PublicBracketPanel year={selectedYear} prova={provaInfo} />
+                      provaInfo.isFinished ? (
+                        <Tabs defaultValue="resultats" className="p-4">
+                          <TabsList>
+                            <TabsTrigger value="resultats">Resultats</TabsTrigger>
+                            <TabsTrigger value="quadre">Quadre</TabsTrigger>
+                          </TabsList>
+                          <TabsContent value="resultats">
+                            <div className="p-3.5 flex flex-col items-end justify-start">
+                              {isProvaLoading ? (
+                                <LoadingAnimation />
+                              ) : (
+                                <PublicResultsList penyes={provaInfo.penyes} />
+                              )}
+                            </div>
+                          </TabsContent>
+                          <TabsContent value="quadre">
+                            <PublicBracketPanel year={selectedYear} prova={provaInfo} />
+                          </TabsContent>
+                        </Tabs>
+                      ) : (
+                        <PublicBracketPanel year={selectedYear} prova={provaInfo} />
+                      )
                     ) : provaInfo.challengeType === "MultiProva" ? (
                       <PublicMultiProvaPanel year={selectedYear} provaId={provaInfo.id} />
                     ) : (

@@ -11,6 +11,7 @@ import type {
   GroupMatch,
   GroupStageState,
   GroupStanding,
+  ThirdPlaceMatch,
 } from "@/features/bracket/types";
 
 const MIN_GROUP_SIZE = 4;
@@ -411,6 +412,74 @@ export function resolveMatchWinner(
   }
 
   return propagateBracketByes(updated);
+}
+
+// ---------------------------------------------------------------------------
+// 3rd-place match helpers
+// ---------------------------------------------------------------------------
+
+/** Returns true when the bracket has enough rounds to have a semifinal,
+ *  meaning a 3rd-place playoff makes sense (≥4 teams, ≥2 rounds). */
+export function shouldHaveThirdPlaceMatch(matches: Match[]): boolean {
+  if (matches.length === 0) return false;
+  const totalRounds = Math.max(...matches.map((m) => m.roundNumber));
+  return totalRounds >= 2;
+}
+
+/** Derives the 3rd-place match from the two semifinal losers.
+ *  Preserves existing scores if the participants haven't changed.
+ *  Returns null if no semifinal has been played yet. */
+export function syncThirdPlaceFromSemifinals(
+  matches: Match[],
+  current: ThirdPlaceMatch | null | undefined,
+): ThirdPlaceMatch | null {
+  const totalRounds = Math.max(...matches.map((m) => m.roundNumber));
+  if (totalRounds < 2) return null;
+
+  const semifinalRound = totalRounds - 1;
+  const semifinals = matches
+    .filter((m) => m.roundNumber === semifinalRound)
+    .sort((a, b) => a.position - b.position);
+
+  if (semifinals.length < 2) return null;
+
+  const getLoser = (m: Match): { teamId: string | null; displayName: string | null } | null => {
+    if (!m.winnerSlot || !m.winnerTeamId) return null;
+    const loserIdx = m.winnerSlot === "A" ? 1 : 0;
+    const loserTeam = m.teams[loserIdx];
+    return {
+      teamId: loserTeam?.teamId ?? null,
+      displayName: loserTeam?.displayName ?? null,
+    };
+  };
+
+  const loserA = getLoser(semifinals[0]);
+  const loserB = getLoser(semifinals[1]);
+
+  if (!loserA && !loserB) return null;
+
+  const teamA = loserA ?? { teamId: null, displayName: null };
+  const teamB = loserB ?? { teamId: null, displayName: null };
+
+  // Preserve scores if participants are unchanged
+  if (
+    current &&
+    current.teamA.teamId === teamA.teamId &&
+    current.teamB.teamId === teamB.teamId
+  ) {
+    return { ...current, teamA, teamB };
+  }
+
+  return {
+    id: "M_3RD",
+    teamA,
+    teamB,
+    scoreA: null,
+    scoreB: null,
+    winnerTeamId: null,
+    loserTeamId: null,
+    status: "scheduled",
+  };
 }
 
 /** Resets a finished match back to 'scheduled' and clears the winner from the

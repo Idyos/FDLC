@@ -55,10 +55,22 @@ export interface FinalEntrant {
 
 export type GeneratedBracketSerializable = GeneratedBracket;
 
+export interface ThirdPlaceMatch {
+  id: "M_3RD";
+  teamA: { teamId: string | null; displayName: string | null };
+  teamB: { teamId: string | null; displayName: string | null };
+  scoreA: number | null;
+  scoreB: number | null;
+  winnerTeamId: string | null;
+  loserTeamId: string | null;
+  status: "scheduled" | "finished";
+}
+
 export interface FinalStageState {
   seedingPolicy: "random";
   entrants: FinalEntrant[];
   bracket: GeneratedBracketSerializable;
+  thirdPlaceMatch?: ThirdPlaceMatch | null;
 }
 
 export interface StoredProvaBracketDoc {
