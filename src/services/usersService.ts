@@ -1,7 +1,8 @@
 import { db } from "@/firebase/firebase";
 import { User } from "@/interfaces/userInterface";
 import { initializeApp, deleteApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { auth } from "@/firebase/firebase";
 import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -125,7 +126,16 @@ export const deleteUser = async (uid: string): Promise<void> => {
 
 export const updateUser = async (user: User): Promise<void> => {
   const docRef = doc(db, `Users/${user.uid}`);
+
+  if (auth.currentUser && auth.currentUser.uid === user.uid) {
+    await updateProfile(auth.currentUser, {
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+    });
+  }
+
   await updateDoc(docRef, {
+    photoURL: user.photoURL,
     displayName: user.displayName,
     isTemporary: user.isTemporary,
     permissions: {

@@ -409,17 +409,6 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
 
     return (
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          {finalStage.entrants.map((entrant) => (
-            <Badge
-              key={entrant.entryId}
-              variant={entrant.isPlaceholder ? "outline" : "secondary"}
-            >
-              {entrant.name}
-            </Badge>
-          ))}
-        </div>
-
         <div className="w-full overflow-auto rounded-lg border p-4">
           <BracketViewer
             matches={glootMatches}

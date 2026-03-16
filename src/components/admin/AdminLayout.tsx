@@ -51,6 +51,9 @@ export default function AdminLayout() {
   const [penyaFilter, setPenyaFilter] = useState("");
 
   const isInitialYearMount = useRef(true);
+
+  console.log(user);
+
   useEffect(() => {
     if (isInitialYearMount.current) {
       isInitialYearMount.current = false;
@@ -228,9 +231,21 @@ export default function AdminLayout() {
           {/* ── Footer ──────────────────────────────────────── */}
           <SidebarFooter className="p-3">
             <div className="flex items-center gap-2">
-              <span className="flex-1 truncate text-xs text-muted-foreground">
-                {user?.email}
-              </span>
+              {user?.photoURL ? (
+                <div className="rounded-full w-10 h-10 bg-muted-foreground">
+                </div>
+              ) : null}
+
+              <div className="flex flex-col flex-1 truncate text-xs text-muted-foreground">
+                {user?.displayName ? (
+                  <span className="font-medium text-sm text-foreground">
+                    {user?.displayName}
+                  </span>
+                ) : null}
+                <span className="text-xs text-muted-foreground">
+                  {user?.email}
+                </span>
+              </div>
               <Button
                 variant="ghost"
                 size="icon"
