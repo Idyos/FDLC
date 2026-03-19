@@ -1,8 +1,11 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { FavoritePenya } from "@/interfaces/interfaces";
+import { useYear } from "@/components/shared/Contexts/YearContext";
 
 const STORAGE_KEY = "fdlc-favorite-penyes";
 const MAX_FAVORITES = 3;
+
+type FavoritesByYear = Record<string, FavoritePenya[]>;
 
 interface FavoritePenyesContextType {
   favoritePenyes: FavoritePenya[];
@@ -16,21 +19,32 @@ interface FavoritePenyesContextType {
 const FavoritePenyesContext = createContext<FavoritePenyesContextType | null>(null);
 
 export function FavoritePenyesProvider({ children }: { children: React.ReactNode }) {
-  const [favoritePenyes, setFavoritePenyes] = useState<FavoritePenya[]>(() => {
+  const { selectedYear } = useYear();
+
+  const [allFavorites, setAllFavorites] = useState<FavoritesByYear>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
+      return stored ? JSON.parse(stored) : {};
     } catch {
-      return [];
+      return {};
     }
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(favoritePenyes));
-  }, [favoritePenyes]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(allFavorites));
+  }, [allFavorites]);
+
+  const favoritePenyes = allFavorites[selectedYear] ?? [];
+
+  function setYearFavorites(updater: (prev: FavoritePenya[]) => FavoritePenya[]) {
+    setAllFavorites((prev) => ({
+      ...prev,
+      [selectedYear]: updater(prev[selectedYear] ?? []),
+    }));
+  }
 
   function addFavoritePenya(penya: FavoritePenya) {
-    setFavoritePenyes((prev) => {
+    setYearFavorites((prev) => {
       if (prev.length >= MAX_FAVORITES) return prev;
       if (prev.some((f) => f.id === penya.id)) return prev;
       return [...prev, penya];
@@ -38,11 +52,11 @@ export function FavoritePenyesProvider({ children }: { children: React.ReactNode
   }
 
   function removeFavoritePenya(id: string) {
-    setFavoritePenyes((prev) => prev.filter((f) => f.id !== id));
+    setYearFavorites((prev) => prev.filter((f) => f.id !== id));
   }
 
   function clearFavoritePenyes() {
-    setFavoritePenyes([]);
+    setYearFavorites(() => []);
   }
 
   function isFavorite(id: string) {
