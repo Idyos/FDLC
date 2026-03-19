@@ -12,6 +12,7 @@ import {
   Timestamp,
   doc,
   getDoc,
+  onSnapshot,
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
@@ -129,6 +130,41 @@ export async function getProvaBracket(
     updatedAt,
     updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : null,
   };
+}
+
+export function subscribeProvaBracket(
+  year: number,
+  provaId: string,
+  onData: (doc: StoredProvaBracketDoc | null) => void,
+  onError: (error: Error) => void,
+): () => void {
+  const bracketRef = doc(db, `Circuit/${year}/Proves/${provaId}/Bracket/current`);
+  return onSnapshot(
+    bracketRef,
+    (snap) => {
+      if (!snap.exists()) {
+        onData(null);
+        return;
+      }
+      const data = snap.data();
+      if (!isRecord(data) || !isRecord(data.finalStage)) {
+        onData(null);
+        return;
+      }
+      const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt : null;
+      onData({
+        schemaVersion: 1,
+        challengeType: "Rondes",
+        mode: sanitizeBracketMode(data.mode),
+        teamSnapshot: sanitizeTeamSnapshot(data.teamSnapshot),
+        groupStage: sanitizeGroupStage(data.groupStage),
+        finalStage: data.finalStage as unknown as FinalStageState,
+        updatedAt,
+        updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : null,
+      });
+    },
+    onError,
+  );
 }
 
 export async function saveProvaBracket(

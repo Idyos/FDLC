@@ -27,12 +27,11 @@ function matchTop(roundNum: number, matchIndex: number): number {
 interface BracketMatchCardProps {
   match: GlootMatchData;
   top: number;
-  locked?: boolean;
   readOnly?: boolean;
   onScoreChange?: (internalId: string, scoreA: number | null, scoreB: number | null) => void;
 }
 
-function BracketMatchCard({ match, top, locked, readOnly, onScoreChange }: BracketMatchCardProps) {
+function BracketMatchCard({ match, top, readOnly, onScoreChange }: BracketMatchCardProps) {
   const p0 = match.participants[0];
   const p1 = match.participants[1];
 
@@ -53,19 +52,12 @@ function BracketMatchCard({ match, top, locked, readOnly, onScoreChange }: Brack
 
   const handleChange = (slot: "A" | "B", value: string) => {
     if (value !== "" && !/^\d+$/.test(value)) return;
+    if (slot === "A") setRawA(value);
+    else setRawB(value);
+  };
 
-    let nextA = parsedA;
-    let nextB = parsedB;
-
-    if (slot === "A") {
-      setRawA(value);
-      nextA = value === "" ? null : parseInt(value, 10);
-    } else {
-      setRawB(value);
-      nextB = value === "" ? null : parseInt(value, 10);
-    }
-
-    onScoreChange?.(match.internalId, nextA, nextB);
+  const handleBlur = () => {
+    onScoreChange?.(match.internalId, parsedA, parsedB);
   };
 
   const isFinished = p0.isWinner || p1.isWinner;
@@ -92,7 +84,7 @@ function BracketMatchCard({ match, top, locked, readOnly, onScoreChange }: Brack
             )}
           >
             <span className="truncate flex-1">{p.name}</span>
-            {match.clickable && !readOnly && !locked && (
+            {match.clickable && !readOnly && (
               <div className="w-8 shrink-0">
                 <input
                   type="text"
@@ -100,6 +92,7 @@ function BracketMatchCard({ match, top, locked, readOnly, onScoreChange }: Brack
                   value={raw}
                   placeholder="—"
                   onChange={(e) => handleChange(slot, e.target.value)}
+                  onBlur={handleBlur}
                   className={cn(
                     "w-full h-5 text-center text-xs rounded border bg-background px-0",
                     "focus:outline-none focus:ring-1 focus:ring-primary",
@@ -108,7 +101,7 @@ function BracketMatchCard({ match, top, locked, readOnly, onScoreChange }: Brack
                 />
               </div>
             )}
-            {match.clickable && (readOnly || locked) && raw !== "" && (
+            {match.clickable && readOnly && raw !== "" && (
               <span className="w-8 shrink-0 text-center text-xs text-muted-foreground">{raw}</span>
             )}
           </div>
@@ -119,20 +112,6 @@ function BracketMatchCard({ match, top, locked, readOnly, onScoreChange }: Brack
 }
 
 export function BracketViewer({ matches, onScoreChange, readOnly }: BracketViewerProps) {
-  // Build set of match internalIds that feed into a next-round match which already has scores.
-  // Those matches must be locked (non-editable) to prevent inconsistent bracket state.
-  const lockedMatchIds = useMemo(() => {
-    const byId = new Map(matches.map((m) => [m.id, m]));
-    const locked = new Set<string>();
-    for (const m of matches) {
-      if (m.nextMatchId == null) continue;
-      const next = byId.get(m.nextMatchId);
-      if (!next) continue;
-      const nextHasScore = next.participants.some((p) => p.score !== null);
-      if (nextHasScore) locked.add(m.internalId);
-    }
-    return locked;
-  }, [matches]);
 
   const rounds = useMemo(() => {
     const map = new Map<number, GlootMatchData[]>();
@@ -213,7 +192,6 @@ export function BracketViewer({ matches, onScoreChange, readOnly }: BracketViewe
                   key={match.id}
                   match={match}
                   top={matchTop(roundNum, i)}
-                  locked={lockedMatchIds.has(match.internalId)}
                   readOnly={readOnly}
                   onScoreChange={onScoreChange}
                 />

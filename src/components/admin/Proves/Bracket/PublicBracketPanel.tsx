@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { propagateBracketByes, shouldHaveThirdPlaceMatch } from "@/features/bracket/bracketDomain";
 import { toGlootMatches } from "@/features/bracket/glootAdapter";
 import type { FinalStageState, ThirdPlaceMatch } from "@/features/bracket/types";
-import { getProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";
+import { subscribeProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";
 
 interface PublicBracketPanelProps {
   year: number;
@@ -19,38 +19,39 @@ export default function PublicBracketPanel({ year, prova }: PublicBracketPanelPr
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let isCancelled = false;
+    if (!prova.id) {
+      setIsLoading(false);
+      return;
+    }
 
-    const load = async () => {
-      if (!prova.id) {
-        setIsLoading(false);
-        return;
-      }
-      setIsLoading(true);
-      try {
-        const saved = await getProvaBracket(year, prova.id);
-        if (isCancelled) return;
+    setIsLoading(true);
+
+    const unsubscribe = subscribeProvaBracket(
+      year,
+      prova.id,
+      (saved) => {
         if (!saved) {
           setFinalStage(null);
-          return;
+          setThirdPlaceMatch(null);
+        } else {
+          setFinalStage({
+            ...saved.finalStage,
+            bracket: {
+              ...saved.finalStage.bracket,
+              matches: propagateBracketByes([...saved.finalStage.bracket.matches]),
+            },
+          });
+          setThirdPlaceMatch(saved.finalStage.thirdPlaceMatch ?? null);
         }
-        setFinalStage({
-          ...saved.finalStage,
-          bracket: {
-            ...saved.finalStage.bracket,
-            matches: propagateBracketByes([...saved.finalStage.bracket.matches]),
-          },
-        });
-        setThirdPlaceMatch(saved.finalStage.thirdPlaceMatch ?? null);
-      } catch (error) {
-        if (!isCancelled) console.error("PublicBracketPanel load error:", error);
-      } finally {
-        if (!isCancelled) setIsLoading(false);
-      }
-    };
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error("PublicBracketPanel subscription error:", error);
+        setIsLoading(false);
+      },
+    );
 
-    load();
-    return () => { isCancelled = true; };
+    return unsubscribe;
   }, [year, prova.id]);
 
   const glootMatches = useMemo(

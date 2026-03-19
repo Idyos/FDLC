@@ -355,10 +355,42 @@ export function propagateBracketByes(matches: Match[]): Match[] {
   return updated;
 }
 
+/** Propagates a team identity change through subsequent rounds without altering
+ *  existing scores. If the updated slot is the winning slot of a finished match,
+ *  the winner identity is updated and propagation continues up the tree. */
+function propagateTeamToSlot(
+  matches: Match[],
+  matchId: string,
+  slot: Slot,
+  teamId: string,
+  displayName: string,
+): void {
+  const idx = matches.findIndex((m) => m.id === matchId);
+  if (idx === -1) return;
+
+  const slotIdx = slot === "A" ? 0 : 1;
+  if (matches[idx].teams[slotIdx].teamId === teamId) return;
+
+  const match = matches[idx];
+  const updatedInWinnerSlot = match.winnerSlot === slot;
+
+  matches[idx] = {
+    ...match,
+    winnerTeamId: updatedInWinnerSlot ? teamId : match.winnerTeamId,
+    teams: match.teams.map((t, i) =>
+      i === slotIdx ? { ...t, teamId, displayName } : t,
+    ),
+  };
+
+  if (updatedInWinnerSlot && match.advanceTo) {
+    propagateTeamToSlot(matches, match.advanceTo.matchId, match.advanceTo.slot, teamId, displayName);
+  }
+}
+
 /** Records the result of a bracket match and propagates the winner to the next
  *  match slot. scoreA / scoreB must differ (no draws in knockout).
- *  If the winner changes from a previous resolution, the next-round slot is
- *  force-updated and, if that match was already finished, it is reset too. */
+ *  If the winner changes, the new team is propagated through subsequent rounds
+ *  while preserving their existing scores and results. */
 export function resolveMatchWinner(
   matches: Match[],
   matchId: string,
@@ -384,31 +416,10 @@ export function resolveMatchWinner(
     })),
   };
 
-  // If the winner changed, force-update the next-round slot (propagateBracketByes
-  // only fills null slots, so we handle the "winner changed" case explicitly).
   const advanceTo = updated[idx].advanceTo;
   if (advanceTo && newWinnerId) {
-    const nextIdx = updated.findIndex((m) => m.id === advanceTo.matchId);
-    if (nextIdx !== -1) {
-      const slotIdx = advanceTo.slot === "A" ? 0 : 1;
-      const currentTeamInSlot = updated[nextIdx].teams[slotIdx].teamId;
-      if (currentTeamInSlot !== newWinnerId) {
-        const winnerTeam = updated[idx].teams[winnerIdx];
-        const wasFinished = updated[nextIdx].status === "finished";
-        updated[nextIdx] = {
-          ...updated[nextIdx],
-          status: wasFinished ? "scheduled" : updated[nextIdx].status,
-          winnerSlot: wasFinished ? null : updated[nextIdx].winnerSlot,
-          winnerTeamId: wasFinished ? null : updated[nextIdx].winnerTeamId,
-          teams: updated[nextIdx].teams.map((t, i) => {
-            if (i === slotIdx) {
-              return { ...t, teamId: newWinnerId, displayName: winnerTeam.displayName, score: undefined };
-            }
-            return wasFinished ? { ...t, score: undefined } : t;
-          }),
-        };
-      }
-    }
+    const winnerTeam = updated[idx].teams[winnerIdx];
+    propagateTeamToSlot(updated, advanceTo.matchId, advanceTo.slot, newWinnerId, winnerTeam.displayName ?? newWinnerId);
   }
 
   return propagateBracketByes(updated);

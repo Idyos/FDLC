@@ -87,21 +87,30 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
   // Save state
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [savedAt, setSavedAt] = useState<Date | null>(null);
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finalStageRef = useRef<FinalStageState | null>(null);
   const thirdPlaceMatchRef = useRef<ThirdPlaceMatch | null>(null);
+
+  // Local input state for 3rd place match (allows typing without triggering save on each keystroke)
+  const [localTpmA, setLocalTpmA] = useState<string>("");
+  const [localTpmB, setLocalTpmB] = useState<string>("");
 
   // Dialog state
   const [showOverwriteAlert, setShowOverwriteAlert] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
-  // Keep refs in sync with state for debounced save
+  // Keep refs in sync with current state (used to read latest values in async handlers)
   useEffect(() => {
     finalStageRef.current = finalStage;
   }, [finalStage]);
 
   useEffect(() => {
     thirdPlaceMatchRef.current = thirdPlaceMatch;
+  }, [thirdPlaceMatch]);
+
+  // Sync local 3rd-place input values when thirdPlaceMatch changes externally (e.g. Firebase revert)
+  useEffect(() => {
+    setLocalTpmA(thirdPlaceMatch?.scoreA != null ? String(thirdPlaceMatch.scoreA) : "");
+    setLocalTpmB(thirdPlaceMatch?.scoreB != null ? String(thirdPlaceMatch.scoreB) : "");
   }, [thirdPlaceMatch]);
 
   // Stable key: only changes when group winners change, not on every match result
@@ -200,6 +209,28 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
     updatedBy: user?.uid ?? null,
   });
 
+  const revertToFirebase = async () => {
+    if (!prova.id) return;
+    try {
+      const saved = await getProvaBracket(year, prova.id);
+      if (!saved) return;
+      const propagatedMatches = propagateBracketByes([...saved.finalStage.bracket.matches]);
+      setGroupStage(saved.groupStage);
+      setFinalStage({
+        ...saved.finalStage,
+        bracket: { ...saved.finalStage.bracket, matches: propagatedMatches },
+      });
+      setThirdPlaceMatch(
+        saved.finalStage.thirdPlaceMatch ??
+          syncThirdPlaceFromSemifinals(propagatedMatches, null),
+      );
+      setSavedAt(saved.updatedAt ? saved.updatedAt.toDate() : null);
+      setSaveStatus("saved");
+    } catch {
+      // Si tampoc podem revertir, mantenim l'estat d'error
+    }
+  };
+
   const doSave = async (fs: FinalStageState, tpm: ThirdPlaceMatch | null) => {
     if (!prova.id) return;
     setSaveStatus("saving");
@@ -210,20 +241,12 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
       setSaveStatus("saved");
     } catch (error) {
       setSaveStatus("error");
-      toast.error("No s'ha pogut guardar el quadre.");
+      toast.error("No s'ha pogut guardar el quadre. Revertint al valor anterior...");
       console.error(error);
+      await revertToFirebase();
     }
   };
 
-  const scheduleSave = () => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    setSaveStatus("saving");
-    saveTimeoutRef.current = setTimeout(() => {
-      if (finalStageRef.current) {
-        doSave(finalStageRef.current, thirdPlaceMatchRef.current);
-      }
-    }, 800);
-  };
 
   // ─── Generate ───────────────────────────────────────────────────────────────
 
@@ -279,6 +302,9 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
     scoreA: number | null,
     scoreB: number | null,
   ) => {
+    let newFinalStage: FinalStageState | null = null;
+    let newThirdPlace: ThirdPlaceMatch | null = null;
+
     setFinalStage((prev) => {
       if (!prev) return prev;
 
@@ -301,14 +327,16 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
         });
       }
 
-      // Sync 3rd-place match participants from updated semifinal results
       const synced = syncThirdPlaceFromSemifinals(updatedMatches, thirdPlaceMatchRef.current);
+      newThirdPlace = synced;
       setThirdPlaceMatch(synced);
 
-      return { ...prev, bracket: { ...prev.bracket, matches: updatedMatches } };
+      const next = { ...prev, bracket: { ...prev.bracket, matches: updatedMatches } };
+      newFinalStage = next;
+      return next;
     });
 
-    scheduleSave();
+    if (newFinalStage) doSave(newFinalStage, newThirdPlace);
   };
 
   // ─── Group match handlers (kept for groups_to_final future use) ─────────────
@@ -370,16 +398,23 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
   // ─── 3rd place match handler ────────────────────────────────────────────────
 
   const handleThirdPlaceScoreUpdate = (scoreA: number | null, scoreB: number | null) => {
+    let newTpm: ThirdPlaceMatch | null = null;
+
     setThirdPlaceMatch((prev) => {
       if (!prev) return prev;
+      let next: ThirdPlaceMatch;
       if (scoreA !== null && scoreB !== null && scoreA !== scoreB) {
         const winnerTeamId = scoreA > scoreB ? prev.teamA.teamId : prev.teamB.teamId;
         const loserTeamId = scoreA > scoreB ? prev.teamB.teamId : prev.teamA.teamId;
-        return { ...prev, scoreA, scoreB, winnerTeamId, loserTeamId, status: "finished" };
+        next = { ...prev, scoreA, scoreB, winnerTeamId, loserTeamId, status: "finished" };
+      } else {
+        next = { ...prev, scoreA, scoreB, winnerTeamId: null, loserTeamId: null, status: "scheduled" };
       }
-      return { ...prev, scoreA, scoreB, winnerTeamId: null, loserTeamId: null, status: "scheduled" };
+      newTpm = next;
+      return next;
     });
-    scheduleSave();
+
+    if (finalStageRef.current) doSave(finalStageRef.current, newTpm);
   };
 
   // ─── Render helpers ─────────────────────────────────────────────────────────
@@ -436,24 +471,28 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
           {!readOnly && !pending ? (
             <>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 min={0}
                 className="w-14 rounded border px-2 py-1 text-center text-sm bg-background"
-                value={tpm?.scoreA ?? ""}
-                onChange={(e) => {
-                  const val = e.target.value === "" ? null : Number(e.target.value);
-                  handleThirdPlaceScoreUpdate(val, tpm?.scoreB ?? null);
+                value={localTpmA}
+                onChange={(e) => { if (/^\d*$/.test(e.target.value)) setLocalTpmA(e.target.value); }}
+                onBlur={() => {
+                  const val = localTpmA === "" ? null : Number(localTpmA);
+                  handleThirdPlaceScoreUpdate(val, localTpmB === "" ? null : Number(localTpmB));
                 }}
               />
               <span className="text-muted-foreground text-sm">–</span>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 min={0}
                 className="w-14 rounded border px-2 py-1 text-center text-sm bg-background"
-                value={tpm?.scoreB ?? ""}
-                onChange={(e) => {
-                  const val = e.target.value === "" ? null : Number(e.target.value);
-                  handleThirdPlaceScoreUpdate(tpm?.scoreA ?? null, val);
+                value={localTpmB}
+                onChange={(e) => { if (/^\d*$/.test(e.target.value)) setLocalTpmB(e.target.value); }}
+                onBlur={() => {
+                  const val = localTpmB === "" ? null : Number(localTpmB);
+                  handleThirdPlaceScoreUpdate(localTpmA === "" ? null : Number(localTpmA), val);
                 }}
               />
             </>
