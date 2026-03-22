@@ -11,6 +11,7 @@ import { Prova, PenyaProvaFinalResultData, PenyaProvaResultData } from "@/interf
 import { db } from "@/firebase/firebase";
 import { deleteUsersWithProva } from "@/services/usersService";
 import { getProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";
+import { calculateGroupStandings } from "@/features/bracket/bracketDomain";
 
 export async function generateProvaResults(year: number, provaId: string) {
   const provaRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
@@ -158,6 +159,23 @@ export async function generateBracketResults(year: number, provaId: string) {
       } else {
         const startPos = bracketSize / Math.pow(2, r) + 1;
         positionMap.set(loserTeamId, startPos);
+      }
+    }
+  }
+
+  // 5b. Groups-to-final: assign positions to group-stage losers
+  if (saved.mode === "groups_to_final" && saved.groupStage) {
+    const { groups } = saved.groupStage;
+    const numGroups = groups.length;
+    const groupLoserBasePos = bracketSize + 1;
+
+    for (const group of groups) {
+      const standings = calculateGroupStandings(group.matches, group.teamIds);
+      let loserTier = 0;
+      for (const standing of standings) {
+        if (positionMap.has(standing.teamId)) continue; // already positioned by the final bracket
+        positionMap.set(standing.teamId, groupLoserBasePos + loserTier * numGroups);
+        loserTier++;
       }
     }
   }

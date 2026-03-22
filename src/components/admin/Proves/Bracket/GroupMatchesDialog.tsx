@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   allGroupMatchesPlayed,
   calculateGroupStandings,
@@ -25,6 +26,7 @@ import type {
   BracketTeamSnapshot,
   GroupState,
 } from "@/features/bracket/types";
+import { TooltipProvider } from "@radix-ui/react-tooltip";
 
 interface GroupMatchesDialogProps {
   open: boolean;
@@ -101,14 +103,40 @@ export function GroupMatchesDialog({
                 <thead>
                   <tr className="bg-muted/50 text-muted-foreground text-xs">
                     <th className="px-3 py-2 text-left font-medium">Equip</th>
-                    <th className="px-2 py-2 text-center font-medium w-10">PJ</th>
-                    <th className="px-2 py-2 text-center font-medium w-10">V</th>
-                    <th className="px-2 py-2 text-center font-medium w-10">E</th>
-                    <th className="px-2 py-2 text-center font-medium w-10">D</th>
-                    <th className="px-2 py-2 text-center font-medium w-10">GF</th>
-                    <th className="px-2 py-2 text-center font-medium w-10">GC</th>
-                    <th className="px-2 py-2 text-center font-medium w-12">Dif</th>
-                    <th className="px-2 py-2 text-center font-medium w-12">Pts</th>
+                      <TooltipProvider>
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">PJ</th></TooltipTrigger>
+                          <TooltipContent>Partits jugats</TooltipContent>
+                        </Tooltip>
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">V</th></TooltipTrigger>
+                          <TooltipContent>Victòries</TooltipContent>
+                        </Tooltip>
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">E</th></TooltipTrigger>
+                          <TooltipContent>Empats</TooltipContent>
+                        </Tooltip>
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">D</th></TooltipTrigger>
+                          <TooltipContent>Derrotes</TooltipContent>
+                        </Tooltip>
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">PF</th></TooltipTrigger>
+                          <TooltipContent>Punts a favor</TooltipContent>
+                        </Tooltip>
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">PC</th></TooltipTrigger>
+                          <TooltipContent>Punts en contra</TooltipContent>
+                        </Tooltip>
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">Dif</th></TooltipTrigger>
+                          <TooltipContent>Diferència de punts</TooltipContent>
+                        </Tooltip>
+                        <Tooltip delayDuration={0}>
+                          <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">Pts</th></TooltipTrigger>
+                          <TooltipContent>Punts totals</TooltipContent>
+                        </Tooltip>
+                  </TooltipProvider>
                   </tr>
                 </thead>
                 <tbody>

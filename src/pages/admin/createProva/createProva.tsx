@@ -146,7 +146,7 @@ export default function CreateProva() {
             }}
           />
     )},
-    { title: "Puntuaciós", content: (
+    { title: "Puntuacions", content: (
       <StepPointsRange challengeType={challengeType} />
     )},
     { title: "Confirmació", content: (

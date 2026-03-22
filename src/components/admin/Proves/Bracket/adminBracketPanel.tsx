@@ -18,12 +18,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  allGroupMatchesPlayed,
   buildFinalStageFromEntrants,
   calculateGroupStandings,
   clearMatchResult,
   createGroupFinalEntrants,
+  createRandomBalancedGroupStage,
   createSimpleFinalEntrants,
   getSuggestedGroupWinner,
+  MIN_TEAMS_FOR_GROUP_STAGE,
   propagateBracketByes,
   resolveMatchWinner,
   sanitizeTeamSnapshot,
@@ -69,6 +72,16 @@ function formatSavedAt(date: Date): string {
   return `Guardat: ${hh}:${mm}`;
 }
 
+function buildPropagatedFinal(fs: FinalStageState): FinalStageState {
+  return {
+    ...fs,
+    bracket: {
+      ...fs.bracket,
+      matches: propagateBracketByes([...fs.bracket.matches]),
+    },
+  };
+}
+
 export default function AdminBracketPanel({ year, prova, readOnly = false }: AdminBracketPanelProps) {
   const { user } = useAuth();
   const teams = useMemo(() => buildTeamSnapshot(prova), [prova]);
@@ -87,8 +100,11 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
   // Save state
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  // Refs for reading latest state in async/event handlers without stale closures
   const finalStageRef = useRef<FinalStageState | null>(null);
   const thirdPlaceMatchRef = useRef<ThirdPlaceMatch | null>(null);
+  const groupStageRef = useRef<GroupStageState | null>(null);
 
   // Local input state for 3rd place match (allows typing without triggering save on each keystroke)
   const [localTpmA, setLocalTpmA] = useState<string>("");
@@ -96,31 +112,19 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
 
   // Dialog state
   const [showOverwriteAlert, setShowOverwriteAlert] = useState(false);
+  const [pendingGenerateMode, setPendingGenerateMode] = useState<"simple" | "groups">("simple");
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
-  // Keep refs in sync with current state (used to read latest values in async handlers)
-  useEffect(() => {
-    finalStageRef.current = finalStage;
-  }, [finalStage]);
-
-  useEffect(() => {
-    thirdPlaceMatchRef.current = thirdPlaceMatch;
-  }, [thirdPlaceMatch]);
+  // Keep refs in sync with state
+  useEffect(() => { finalStageRef.current = finalStage; }, [finalStage]);
+  useEffect(() => { thirdPlaceMatchRef.current = thirdPlaceMatch; }, [thirdPlaceMatch]);
+  useEffect(() => { groupStageRef.current = groupStage; }, [groupStage]);
 
   // Sync local 3rd-place input values when thirdPlaceMatch changes externally (e.g. Firebase revert)
   useEffect(() => {
     setLocalTpmA(thirdPlaceMatch?.scoreA != null ? String(thirdPlaceMatch.scoreA) : "");
     setLocalTpmB(thirdPlaceMatch?.scoreB != null ? String(thirdPlaceMatch.scoreB) : "");
   }, [thirdPlaceMatch]);
-
-  // Stable key: only changes when group winners change, not on every match result
-  const groupWinnersKey = useMemo(
-    () =>
-      groupStage
-        ? groupStage.groups.map((g) => `${g.groupId}:${g.winnerTeamId ?? ""}`).join("|")
-        : "",
-    [groupStage],
-  );
 
   const glootMatches = useMemo(
     () => (finalStage ? toGlootMatches(finalStage.bracket) : []),
@@ -179,31 +183,18 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
     return () => { isCancelled = true; };
   }, [year, prova.id]);
 
-  // Regenerate final bracket when group winners change (groups_to_final mode)
-  useEffect(() => {
-    if (!groupStage) return;
+  // ─── Save helpers ────────────────────────────────────────────────────────────
 
-    const entrants = createGroupFinalEntrants(groupStage, teams);
-    const nextFinalStage = buildFinalStageFromEntrants(entrants);
-    if (!nextFinalStage) return;
-    setFinalStage({
-      ...nextFinalStage,
-      bracket: {
-        ...nextFinalStage.bracket,
-        matches: propagateBracketByes([...nextFinalStage.bracket.matches]),
-      },
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupWinnersKey, teams]);
-
-  // ─── Save helpers ───────────────────────────────────────────────────────────
-
-  const buildPayload = (fs: FinalStageState, tpm: ThirdPlaceMatch | null): StoredProvaBracketDoc => ({
+  const buildPayload = (
+    fs: FinalStageState,
+    tpm: ThirdPlaceMatch | null,
+    gs: GroupStageState | null,
+  ): StoredProvaBracketDoc => ({
     schemaVersion: 1,
     challengeType: "Rondes",
-    mode: "simple_final",
+    mode: gs ? "groups_to_final" : "simple_final",
     teamSnapshot: teams,
-    groupStage: null,
+    groupStage: gs,
     finalStage: { ...fs, thirdPlaceMatch: tpm },
     updatedAt: null,
     updatedBy: user?.uid ?? null,
@@ -231,11 +222,15 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
     }
   };
 
-  const doSave = async (fs: FinalStageState, tpm: ThirdPlaceMatch | null) => {
+  const doSave = async (
+    fs: FinalStageState,
+    tpm: ThirdPlaceMatch | null,
+    gs: GroupStageState | null,
+  ) => {
     if (!prova.id) return;
     setSaveStatus("saving");
     try {
-      await saveProvaBracket(year, prova.id, buildPayload(fs, tpm), user?.uid);
+      await saveProvaBracket(year, prova.id, buildPayload(fs, tpm, gs), user?.uid);
       const now = new Date();
       setSavedAt(now);
       setSaveStatus("saved");
@@ -247,55 +242,91 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
     }
   };
 
+  // ─── Generate helpers ─────────────────────────────────────────────────────────
 
-  // ─── Generate ───────────────────────────────────────────────────────────────
-
-  const doGenerate = () => {
-    if (teams.length < 2) {
-      toast.error("Calen almenys 2 equips per generar el quadre.");
-      return null;
-    }
-    const entrants = createSimpleFinalEntrants(teams);
-    const next = buildFinalStageFromEntrants(entrants);
-    return next
-      ? {
-          ...next,
-          bracket: {
-            ...next.bracket,
-            matches: propagateBracketByes([...next.bracket.matches]),
-          },
-        }
-      : null;
-  };
-
-  const onGenerate = async () => {
+  const doGenerateSimple = () => {
     if (teams.length < 2) {
       toast.error("Calen almenys 2 equips per generar el quadre.");
       return;
     }
-    // Check if bracket already exists in Firestore
+    const entrants = createSimpleFinalEntrants(teams);
+    const next = buildFinalStageFromEntrants(entrants);
+    if (!next) return;
+    const propagated = buildPropagatedFinal(next);
+    setGroupStage(null);
+    groupStageRef.current = null;
+    setFinalStage(propagated);
+    finalStageRef.current = propagated;
+    setThirdPlaceMatch(null);
+    thirdPlaceMatchRef.current = null;
+    doSave(propagated, null, null);
+  };
+
+  const doGenerateGroups = () => {
+    if (teams.length < MIN_TEAMS_FOR_GROUP_STAGE) {
+      toast.error(`Calen almenys ${MIN_TEAMS_FOR_GROUP_STAGE} equips per a la fase de grups.`);
+      return;
+    }
+    const nextGroupStage = createRandomBalancedGroupStage(teams);
+    if (!nextGroupStage) {
+      toast.error("No es pot crear una fase de grups amb el nombre d'equips actual.");
+      return;
+    }
+    const entrants = createGroupFinalEntrants(nextGroupStage, teams);
+    const nextFinal = buildFinalStageFromEntrants(entrants);
+    if (!nextFinal) return;
+    const propagated = buildPropagatedFinal(nextFinal);
+    setGroupStage(nextGroupStage);
+    groupStageRef.current = nextGroupStage;
+    setFinalStage(propagated);
+    finalStageRef.current = propagated;
+    setThirdPlaceMatch(null);
+    thirdPlaceMatchRef.current = null;
+    doSave(propagated, null, nextGroupStage);
+  };
+
+  const onGenerateSimple = async () => {
+    if (teams.length < 2) {
+      toast.error("Calen almenys 2 equips per generar el quadre.");
+      return;
+    }
     if (prova.id) {
       const existing = await getProvaBracket(year, prova.id);
       if (existing) {
+        setPendingGenerateMode("simple");
         setShowOverwriteAlert(true);
         return;
       }
     }
-    handleConfirmGenerate();
+    doGenerateSimple();
+  };
+
+  const onGenerateGroups = async () => {
+    if (teams.length < MIN_TEAMS_FOR_GROUP_STAGE) {
+      toast.error(`Calen almenys ${MIN_TEAMS_FOR_GROUP_STAGE} equips per a la fase de grups.`);
+      return;
+    }
+    if (prova.id) {
+      const existing = await getProvaBracket(year, prova.id);
+      if (existing) {
+        setPendingGenerateMode("groups");
+        setShowOverwriteAlert(true);
+        return;
+      }
+    }
+    doGenerateGroups();
   };
 
   const handleConfirmGenerate = () => {
     setShowOverwriteAlert(false);
-    const next = doGenerate();
-    if (!next) return;
-    setGroupStage(null);
-    setFinalStage(next);
-    setThirdPlaceMatch(null);
-    // Save immediately
-    doSave(next, null);
+    if (pendingGenerateMode === "groups") {
+      doGenerateGroups();
+    } else {
+      doGenerateSimple();
+    }
   };
 
-  // ─── Inline bracket score handler ───────────────────────────────────────────
+  // ─── Inline bracket score handler ────────────────────────────────────────────
 
   const handleBracketScoreUpdate = (
     internalId: string,
@@ -336,23 +367,43 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
       return next;
     });
 
-    if (newFinalStage) doSave(newFinalStage, newThirdPlace);
+    if (newFinalStage) doSave(newFinalStage, newThirdPlace, groupStageRef.current);
   };
 
-  // ─── Group match handlers (kept for groups_to_final future use) ─────────────
+  // ─── Group match handlers ─────────────────────────────────────────────────────
+
+  const rebuildFinalFromGroups = (gs: GroupStageState): FinalStageState | null => {
+    const entrants = createGroupFinalEntrants(gs, teams);
+    const next = buildFinalStageFromEntrants(entrants);
+    if (!next) return null;
+    return buildPropagatedFinal(next);
+  };
 
   const onWinnerChange = (groupId: string, teamId: string | null) => {
-    setGroupStage((previous) => {
-      if (!previous) return previous;
-      return {
-        ...previous,
-        groups: previous.groups.map((group) => {
-          if (group.groupId !== groupId) return group;
-          const resolved = teamId === "__NONE__" ? null : teamId;
-          return { ...group, winnerTeamId: resolved };
-        }),
-      };
-    });
+    const prev = groupStageRef.current;
+    if (!prev) return;
+
+    const resolved = teamId === "__NONE__" ? null : teamId;
+    const next: GroupStageState = {
+      ...prev,
+      groups: prev.groups.map((g) =>
+        g.groupId !== groupId ? g : { ...g, winnerTeamId: resolved },
+      ),
+    };
+
+    groupStageRef.current = next;
+    setGroupStage(next);
+
+    const nextFinal = rebuildFinalFromGroups(next);
+    if (nextFinal) {
+      finalStageRef.current = nextFinal;
+      thirdPlaceMatchRef.current = null;
+      setFinalStage(nextFinal);
+      setThirdPlaceMatch(null);
+      doSave(nextFinal, null, next);
+    } else if (finalStageRef.current) {
+      doSave(finalStageRef.current, thirdPlaceMatchRef.current, next);
+    }
   };
 
   const onMatchResultChange = (
@@ -361,41 +412,59 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
     scoreA: number | null,
     scoreB: number | null,
   ) => {
-    setGroupStage((previous) => {
-      if (!previous) return previous;
-      return {
-        ...previous,
-        groups: previous.groups.map((group) => {
-          if (group.groupId !== groupId) return group;
+    const prev = groupStageRef.current;
+    if (!prev) return;
+    const prevGroup = prev.groups.find((g) => g.groupId === groupId);
+    if (!prevGroup) return;
 
-          const updatedMatches: GroupMatch[] = group.matches.map((match) => {
-            if (match.matchId !== matchId) return match;
-            if (scoreA === null || scoreB === null) {
-              return { ...match, scoreA: null, scoreB: null, winnerTeamId: null, isDraw: false };
-            }
-            const isDraw = scoreA === scoreB;
-            const winnerTeamId = isDraw
-              ? null
-              : scoreA > scoreB
-                ? match.teamAId
-                : match.teamBId;
-            return { ...match, scoreA, scoreB, isDraw, winnerTeamId };
-          });
-
-          const standings = calculateGroupStandings(updatedMatches, group.teamIds);
-          const allPlayed = updatedMatches.every(
-            (m) => m.scoreA !== null && m.scoreB !== null,
-          );
-          const suggested = allPlayed ? getSuggestedGroupWinner(standings) : null;
-          const winnerTeamId = suggested ?? group.winnerTeamId;
-
-          return { ...group, matches: updatedMatches, winnerTeamId };
-        }),
-      };
+    const updatedMatches: GroupMatch[] = prevGroup.matches.map((match) => {
+      if (match.matchId !== matchId) return match;
+      if (scoreA === null && scoreB === null) {
+        // Explicit clear (✕ button)
+        return { ...match, scoreA: null, scoreB: null, winnerTeamId: null, isDraw: false };
+      }
+      // Allow partial input (one side filled, other still null)
+      const isDraw = scoreA !== null && scoreB !== null && scoreA === scoreB;
+      const winnerTeamId =
+        scoreA !== null && scoreB !== null && !isDraw
+          ? scoreA > scoreB ? match.teamAId : match.teamBId
+          : null;
+      return { ...match, scoreA, scoreB, isDraw, winnerTeamId };
     });
+
+    const standings = calculateGroupStandings(updatedMatches, prevGroup.teamIds);
+    const allPlayed = updatedMatches.every((m) => m.scoreA !== null && m.scoreB !== null);
+    const suggested = allPlayed ? getSuggestedGroupWinner(standings) : null;
+    const newWinnerId = suggested ?? prevGroup.winnerTeamId;
+    const winnersChanged = prevGroup.winnerTeamId !== newWinnerId;
+
+    const next: GroupStageState = {
+      ...prev,
+      groups: prev.groups.map((g) =>
+        g.groupId !== groupId ? g : { ...g, matches: updatedMatches, winnerTeamId: newWinnerId },
+      ),
+    };
+
+    groupStageRef.current = next;
+    setGroupStage(next);
+
+    if (winnersChanged) {
+      const nextFinal = rebuildFinalFromGroups(next);
+      if (nextFinal) {
+        finalStageRef.current = nextFinal;
+        thirdPlaceMatchRef.current = null;
+        setFinalStage(nextFinal);
+        setThirdPlaceMatch(null);
+        doSave(nextFinal, null, next);
+        return;
+      }
+    }
+    if (finalStageRef.current) {
+      doSave(finalStageRef.current, thirdPlaceMatchRef.current, next);
+    }
   };
 
-  // ─── 3rd place match handler ────────────────────────────────────────────────
+  // ─── 3rd place match handler ──────────────────────────────────────────────────
 
   const handleThirdPlaceScoreUpdate = (scoreA: number | null, scoreB: number | null) => {
     let newTpm: ThirdPlaceMatch | null = null;
@@ -414,23 +483,67 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
       return next;
     });
 
-    if (finalStageRef.current) doSave(finalStageRef.current, newTpm);
+    if (finalStageRef.current) doSave(finalStageRef.current, newTpm, groupStageRef.current);
   };
 
-  // ─── Render helpers ─────────────────────────────────────────────────────────
+  // ─── Render helpers ───────────────────────────────────────────────────────────
 
   const renderSaveStatus = () => {
     if (saveStatus === "idle") return null;
-    if (saveStatus === "saving") {
-      return <Badge variant="outline">Guardant...</Badge>;
-    }
-    if (saveStatus === "saved" && savedAt) {
-      return <Badge variant="secondary">{formatSavedAt(savedAt)}</Badge>;
-    }
-    if (saveStatus === "error") {
-      return <Badge variant="destructive">Error en guardar</Badge>;
-    }
+    if (saveStatus === "saving") return <Badge variant="outline">Guardant...</Badge>;
+    if (saveStatus === "saved" && savedAt) return <Badge variant="secondary">{formatSavedAt(savedAt)}</Badge>;
+    if (saveStatus === "error") return <Badge variant="destructive">Error en guardar</Badge>;
     return null;
+  };
+
+  const renderGroupStage = () => {
+    if (!groupStage) return null;
+    return (
+      <div className="space-y-3">
+        <p className="text-sm font-semibold">Fase de Grups</p>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-3">
+          {groupStage.groups.map((group) => {
+            const allPlayed = allGroupMatchesPlayed(group.matches);
+            const standings = calculateGroupStandings(group.matches, group.teamIds);
+            const hasWinner = group.winnerTeamId !== null;
+            return (
+              <div
+                key={group.groupId}
+                className={`rounded-lg border p-3 transition-colors ${
+                  !readOnly ? "hover:bg-muted/50 cursor-pointer" : ""
+                }`}
+                onClick={readOnly ? undefined : () => setSelectedGroupId(group.groupId)}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-medium text-sm">{group.groupName}</p>
+                  <div className="flex gap-1">
+                    {allPlayed && <Badge variant="secondary" className="text-xs">Complet</Badge>}
+                    {hasWinner && <Badge className="text-xs">✓</Badge>}
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  {standings.map((s, i) => (
+                    <div
+                      key={s.teamId}
+                      className={`flex justify-between gap-2 ${
+                        s.teamId === group.winnerTeamId
+                          ? "text-primary font-semibold"
+                          : i === 0 && s.played > 0
+                          ? "font-medium text-foreground"
+                          : ""
+                      }`}
+                    >
+                      <span className="truncate">{teamById.get(s.teamId)?.name ?? s.teamId}</span>
+                      <span className="shrink-0">{s.points}pt</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const renderFinalBracket = () => {
@@ -441,16 +554,13 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
         </p>
       );
     }
-
     return (
-      <div className="space-y-4">
-        <div className="w-full overflow-auto rounded-lg border p-4">
-          <BracketViewer
-            matches={glootMatches}
-            onScoreChange={readOnly ? undefined : handleBracketScoreUpdate}
-            readOnly={readOnly}
-          />
-        </div>
+      <div className="w-full overflow-auto rounded-lg border p-4">
+        <BracketViewer
+          matches={glootMatches}
+          onScoreChange={readOnly ? undefined : handleBracketScoreUpdate}
+          readOnly={readOnly}
+        />
       </div>
     );
   };
@@ -498,9 +608,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
             </>
           ) : (
             <span className="text-sm text-muted-foreground">
-              {tpm?.status === "finished"
-                ? `${tpm.scoreA} – ${tpm.scoreB}`
-                : "–"}
+              {tpm?.status === "finished" ? `${tpm.scoreA} – ${tpm.scoreB}` : "–"}
             </span>
           )}
           <span className="text-sm min-w-[120px]">{teamBName}</span>
@@ -524,16 +632,25 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {!readOnly && (
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={onGenerate} disabled={isLoadingSavedBracket}>
-              Generar
+            <Button onClick={onGenerateSimple} disabled={isLoadingSavedBracket}>
+              Generar quadre
             </Button>
+            {teams.length >= MIN_TEAMS_FOR_GROUP_STAGE && (
+              <Button variant="outline" onClick={onGenerateGroups} disabled={isLoadingSavedBracket}>
+                Generar amb grups
+              </Button>
+            )}
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {renderGroupStage()}
+          {groupStage && (
+            <p className="text-sm font-semibold">Quadre Final</p>
+          )}
           {renderFinalBracket()}
           {renderThirdPlaceMatch()}
         </div>
@@ -557,7 +674,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* GroupMatchesDialog (groups_to_final mode, future use) */}
+      {/* GroupMatchesDialog */}
       {groupStage && selectedGroupId && (() => {
         const group = groupStage.groups.find((g) => g.groupId === selectedGroupId);
         if (!group) return null;
