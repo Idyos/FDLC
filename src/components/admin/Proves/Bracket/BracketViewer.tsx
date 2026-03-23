@@ -84,7 +84,7 @@ function BracketMatchCard({ match, top, readOnly, onScoreChange }: BracketMatchC
             )}
           >
             <span className="truncate flex-1">{p.name}</span>
-            {match.clickable && !readOnly && (
+            {p.editable && !readOnly && (
               <div className="w-8 shrink-0">
                 <input
                   type="text"
@@ -101,7 +101,7 @@ function BracketMatchCard({ match, top, readOnly, onScoreChange }: BracketMatchC
                 />
               </div>
             )}
-            {match.clickable && readOnly && raw !== "" && (
+            {readOnly && raw !== "" && (
               <span className="w-8 shrink-0 text-center text-xs text-muted-foreground">{raw}</span>
             )}
           </div>

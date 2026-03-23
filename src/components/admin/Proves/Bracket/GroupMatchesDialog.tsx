@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,87 @@ import type {
   GroupState,
 } from "@/features/bracket/types";
 import { TooltipProvider } from "@radix-ui/react-tooltip";
+
+interface MatchRowProps {
+  match: GroupState["matches"][number];
+  nameA: string;
+  nameB: string;
+  onMatchResultChange: (matchId: string, scoreA: number | null, scoreB: number | null) => void;
+}
+
+function MatchRow({ match, nameA, nameB, onMatchResultChange }: MatchRowProps) {
+  const [scoreA, setScoreA] = useState(match.scoreA === null ? "" : String(match.scoreA));
+  const [scoreB, setScoreB] = useState(match.scoreB === null ? "" : String(match.scoreB));
+
+  useEffect(() => {
+    setScoreA(match.scoreA === null ? "" : String(match.scoreA));
+    setScoreB(match.scoreB === null ? "" : String(match.scoreB));
+  }, [match.scoreA, match.scoreB]);
+
+  const handleBlur = (newA: string, newB: string) => {
+    if (newA !== "" && !/^\d+$/.test(newA)) return;
+    if (newB !== "" && !/^\d+$/.test(newB)) return;
+    const a = newA === "" ? null : parseInt(newA, 10);
+    const b = newB === "" ? null : parseInt(newB, 10);
+    onMatchResultChange(match.matchId, a, b);
+  };
+
+  const isPlayed = match.scoreA !== null && match.scoreB !== null;
+  let resultLabel: string | null = null;
+  if (isPlayed) {
+    if (match.isDraw) resultLabel = "Empat";
+    else if (match.winnerTeamId === match.teamAId) resultLabel = `Guanya ${nameA}`;
+    else resultLabel = `Guanya ${nameB}`;
+  }
+
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${isPlayed ? "bg-muted/30" : ""}`}
+    >
+      <span className="flex-1 text-right truncate">{nameA}</span>
+      <div className="w-14 shrink-0">
+        <Input
+          type="text"
+          inputMode="numeric"
+          className="h-8 px-1 text-center"
+          value={scoreA}
+          placeholder="—"
+          onChange={(e) => setScoreA(e.target.value)}
+          onBlur={() => handleBlur(scoreA, scoreB)}
+        />
+      </div>
+      <span className="text-muted-foreground font-medium">–</span>
+      <div className="w-14 shrink-0">
+        <Input
+          type="text"
+          inputMode="numeric"
+          className="h-8 px-1 text-center"
+          value={scoreB}
+          placeholder="—"
+          onChange={(e) => setScoreB(e.target.value)}
+          onBlur={() => handleBlur(scoreA, scoreB)}
+        />
+      </div>
+      <span className="flex-1 truncate">{nameB}</span>
+      {isPlayed && resultLabel && (
+        <Badge variant="outline" className="text-xs shrink-0">
+          {resultLabel}
+        </Badge>
+      )}
+      {isPlayed && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground shrink-0"
+          onClick={() => onMatchResultChange(match.matchId, null, null)}
+          title="Esborrar resultat"
+        >
+          ✕
+        </Button>
+      )}
+    </div>
+  );
+}
 
 interface GroupMatchesDialogProps {
   open: boolean;
@@ -63,24 +144,6 @@ export function GroupMatchesDialog({
     () => (allPlayed ? getSuggestedGroupWinner(standings) : null),
     [allPlayed, standings],
   );
-
-  const handleScoreChange = (
-    matchId: string,
-    rawScoreA: string,
-    rawScoreB: string,
-  ) => {
-    if (rawScoreA !== "" && !/^\d+$/.test(rawScoreA)) return;
-    if (rawScoreB !== "" && !/^\d+$/.test(rawScoreB)) return;
-
-    const a = rawScoreA === "" ? null : parseInt(rawScoreA, 10);
-    const b = rawScoreB === "" ? null : parseInt(rawScoreB, 10);
-
-    onMatchResultChange(matchId, a, b);
-  };
-
-  const handleClearMatch = (matchId: string) => {
-    onMatchResultChange(matchId, null, null);
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -121,20 +184,20 @@ export function GroupMatchesDialog({
                           <TooltipContent>Derrotes</TooltipContent>
                         </Tooltip>
                         <Tooltip delayDuration={0}>
-                          <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">PF</th></TooltipTrigger>
-                          <TooltipContent>Punts a favor</TooltipContent>
+                          <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">GF</th></TooltipTrigger>
+                          <TooltipContent>"Gols" a favor</TooltipContent>
                         </Tooltip>
                         <Tooltip delayDuration={0}>
-                          <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">PC</th></TooltipTrigger>
-                          <TooltipContent>Punts en contra</TooltipContent>
+                          <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">GC</th></TooltipTrigger>
+                          <TooltipContent>"Gols" en contra</TooltipContent>
                         </Tooltip>
                         <Tooltip delayDuration={0}>
                           <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">Dif</th></TooltipTrigger>
-                          <TooltipContent>Diferència de punts</TooltipContent>
+                          <TooltipContent>Diferència de "gols"</TooltipContent>
                         </Tooltip>
                         <Tooltip delayDuration={0}>
                           <TooltipTrigger asChild><th className="px-2 py-2 text-center font-medium w-10">Pts</th></TooltipTrigger>
-                          <TooltipContent>Punts totals</TooltipContent>
+                          <TooltipContent>Punts finals</TooltipContent>
                         </Tooltip>
                   </TooltipProvider>
                   </tr>
@@ -187,80 +250,15 @@ export function GroupMatchesDialog({
           <div>
             <p className="text-sm font-medium mb-3">Partits</p>
             <div className="space-y-2">
-              {group.matches.map((match) => {
-                const nameA = teamById.get(match.teamAId)?.name ?? match.teamAId;
-                const nameB = teamById.get(match.teamBId)?.name ?? match.teamBId;
-                const isPlayed = match.scoreA !== null && match.scoreB !== null;
-
-                let resultLabel: string | null = null;
-                if (isPlayed) {
-                  if (match.isDraw) resultLabel = "Empat";
-                  else if (match.winnerTeamId === match.teamAId)
-                    resultLabel = `Guanya ${nameA}`;
-                  else resultLabel = `Guanya ${nameB}`;
-                }
-
-                return (
-                  <div
-                    key={match.matchId}
-                    className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
-                      isPlayed ? "bg-muted/30" : ""
-                    }`}
-                  >
-                    <span className="flex-1 text-right truncate">{nameA}</span>
-                    <div className="w-14 shrink-0">
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        className="h-8 px-1 text-center"
-                        value={match.scoreA === null ? "" : String(match.scoreA)}
-                        placeholder="—"
-                        onChange={(e) =>
-                          handleScoreChange(
-                            match.matchId,
-                            e.target.value,
-                            match.scoreB === null ? "" : String(match.scoreB),
-                          )
-                        }
-                      />
-                    </div>
-                    <span className="text-muted-foreground font-medium">–</span>
-                    <div className="w-14 shrink-0">
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        className="h-8 px-1 text-center"
-                        value={match.scoreB === null ? "" : String(match.scoreB)}
-                        placeholder="—"
-                        onChange={(e) =>
-                          handleScoreChange(
-                            match.matchId,
-                            match.scoreA === null ? "" : String(match.scoreA),
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </div>
-                    <span className="flex-1 truncate">{nameB}</span>
-                    {isPlayed && resultLabel && (
-                      <Badge variant="outline" className="text-xs shrink-0">
-                        {resultLabel}
-                      </Badge>
-                    )}
-                    {isPlayed && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground shrink-0"
-                        onClick={() => handleClearMatch(match.matchId)}
-                        title="Esborrar resultat"
-                      >
-                        ✕
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
+              {group.matches.map((match) => (
+                <MatchRow
+                  key={match.matchId}
+                  match={match}
+                  nameA={teamById.get(match.teamAId)?.name ?? match.teamAId}
+                  nameB={teamById.get(match.teamBId)?.name ?? match.teamBId}
+                  onMatchResultChange={onMatchResultChange}
+                />
+              ))}
             </div>
           </div>
 

@@ -6,6 +6,7 @@ export interface GlootParticipant {
   name: string;
   score: number | null;
   isWinner: boolean;
+  editable: boolean;
   status: null;
   resultText: string | null;
 }
@@ -47,6 +48,9 @@ export function toGlootMatches(
   });
 
   return orderedMatches.map((match, index) => {
+    const isResolved = (teamId: string | null | undefined) =>
+      teamId != null && !teamId.startsWith("placeholder-");
+
     const participants = match.teams.map((participant, participantIndex) => {
       const slot: Slot = participantIndex === 0 ? "A" : "B";
       return {
@@ -56,15 +60,13 @@ export function toGlootMatches(
         name: getParticipantName(participant.source.type, participant.displayName),
         score: participant.score?.gamesWon ?? null,
         isWinner: match.winnerSlot === slot,
+        editable: match.status !== "bye" && isResolved(participant.teamId),
         status: null,
         resultText: null,
       };
     });
 
-    const clickable =
-      match.status !== "bye" &&
-      match.teams[0].teamId != null &&
-      match.teams[1].teamId != null;
+    const clickable = match.status !== "bye" && participants.some((p) => p.editable);
 
     return {
       id: index + 1,
