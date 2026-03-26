@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { PlusCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button";
 import { ParticipatingPenya, Prova, SubProvaConfig } from "@/interfaces/interfaces";
 import {
@@ -154,9 +154,80 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
   };
 
   return (
-    <div className="flex h-full min-h-[400px]">
+    <div className="flex h-full ">
       {/* ── Left sidebar: sub-prova list ─────────────────── */}
-      <div className="w-56 flex-shrink-0 border-r dark:border-gray-700 flex flex-col">
+      <Tabs defaultValue="account" className="w-full">
+        <TabsList className="ml-3 mr-3">
+          <Button variant="outline" className="m-1 h-[90%] " disabled={prova.isFinished}  onClick={() => setShowAddDialog(true)}>
+            <PlusCircle/>
+          </Button>
+          {subProves.map((sp) => (
+            <TabsTrigger onClick={() => setSelectedId(sp.id)} value={sp.id}>
+              {sp.name}
+                {!prova.isFinished && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 shrink-0 text-destructive hover:text-destructive"
+                    title="Eliminar subprova"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(sp.id, sp.name);
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+            </TabsTrigger>
+            ))}
+        </TabsList>
+        {subProves.map((sp) => (
+            <TabsContent value={sp.id}>
+              <div className="flex-1 overflow-y-auto p-4">
+                {!selectedSubProva ? (
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                    {subProves.length === 0
+                      ? "Crea la primera subprova amb el botó +"
+                      : "Selecciona una subprova"}
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-4">
+                      <h3 className="text-lg font-bold">{selectedSubProva.name}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedSubProva.challengeType}
+                        {selectedSubProva.winDirection !== "NONE" && (
+                          <> · {selectedSubProva.winDirection === "ASC" ? "menys és millor" : "més és millor"}</>
+                        )}
+                      </p>
+                    </div>
+
+                    {loadingParticipants ? (
+                      <p className="text-sm text-muted-foreground">Carregant participants...</p>
+                    ) : participants.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No hi ha participants en aquesta subprova.</p>
+                    ) : (
+                      <div className="grid grid-cols-[repeat(auto-fit,_minmax(280px,_1fr))] gap-3">
+                        {participants.map((p) => (
+                          <SubProvaResultRow
+                            key={p.penyaId}
+                            participant={p}
+                            subProva={selectedSubProva}
+                            provaId={prova.id}
+                            year={year}
+                            provaIsFinished={prova.isFinished}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </TabsContent>
+            ))}
+      </Tabs>
+      {/* <div className="w-56 flex-shrink-0 border-r dark:border-gray-700 flex flex-col">
+
         <div className="flex items-center justify-between p-3 border-b dark:border-gray-700">
           <span className="text-sm font-semibold">Subpruebas</span>
           <Button
@@ -207,49 +278,10 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
             ))
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* ── Right panel: results for selected sub-prova ──── */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {!selectedSubProva ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            {subProves.length === 0
-              ? "Crea la primera subprova amb el botó +"
-              : "Selecciona una subprova"}
-          </div>
-        ) : (
-          <>
-            <div className="mb-4">
-              <h3 className="text-lg font-bold">{selectedSubProva.name}</h3>
-              <p className="text-xs text-muted-foreground">
-                {selectedSubProva.challengeType}
-                {selectedSubProva.winDirection !== "NONE" && (
-                  <> · {selectedSubProva.winDirection === "ASC" ? "menys és millor" : "més és millor"}</>
-                )}
-              </p>
-            </div>
 
-            {loadingParticipants ? (
-              <p className="text-sm text-muted-foreground">Carregant participants...</p>
-            ) : participants.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No hi ha participants en aquesta subprova.</p>
-            ) : (
-              <div className="grid grid-cols-[repeat(auto-fit,_minmax(280px,_1fr))] gap-3">
-                {participants.map((p) => (
-                  <SubProvaResultRow
-                    key={p.penyaId}
-                    participant={p}
-                    subProva={selectedSubProva}
-                    provaId={prova.id}
-                    year={year}
-                    provaIsFinished={prova.isFinished}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
 
       <AdminAddSubProvaDialog
         open={showAddDialog}

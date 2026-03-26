@@ -112,7 +112,6 @@ function BracketMatchCard({ match, top, readOnly, onScoreChange }: BracketMatchC
 }
 
 export function BracketViewer({ matches, onScoreChange, readOnly }: BracketViewerProps) {
-
   const rounds = useMemo(() => {
     const map = new Map<number, GlootMatchData[]>();
     for (const m of matches) {
