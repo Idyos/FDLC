@@ -75,7 +75,7 @@ export default function AdminProvaPage() {
             </AlertDialogContent>
         </AlertDialog>
             <YearSelector />
-            <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
+            <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
               <PageTitle title={isProvaLoading ? "Carregant..." : provaInfo.name} image="" />
               <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isProvaLoading ? (

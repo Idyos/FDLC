@@ -1,9 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { PlusCircle, Trash2, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogCancel,
+  AlertDialogAction,
+  AlertDialogMedia,
+} from "@/components/ui/alert-dialog";
 import { ParticipatingPenya, Prova, SubProvaConfig } from "@/interfaces/interfaces";
 import {
   addSubProva,
@@ -16,6 +27,9 @@ import AdminAddSubProvaDialog from "./AdminAddSubProvaDialog";
 import { TimeRollingInput } from "@/components/shared/PenyaProvaResults/TimeInput/timeInput";
 import { PointsInput } from "@/components/shared/PenyaProvaResults/PointsInput/pointsInput";
 import { ParticipatesInput } from "@/components/shared/PenyaProvaResults/ParticipatesInput/participatesInput";
+import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
+import { ScrollBar } from "@/components/ui/scroll-area";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
 
 interface Props {
   year: number;
@@ -107,7 +121,8 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
   const [participants, setParticipants] = useState<ParticipatingPenya[]>([]);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
-
+  const [deleteTarget, setDeleteTarget] = useState<SubProvaConfig | null>(null);
+  
   // Load sub-provas on mount
   useEffect(() => {
     getSubProvas(year, prova.id).then((list) => {
@@ -139,12 +154,12 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
     }
   };
 
-  const handleDelete = async (subProvaId: string, name: string) => {
+  const handleDelete = async (id: string, name: string) => {
     try {
-      await deleteSubProva(year, prova.id, subProvaId);
-      const remaining = subProves.filter((s) => s.id !== subProvaId);
+      await deleteSubProva(year, prova.id, id);
+      const remaining = subProves.filter((s) => s.id !== id);
       setSubProves(remaining);
-      if (selectedId === subProvaId) {
+      if (selectedId === id) {
         setSelectedId(remaining.length > 0 ? remaining[0].id : null);
       }
       toast.success(`Subprova "${name}" eliminada.`);
@@ -154,34 +169,51 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
   };
 
   return (
-    <div className="flex h-full ">
+    <div>
       {/* ── Left sidebar: sub-prova list ─────────────────── */}
-      <Tabs defaultValue="account" className="w-full">
-        <TabsList className="ml-3 mr-3">
+
+      <Tabs value={selectedId ?? ""} className="max-w-[calc(100%-2rem)] mb-5">
+        {subProves.length > 0 && (
+          <TabsList className="ml-3 mr-3 max-w-full rounded-full">
+            <Button variant="outline" className="m-1 h-7.25 shrink-0 rounded-full" disabled={prova.isFinished}  onClick={() => setShowAddDialog(true)}>
+              <PlusCircle/>
+            </Button>
+            <ScrollAreaPrimitive.Root className="relative flex-1 min-w-0 h-full" type="auto">
+              <ScrollAreaPrimitive.Viewport className="h-full w-full">
+                <div className="flex">
+                  {subProves.map((subProva) => (
+                    <ContextMenu key={subProva.id}>
+                      <ContextMenuTrigger>
+                        <TabsTrigger className="rounded-full" onClick={() => setSelectedId(subProva.id)} value={subProva.id}>
+                          {subProva.name}
+                        </TabsTrigger>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        {!prova.isFinished && (
+                          <ContextMenuItem variant="destructive" onSelect={() => setDeleteTarget(subProva)}>
+                            <Trash2 />
+                            Eliminar
+                          </ContextMenuItem>
+                        )}
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  ))}
+                </div>
+              </ScrollAreaPrimitive.Viewport>
+              <ScrollBar orientation="horizontal" />
+              <ScrollAreaPrimitive.Corner />
+            </ScrollAreaPrimitive.Root>
+          </TabsList>
+
+        )}
+        
+        {subProves.length === 0 && (
           <Button variant="outline" className="m-1 h-[90%] " disabled={prova.isFinished}  onClick={() => setShowAddDialog(true)}>
-            <PlusCircle/>
+            Afegir prova
           </Button>
-          {subProves.map((sp) => (
-            <TabsTrigger onClick={() => setSelectedId(sp.id)} value={sp.id}>
-              {sp.name}
-                {!prova.isFinished && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6 shrink-0 text-destructive hover:text-destructive"
-                    title="Eliminar subprova"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(sp.id, sp.name);
-                    }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-            </TabsTrigger>
-            ))}
-        </TabsList>
-        {subProves.map((sp) => (
+        )}
+
+        {subProves.length > 0 && subProves.map((sp) => (
             <TabsContent value={sp.id}>
               <div className="flex-1 overflow-y-auto p-4">
                 {!selectedSubProva ? (
@@ -226,6 +258,24 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
             </TabsContent>
             ))}
       </Tabs>
+
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive">
+              <Trash2Icon />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Eliminar "{deleteTarget?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Estàs a punt d'eliminar aquesta subprova. Aquesta acció no es pot desfer i es perdran tots els resultats associats. Estàs segur que vols continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel variant="outline">Cancel·lar</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => deleteTarget && handleDelete(deleteTarget.id, deleteTarget.name)}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {/* <div className="w-56 flex-shrink-0 border-r dark:border-gray-700 flex flex-col">
 
         <div className="flex items-center justify-between p-3 border-b dark:border-gray-700">
@@ -281,8 +331,6 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
       </div> */}
 
       {/* ── Right panel: results for selected sub-prova ──── */}
-
-
       <AdminAddSubProvaDialog
         open={showAddDialog}
         nextOrder={subProves.length}

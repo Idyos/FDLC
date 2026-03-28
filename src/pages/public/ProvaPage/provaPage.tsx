@@ -240,7 +240,7 @@ export default function ProvaPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-            <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
+            <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
               <ProvaTitle />
 
               {provaInfo.intervalMinutes ? (

@@ -16,7 +16,14 @@ export default function Login() {
     };
 
 
-    return isLogin 
-    ? <LoginForm auth={auth} setIsLogin={setIsLogin} onClick={handleClick}/>
-    : <RegisterForm auth={auth} setIsLogin={setIsLogin} onClick={handleClick}/>;
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        {(
+          isLogin
+            ? <LoginForm auth={auth} setIsLogin={setIsLogin} onClick={handleClick}/>
+            : <RegisterForm auth={auth} setIsLogin={setIsLogin} onClick={handleClick}/>
+        )}
+      </div>
+
+    )
 }

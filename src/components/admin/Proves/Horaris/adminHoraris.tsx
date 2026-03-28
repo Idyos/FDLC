@@ -244,7 +244,7 @@ export default function AdminHoraris({ prova, sortMode, onProvaConfigUpdated }: 
           return (
             <div
               key={penya.penyaId}
-              className={`rounded-xl p-3 flex items-center justify-between gap-3 bg-white dark:bg-gray-800 shadow-sm ${borderClass}`}
+              className={`rounded-xl p-3 flex items-center justify-between gap-3 bg-white dark:bg-neutral-800 shadow-sm ${borderClass}`}
             >
               <span className="font-medium truncate">{penya.name}</span>
               <Input

@@ -77,7 +77,7 @@ export default function FavoritePenyesButton() {
       {open && (
         <div
           ref={panelRef}
-          className="absolute right-0 top-full mt-2 z-50 w-72 rounded-xl border bg-white dark:bg-gray-900 shadow-lg p-3 flex flex-col gap-2"
+          className="absolute right-0 top-full mt-2 z-50 w-72 rounded-xl border bg-white dark:bg-neutral-900 shadow-lg p-3 flex flex-col gap-2"
         >
           {/* Current favorites */}
           {favoritePenyes.length > 0 ? (
@@ -85,7 +85,7 @@ export default function FavoritePenyesButton() {
               {favoritePenyes.map((f) => (
                 <li
                   key={f.id}
-                  className="flex items-center justify-between rounded-lg px-2 py-1.5 bg-gray-100 dark:bg-gray-800"
+                  className="flex items-center justify-between rounded-lg px-2 py-1.5 bg-gray-100 dark:bg-neutral-800"
                 >
                   <span className="text-sm font-medium truncate">{f.name}</span>
                   <button

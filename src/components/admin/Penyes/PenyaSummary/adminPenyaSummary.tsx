@@ -273,11 +273,11 @@ export default function AdminPenyaSummary({ rankingInfo, triggerElement, open, o
   ) : (
     <motion.div
       whileHover={{ scale: 1.02 }}
-      className="dark:bg-gray-900 bg-white/30 relative w-full h-36 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
+      className="dark:bg-neutral-900 bg-white/30 relative w-full h-36 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
     >
       {/* Contenido */}
       <div className="relative z-10 flex items-center justify-center h-full dark:text-white text-gray-900">
-        <div className="dark:bg-gray-800 bg-gray-200 text-center p-8 rounded-full shadow-lg w-24 h-24">
+        <div className="dark:bg-neutral-800 bg-gray-200 text-center p-8 rounded-full shadow-lg w-24 h-24">
           <p className="text-4xl font-bold">+</p>
         </div>
       </div>

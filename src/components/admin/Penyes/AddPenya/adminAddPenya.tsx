@@ -291,7 +291,7 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
         <DialogTrigger asChild className="w-full h-full " onClick={() => setIsDialogOpen(true)}>
             {/* Contenido */}
             <div className="cursor-pointer w-full h-fullrelative z-10 flex items-center justify-center h-full dark:text-white text-gray-900">
-                <div className="dark:bg-gray-800 bg-gray-200 flex justify-center items-center p-8 rounded-full shadow-lg w-24 h-24">
+                <div className="dark:bg-neutral-800 bg-gray-200 flex justify-center items-center p-8 rounded-full shadow-lg w-24 h-24">
                     <Plus size={40} color={theme == "dark" ? "white" : "black"} />
                 </div>
             </div>

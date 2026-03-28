@@ -32,7 +32,7 @@ export default function MainPage() {
       title: "Ranking",
       content: (
         <>
-          <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
+          <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
             <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isLoading ? (
                 <LoadingAnimation />
@@ -69,7 +69,7 @@ export default function MainPage() {
                     />
                   </>
                 ) : (
-                  <p className="text-gray-500 dark:text-gray-400">{year === new Date().getFullYear() ? "Encara no hi han penyes afegides per aquest any." : `No s'han afegit penyes per a l'any ${year}.`}</p>
+                  <p className="text-neutral-500 dark:text-neutral-400">{year === new Date().getFullYear() ? "Encara no hi han penyes afegides per aquest any." : `No s'han afegit penyes per a l'any ${year}.`}</p>
                 )
               )}
             </div>
@@ -81,7 +81,7 @@ export default function MainPage() {
       title: "Proves",
       content: (
         <>
-          <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
+          <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
             <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isLoading ? (
                 <LoadingAnimation />
@@ -91,7 +91,7 @@ export default function MainPage() {
                   return <ProvaSummaryCard key={index} provaSummary={item} />;
                 })
               ) : (
-                <p className="text-gray-500 dark:text-gray-400">{year === new Date().getFullYear() ? "Encara no hi han proves afegides per aquest any." : `No s'han afegit proves per a l'any ${year}.`}</p>
+                <p className="text-neutral-500 dark:text-neutral-400">{year === new Date().getFullYear() ? "Encara no hi han proves afegides per aquest any." : `No s'han afegit proves per a l'any ${year}.`}</p>
               ))}
             </div>
           </div>

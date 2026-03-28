@@ -94,7 +94,7 @@ export default function PenyaPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-            <div className="bg-gray-100 dark:bg-gray-900 rounded-4xl shadow-lg mt-4">
+            <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
                 {isPenyaLoading ? <LoadingAnimation /> : <PenyaTitle {...penyaInfo.current} />}
               <div className="flex m-1 p-2 flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isProvesLoading ? (
@@ -105,12 +105,12 @@ export default function PenyaPage() {
                     <div key={day} className="w-full">
 
                     {/* Separador del día */}
-                    <div className="flex items-center my-4 w-full text-gray-500 dark:text-gray-400">
-                        <div className="flex-grow border-t border-gray-500"></div>
+                    <div className="flex items-center my-4 w-full text-neutral-500 dark:text-neutral-400">
+                        <div className="flex-grow border-t border-neutral-500"></div>
                         <span className="px-4 whitespace-nowrap">
                         {day}
                         </span>
-                        <div className="flex-grow border-t border-gray-500"></div>
+                        <div className="flex-grow border-t border-neutral-500"></div>
                     </div>
 
                     {/* Proves de ese día */}
@@ -126,11 +126,11 @@ export default function PenyaPage() {
                 ))
                 ) : (
                     selectedYear === new Date().getFullYear() ? (
-                    <p className="text-center text-gray-500 dark:text-gray-400">
+                    <p className="text-center text-neutral-500 dark:text-neutral-400">
                         Aquesta penya encara no ha participat en cap prova aquest any.
                     </p>
                     ) : (
-                <p className="text-center text-gray-500 dark:text-gray-400">
+                <p className="text-center text-neutral-500 dark:text-neutral-400">
                     No hi ha informació de proves per aquest any.
                 </p>
                 )))}

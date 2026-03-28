@@ -23,7 +23,7 @@ export default function ProvaInfoCard({ prova }: ProvaInfoCardProps) {
   } = prova;
 
   return (
-    <Card className="max-h-[96svh] overflow-auto pt-0  shadow-md dark:bg-gray-900">
+    <Card className="max-h-[96svh] overflow-auto pt-0  shadow-md dark:bg-neutral-900">
       {/* Imagen de cabecera */}
     <Carousel
       className="w-full max-h-56"

@@ -47,7 +47,7 @@ export default function ({ auth, setIsLogin, onClick }: LoginFormProps) {
     };
 
     return(
-        <div className="max-w-sm mx-auto mt-10 border-1 rounded-2xl shadow-lg p-6 bg-white dark:bg-gray-800">
+        <div className="max-w-sm mx-auto mt-10 border-1 rounded-2xl shadow-lg p-6 bg-white dark:bg-neutral-800">
       <Form {...form}>
         <form className="space-y-4" onSubmit={form.handleSubmit(onTryRegister)}>
             <FormField

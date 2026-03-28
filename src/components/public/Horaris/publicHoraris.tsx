@@ -15,10 +15,10 @@ function HorariCard({ penya }: { penya: ParticipatingPenya }) {
   return (
     <div
       key={penya.penyaId}
-      className="rounded-xl p-3 flex items-center justify-between gap-3 bg-white dark:bg-gray-800 shadow-sm border"
+      className="rounded-xl p-3 flex items-center justify-between gap-3 bg-white dark:bg-neutral-800 shadow-sm border"
     >
       <span className="font-medium truncate">{penya.name}</span>
-      <span className="text-sm font-mono text-gray-600 dark:text-gray-300 whitespace-nowrap">
+      <span className="text-sm font-mono text-gray-600 dark:text-neutral-300 whitespace-nowrap">
         {formatTime(penya.participationTime)}
       </span>
     </div>
@@ -46,7 +46,7 @@ export default function PublicHoraris({ penyes }: Props) {
             {missingFavorites.map((f) => (
               <div
                 key={f.id}
-                className="rounded-xl p-3 flex items-center gap-3 bg-white dark:bg-gray-800 shadow-sm border border-dashed"
+                className="rounded-xl p-3 flex items-center gap-3 bg-white dark:bg-neutral-800 shadow-sm border border-dashed"
               >
                 <span className="text-sm text-muted-foreground italic truncate">
                   {f.name} no té horari assignat en aquesta prova

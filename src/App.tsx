@@ -6,8 +6,8 @@ import { Routes, Route } from 'react-router-dom';
 import PenyaPage from './pages/public/PenyaPage/penyaPage';
 
 // Páginas admin
-import Login from './pages/admin/Login';
-import Dashboard from './pages/admin/Dashboard';
+import Login from './pages/admin/Login/Login';
+import Dashboard from './pages/admin/Dashboard/Dashboard';
 import { YearProvider } from './components/shared/Contexts/YearContext';
 import CreateProva from './pages/admin/createProva/createProva';
 import EditProva from './pages/admin/editProva/editProva';
