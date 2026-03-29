@@ -20,11 +20,10 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 type LoginFormProps = {
     auth: ReturnType<typeof getAuth>;
-    setIsLogin: React.Dispatch<React.SetStateAction<boolean>>;
     onClick: () => void;
   };
 
-export default function LoginForm({ auth, setIsLogin, onClick }: LoginFormProps) {
+export default function LoginForm({ auth, onClick }: LoginFormProps) {
     const [rememberMe, setRememberMe] = useState(false);
     const [loggingIn, setLoggingIn] = useState(false);
     document.title = "Iniciar sessió";

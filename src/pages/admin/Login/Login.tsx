@@ -20,7 +20,7 @@ export default function Login() {
       <div className="fixed inset-0 flex items-center justify-center">
         {(
           isLogin
-            ? <LoginForm auth={auth} setIsLogin={setIsLogin} onClick={handleClick}/>
+            ? <LoginForm auth={auth} onClick={handleClick}/>
             : <RegisterForm auth={auth} setIsLogin={setIsLogin} onClick={handleClick}/>
         )}
       </div>
