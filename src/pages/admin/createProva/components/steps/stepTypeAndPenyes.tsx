@@ -8,7 +8,7 @@ type Props = {
   challengeType: ProvaType | undefined;
   penyaSearch: string; setPenyaSearch: (s: string) => void;
   filteredPenyes: ParticipatingPenya[];
-  onTogglePenya: (index: number, checked: boolean) => void;
+  onTogglePenya: (penyaId: string, checked: boolean) => void;
 };
 
 export default function StepTypeAndPenyes({
@@ -16,14 +16,16 @@ export default function StepTypeAndPenyes({
 }: Props) {
   return (
     <>
-      <div className="flex flex-row space-x-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField name="challengeType" render={({ field }) => (
           <FormItem id="challengeType">
             <FormLabel htmlFor="challengeType">Tipus de prova: *</FormLabel>
             <Select value={field.value} onValueChange={field.onChange}>
               <FormControl><SelectTrigger id="challengeType"><SelectValue placeholder="Selecciona tipus" /></SelectTrigger></FormControl>
               <SelectContent position="popper">
-                {provaTypes.map((t, idx) => <SelectItem key={idx} value={t}>{t}</SelectItem>)}
+                {provaTypes
+                  .filter((t) => t !== "null")
+                  .map((t, idx) => <SelectItem key={idx} value={t}>{t}</SelectItem>)}
               </SelectContent>
             </Select>
             <FormMessage />
@@ -48,8 +50,8 @@ export default function StepTypeAndPenyes({
         )}
       </div>
 
-      {(challengeType === "Temps" || challengeType === "Participació") && (
-        <div className="flex flex-row space-x-8">
+      {(challengeType === "Temps" || challengeType === "Participació" || challengeType === "Punts") && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField name="intervalMinutes" render={({ field }) => (
             <FormItem>
               <FormLabel>Interval entre torns (min):</FormLabel>
@@ -101,10 +103,14 @@ export default function StepTypeAndPenyes({
                 items={filteredPenyes}
                 checkedByIndex={(i) => filteredPenyes[i].participates}
                 onToggle={(i, checked) => {
+                  const penyaId = filteredPenyes[i].penyaId;
                   const updated = [...(field.value || [])];
-                  updated[i] = { ...updated[i], participates: !!checked };
-                  field.onChange(updated);
-                  onTogglePenya(i, !!checked);
+                  const realIdx = updated.findIndex(p => p.penya.id === penyaId);
+                  if (realIdx !== -1) {
+                    updated[realIdx] = { ...updated[realIdx], participates: !!checked };
+                    field.onChange(updated);
+                  }
+                  onTogglePenya(penyaId, !!checked);
                 }}
               />
               <FormMessage />

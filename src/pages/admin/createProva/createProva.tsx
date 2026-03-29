@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FieldErrors, useForm } from "react-hook-form";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -20,6 +20,8 @@ import { useProvaPreviewSync } from "./useProvaPreviewSync";
 import LoadingAnimation from "@/components/shared/loadingAnim";
 import StepPointsRange from "./components/steps/stepPointsRange";
 import { navigateWithQuery } from "@/utils/url";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
 
 export default function CreateProva() {
   const navigate = useNavigate();
@@ -46,6 +48,12 @@ export default function CreateProva() {
   const { selectedYear } = useYear();
   const [creatingProva, setCreatingProva] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
+  const directionRef = useRef(1);
+
+  const goToStep = (next: number) => {
+    directionRef.current = next > currentStep ? 1 : -1;
+    setCurrentStep(next);
+  };
   const [location, setLocation] = useState<Ubication>({ lat: undefined, lng: undefined, name: undefined });
   const [penyes, setPenyes] = useState<ParticipatingPenya[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -141,8 +149,8 @@ export default function CreateProva() {
             penyaSearch={penyaSearch}
             setPenyaSearch={setPenyaSearch}
             filteredPenyes={filteredPenyes}
-            onTogglePenya={(i, checked) => {
-              setPenyes(prev => prev.map((p, idx) => idx === i ? { ...p, participates: checked } : p));
+            onTogglePenya={(penyaId, checked) => {
+              setPenyes(prev => prev.map((p) => p.penyaId === penyaId ? { ...p, participates: checked } : p));
             }}
           />
     )},
@@ -150,47 +158,64 @@ export default function CreateProva() {
       <StepPointsRange challengeType={challengeType} />
     )},
     { title: "Confirmació", content: (
-      <StepConfirm provaInfo={provaInfo} creatingProva={creatingProva} />
+      <StepConfirm provaInfo={provaInfo} />
     )},
   ] as const;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="fixed inset-0 overflow-hidden pt-4 pb-4">
+      <div className="max-w-4xl mx-auto h-full flex flex-col gap-3">
       <Tabs defaultValue={steps[0].title} value={steps[currentStep].title}>
-        <TabsList className="rounded-3xl w-full mb-4 pl-1 pr-1">
+        <TabsList className="rounded-3xl w-full pl-1 pr-1">
           {steps.map((s, i) => (
-            <TabsTrigger key={i} className="rounded-2xl" value={s.title} onClick={() => setCurrentStep(i)}>
+            <TabsTrigger key={i} className="rounded-2xl" value={s.title} onClick={() => goToStep(i)}>
               {s.title}
             </TabsTrigger>
           ))}
         </TabsList>
       </Tabs>
 
-      <Card className="max-h-[88svh] overflow-y-auto">
+      <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-4 pl-6 pr-6">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={currentStep}
-                className="space-y-4"
-                initial={{ opacity: 0, x: 40 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -40 }}
-                transition={{ duration: 0.3 }}
-              >
-                {steps[currentStep].content}
-              </motion.div>
-            </AnimatePresence>
+          <form onSubmit={form.handleSubmit(onSubmit, onError)} className="flex flex-col flex-1 min-h-0 pl-6 pr-6">
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={currentStep}
+                  className="space-y-4 py-2"
+                  initial={{ opacity: 0, x: directionRef.current * 40 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: directionRef.current * -40 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {steps[currentStep].content}
+                </motion.div>
+              </AnimatePresence>
+            </div>
 
-            <div className="flex justify-between mt-6">
-              {currentStep > 0 &&
-                <button type="button" className="btn btn-outline" onClick={() => setCurrentStep(currentStep - 1)}>Enrere</button>}
-              {currentStep < steps.length - 1 &&
-                <button type="button" className="btn" onClick={() => setCurrentStep(currentStep + 1)}>Següent</button>}
+            {/* Nav bar — always pinned at bottom of flex */}
+            <div className="flex justify-between py-4 border-t border-border">
+              {currentStep > 0 && (
+                <Button type="button" variant="outline" onClick={() => goToStep(currentStep - 1)}>
+                  <ChevronLeft /> Enrere
+                </Button>
+              )}
+              {currentStep < steps.length - 1 && (
+                <Button type="button" className="ml-auto" onClick={() => goToStep(currentStep + 1)}>
+                  Següent <ChevronRight />
+                </Button>
+              )}
+              {currentStep === steps.length - 1 && (
+                <Button type="submit" className="ml-auto" disabled={creatingProva !== 0}>
+                  {creatingProva === 0 ? "Crear prova" : creatingProva === 1 ? <LoaderCircle className="animate-spin" /> : "Prova creada!"}
+                </Button>
+              )}
             </div>
           </form>
         </Form>
       </Card>
+      </div>
     </div>
   );
 }

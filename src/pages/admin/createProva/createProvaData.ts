@@ -28,7 +28,7 @@ export const createChallengeSchema = z.object({
       required_error: "El nom és obligatori",
       invalid_type_error: "El nom ha de ser una cadena de text",
     })
-    .min(5, "El nom ha de tenir almenys 2 caràcters"),
+    .min(5, "El nom ha de tenir almenys 5 caràcters"),
 
   description: z
     .string({

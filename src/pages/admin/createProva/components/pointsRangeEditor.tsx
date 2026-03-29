@@ -1,7 +1,9 @@
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { PointsRange } from "@/interfaces/interfaces";
+import { Plus, Minus, Trash2, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type PointsRangeEditorProps = {
   value: PointsRange[];
@@ -56,112 +58,141 @@ export default function PointsRangeEditor({
     onChange(vales);
   };
 
+  const maxPoints = Math.max(...value.map((r) => r.points), 1);
+
   return (
-    <div>
-      {value?.map((range, index) => (
-        <div
-          key={index}
-          className="flex flex-row items-center gap-3 mb-2 text-sm"
-        >
-          <p>Des de:</p>
-          <Input
-            className="max-w-16"
-            type="number"
-            min={1}
-            value={Number.isFinite(range.from) ? range.from : ""}
-            onChange={(e) => {
-              const raw = e.target.value;
+    <div className="space-y-2">
+      <div className="grid gap-2">
+        {value?.map((range, index) => {
+          const intensity = range.points / maxPoints;
+          return (
+            <div
+              key={index}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card"
+            >
+              {/* Rank badge */}
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
+                {index + 1}
+              </span>
 
-              if (raw.trim() === "") {
-                toast.error("El camp 'des de' no pot estar buit.");
-                return;
-              }
+              {/* From → To */}
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <Input
+                  className="w-14 text-center h-8 text-sm px-1"
+                  type="number"
+                  min={1}
+                  value={Number.isFinite(range.from) ? range.from : ""}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw.trim() === "") {
+                      toast.error("El camp 'des de' no pot estar buit.");
+                      return;
+                    }
+                    const parsed = parseInt(raw);
+                    if (
+                      isNaN(parsed) ||
+                      parsed <= 0 ||
+                      !Number.isFinite(parsed)
+                    ) {
+                      toast.error(
+                        "El valor de 'des de' ha de ser un número positiu."
+                      );
+                      return;
+                    }
+                    handleFieldChange(index, "from", parsed);
+                  }}
+                />
+                <ArrowRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                <Input
+                  className="w-14 text-center h-8 text-sm px-1"
+                  type="number"
+                  min={range.from}
+                  placeholder="∞"
+                  value={Number.isFinite(range.to) ? range.to : ""}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw.trim() === "") {
+                      const isLast = index === value.length - 1;
+                      if (!isLast) {
+                        toast.error("Només l'últim rang pot ser infinit.");
+                        return;
+                      }
+                      handleFieldChange(index, "to", Infinity);
+                      return;
+                    }
+                    const parsed = parseInt(raw);
+                    if (isNaN(parsed)) {
+                      const isLast = index === value.length - 1;
+                      if (!isLast) {
+                        toast.error("Només l'últim rang pot ser infinit.");
+                        return;
+                      }
+                      handleFieldChange(index, "to", Infinity);
+                      return;
+                    }
+                    handleFieldChange(index, "to", parsed);
+                  }}
+                />
+              </div>
 
-              const parsed = parseInt(raw);
+              {/* Points */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <Input
+                  className={cn(
+                    "w-14 text-center h-8 text-sm font-semibold px-1",
+                    intensity > 0.7 &&
+                      "text-amber-500 border-amber-500/50 focus-visible:ring-amber-500/30",
+                    intensity > 0.4 &&
+                      intensity <= 0.7 &&
+                      "text-blue-400 border-blue-400/50 focus-visible:ring-blue-400/30"
+                  )}
+                  type="number"
+                  value={range.points}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      index,
+                      "points",
+                      parseInt(e.target.value)
+                    )
+                  }
+                />
+                <span className="text-xs text-muted-foreground w-5">pts</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
-              if (isNaN(parsed) || parsed <= 0 || !Number.isFinite(parsed)) {
-                toast.error("El valor de 'des de' ha de ser un número positiu.");
-                return;
-              }
-
-              handleFieldChange(index, "from", parsed);
-            }}
-          />
-          <p>fins a:</p>
-          <Input
-            className="max-w-16"
-            type="number"
-            min={range.from}
-            value={Number.isFinite(range.to) ? range.to : ""}
-            onChange={(e) => {
-              const raw = e.target.value;
-
-              // Caso 1: valor vacío → intentar poner Infinity
-              if (raw.trim() === "") {
-                const isLast = index === value.length - 1;
-
-                if (!isLast) {
-                  // Prohibido Infinity si NO es el último range
-                  toast.error("Només l'últim rang pot ser infinit.");
-                  return;
-                }
-
-                handleFieldChange(index, "to", Infinity);
-                return;
-              }
-
-              // Caso 2: valor numérico
-              const parsed = parseInt(raw);
-
-              if (isNaN(parsed)) {
-                const isLast = index === value.length - 1;
-
-                if (!isLast) {
-                  toast.error("Només l'últim rang pot ser infinit.");
-                  return;
-                }
-
-                handleFieldChange(index, "to", Infinity);
-                return;
-              }
-
-              // Número válido → guardar
-              handleFieldChange(index, "to", parsed);
-            }}
-          />
-
-          <p>guanyaran:</p>
-          <Input
-            className="max-w-16"
-            type="number"
-            value={range.points}
-            onChange={(e) =>
-              handleFieldChange(index, "points", parseInt(e.target.value))
-            }
-          />
-          <p>punts</p>
-        </div>
-      ))}
-
-      <div className="flex gap-3 mt-3">
-        <Badge
-          className="hover:cursor-pointer select-none"
+      <div className="flex gap-2 pt-1">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
           onClick={addRange}
+          className="gap-1.5"
         >
-          +
-        </Badge>
-        <Badge
-          className="hover:cursor-pointer select-none"
+          <Plus className="w-3.5 h-3.5" />
+          Afegir rang
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
           onClick={removeRange}
+          className="gap-1.5"
         >
-          -
-        </Badge>
-        <Badge
-          className="hover:cursor-pointer select-none"
+          <Minus className="w-3.5 h-3.5" />
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="destructive"
           onClick={removeAllRange}
+          className="gap-1.5 ml-auto"
         >
+          <Trash2 className="w-3.5 h-3.5" />
           Eliminar tots
-        </Badge>
+        </Button>
       </div>
     </div>
   );

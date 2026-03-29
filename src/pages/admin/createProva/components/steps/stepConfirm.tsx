@@ -1,17 +1,6 @@
-import { Button } from "@/components/ui/button";
 import ProvaInfoCard from "@/components/shared/Prova/provaInfoCard";
-import { LoaderCircle } from "lucide-react";
 import { Prova } from "@/interfaces/interfaces";
 
-export default function StepConfirm({ provaInfo, creatingProva }:{
-  provaInfo: Prova; creatingProva: number;
-}) {
-  return (
-    <>
-      <ProvaInfoCard prova={provaInfo} />
-      <Button type="submit" disabled={creatingProva !== 0}>
-        {creatingProva === 0 ? "Crear prova" : creatingProva === 1 ? <LoaderCircle className="animate-spin mr-2" /> : "Prova creada!"}
-      </Button>
-    </>
-  );
+export default function StepConfirm({ provaInfo }: { provaInfo: Prova; }) {
+  return <ProvaInfoCard prova={provaInfo} />;
 }
