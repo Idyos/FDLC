@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "../Theme/theme-provider";
 import { Badge } from "@/components/ui/badge";
 import PenyaProvaResult from "../shared/Prova/penyaProvaResult";
-import { Trophy } from "lucide-react";
+import { Clock, Trophy } from "lucide-react";
 import { Card } from "../ui/card";
 import { Separator } from "@/components/ui/separator"
 import { navigateWithQuery } from "@/utils/url";
@@ -88,19 +88,23 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
                 })()}
               </Badge>
             )}
-
-
           </div>
-
           <div>
-            <PenyaProvaResult prova={provaSummary} />
+            {!provaSummary.isFinished && (!provaSummary.result || provaSummary.result ==-1) && provaSummary.participationTime ? (
+              <div className="flex items-center gap-1 text-lg font-bold">
+                <Clock className="w-5 h-5" />
+                {provaSummary.participationTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </div>
+            ) : (
+              <PenyaProvaResult prova={provaSummary} />
+            )}
           </div>
 
         </div>
 
 
         {/* Badge: si hay points los muestro; si no, se puede ocultar o mostrar otra info */}
-        {typeof provaSummary.result === "number" && provaSummary.result > -1 ? (
+        {typeof provaSummary.position === "number" && provaSummary.position > -1 ? (
           <Card className="p-2 flex flex-row gap-2 w-fit items-center">
             {provaSummary.position && 
                 <p className="text-xl font-bold">

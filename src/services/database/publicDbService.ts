@@ -375,6 +375,9 @@ export const getPenyaProvesRealTime = (
         summary.participates = p.participates ?? false;
         summary.position = p.participates ? p.index || undefined : undefined;
         summary.result = p.result ?? undefined;
+        summary.participationTime = p.participationTime?.toDate?.() ?? null;
+
+        console.log(summary);
 
         // 🔹 3️⃣ Si la prova está finalizada, obtener puntos desde los Results
         if (provaData.isFinished) {

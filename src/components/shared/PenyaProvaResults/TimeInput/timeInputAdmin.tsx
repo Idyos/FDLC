@@ -57,7 +57,10 @@ export const TimeInputAdmin: React.FC<TimeInputProps> = ({
 
       {seconds >= 0 && (
         <Button
-          onClick={() => emit(-1)}
+          onClick={() => {
+            emit(-1);
+            onBlur?.(-1);
+          }}
         >
           Llimpiar
         </Button>

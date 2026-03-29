@@ -120,6 +120,7 @@ export class PenyaProvaSummary extends ProvaSummary {
   result?: number;
   points?: number;
   participates: boolean;
+  participationTime?: Date | null;
 
   constructor() {
     super();
