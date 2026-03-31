@@ -12,6 +12,63 @@ import { db } from "@/firebase/firebase";
 import { deleteUsersWithProva } from "@/services/usersService";
 import { getProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";
 import { calculateGroupStandings } from "@/features/bracket/bracketDomain";
+import type { StoredProvaBracketDoc } from "@/features/bracket/types";
+
+/** Derives a teamId → position map from a stored bracket doc.
+ *  Returns an empty map if the final match has not been played yet. */
+export function deriveBracketPositions(saved: StoredProvaBracketDoc): Map<string, number> {
+  const { bracket, thirdPlaceMatch } = saved.finalStage;
+  const { matches, bracketSize } = bracket;
+  const positionMap = new Map<string, number>();
+
+  const totalRounds = Math.max(...matches.map((m) => m.roundNumber));
+  const finalMatch = matches.find((m) => m.roundNumber === totalRounds);
+  if (!finalMatch?.winnerTeamId) return positionMap;
+
+  const semifinalRound = totalRounds - 1;
+
+  positionMap.set(finalMatch.winnerTeamId, 1);
+  const finalLoserIdx = finalMatch.winnerSlot === "A" ? 1 : 0;
+  const finalLoserTeamId = finalMatch.teams[finalLoserIdx]?.teamId;
+  if (finalLoserTeamId) positionMap.set(finalLoserTeamId, 2);
+
+  if (thirdPlaceMatch?.status === "finished" && thirdPlaceMatch.winnerTeamId) {
+    positionMap.set(thirdPlaceMatch.winnerTeamId, 3);
+    if (thirdPlaceMatch.loserTeamId) positionMap.set(thirdPlaceMatch.loserTeamId, 4);
+  }
+
+  for (let r = totalRounds - 1; r >= 1; r--) {
+    const roundMatches = matches.filter((m) => m.roundNumber === r && m.status === "finished");
+    for (const m of roundMatches) {
+      if (!m.winnerSlot || !m.winnerTeamId) continue;
+      const loserIdx = m.winnerSlot === "A" ? 1 : 0;
+      const loserTeamId = m.teams[loserIdx]?.teamId;
+      if (!loserTeamId || positionMap.has(loserTeamId)) continue;
+      if (r === semifinalRound) {
+        positionMap.set(loserTeamId, 3);
+      } else {
+        positionMap.set(loserTeamId, bracketSize / Math.pow(2, r) + 1);
+      }
+    }
+  }
+
+  if (saved.mode === "groups_to_final" && saved.groupStage) {
+    const { groups } = saved.groupStage;
+    const numGroups = groups.length;
+    const groupLoserBasePos = bracketSize + 1;
+    for (const group of groups) {
+      const standings = calculateGroupStandings(group.matches, group.teamIds);
+      let loserTier = 0;
+      for (const standing of standings) {
+        if (positionMap.has(standing.teamId)) continue;
+        positionMap.set(standing.teamId, groupLoserBasePos + loserTier * numGroups);
+        loserTier++;
+      }
+    }
+  }
+
+  return positionMap;
+}
 
 export async function generateProvaResults(year: number, provaId: string) {
   const provaRef = doc(db, `Circuit/${year}/Proves/${provaId}`);

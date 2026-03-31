@@ -98,14 +98,19 @@ function sanitizeTeamSnapshot(value: unknown): BracketTeamSnapshot[] {
   return teams;
 }
 
+function bracketDocPath(year: number, provaId: string, subProvaId?: string): string {
+  if (subProvaId) {
+    return `Circuit/${year}/Proves/${provaId}/SubProves/${subProvaId}/Bracket/current`;
+  }
+  return `Circuit/${year}/Proves/${provaId}/Bracket/current`;
+}
+
 export async function getProvaBracket(
   year: number,
   provaId: string,
+  subProvaId?: string,
 ): Promise<StoredProvaBracketDoc | null> {
-  const bracketRef = doc(
-    db,
-    `Circuit/${year}/Proves/${provaId}/Bracket/current`,
-  );
+  const bracketRef = doc(db, bracketDocPath(year, provaId, subProvaId));
   const bracketSnap = await getDoc(bracketRef);
 
   if (!bracketSnap.exists()) {
@@ -137,8 +142,9 @@ export function subscribeProvaBracket(
   provaId: string,
   onData: (doc: StoredProvaBracketDoc | null) => void,
   onError: (error: Error) => void,
+  subProvaId?: string,
 ): () => void {
-  const bracketRef = doc(db, `Circuit/${year}/Proves/${provaId}/Bracket/current`);
+  const bracketRef = doc(db, bracketDocPath(year, provaId, subProvaId));
   return onSnapshot(
     bracketRef,
     (snap) => {
@@ -172,11 +178,9 @@ export async function saveProvaBracket(
   provaId: string,
   data: StoredProvaBracketDoc,
   userId?: string,
+  subProvaId?: string,
 ): Promise<void> {
-  const bracketRef = doc(
-    db,
-    `Circuit/${year}/Proves/${provaId}/Bracket/current`,
-  );
+  const bracketRef = doc(db, bracketDocPath(year, provaId, subProvaId));
 
   // JSON round-trip strips undefined values, which Firestore rejects
   const sanitized = JSON.parse(JSON.stringify(data));

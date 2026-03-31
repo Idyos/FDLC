@@ -299,7 +299,7 @@ export class ChallengeByDiscalification extends Prova {
 export interface SubProvaConfig {
   id: string;
   name: string;
-  challengeType: "Participació" | "Temps" | "Punts";
+  challengeType: "Participació" | "Temps" | "Punts" | "Rondes";
   winDirection: WinDirection;
   order: number;
   intervalMinutes?: number;

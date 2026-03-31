@@ -12,7 +12,8 @@ import {
 } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { SubProvaConfig, PointsRange, ParticipatingPenya } from "@/interfaces/interfaces";
-import { generateProvaResults } from "./adminProvesDbServices";
+import { generateProvaResults, deriveBracketPositions } from "./adminProvesDbServices";
+import { getProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";
 
 // ─── Read ────────────────────────────────────────────────────────────────────
 
@@ -167,6 +168,27 @@ export async function generateMultiProvaResults(
     const subProvaData = subProvaDoc.data();
     const winDirection: string = subProvaData.winDirection ?? "NONE";
 
+    // ── Rondes sub-prova: derive positions from bracket ──────────────────────
+    if (subProvaData.challengeType === "Rondes") {
+      const bracketDoc = await getProvaBracket(year, provaId, subProvaDoc.id);
+      if (!bracketDoc) {
+        throw new Error(`La subprova de rondes "${subProvaData.name ?? subProvaDoc.id}" no té cap quadre generat.`);
+      }
+      const positionMap = deriveBracketPositions(bracketDoc);
+      if (positionMap.size === 0) {
+        throw new Error(`La subprova de rondes "${subProvaData.name ?? subProvaDoc.id}" encara no té el quadre finalitzat.`);
+      }
+      for (const [penyaId, position] of positionMap) {
+        const range = pointsRange.find((r) => position >= r.from && position <= r.to);
+        const pts = range ? range.points : 0;
+        if (teamPointsMap[penyaId]) {
+          teamPointsMap[penyaId].total += pts;
+        }
+      }
+      continue;
+    }
+
+    // ── Scalar sub-prova (Temps / Punts / Participació) ──────────────────────
     // Load participants for this sub-prova
     const participantsRef = collection(
       db,

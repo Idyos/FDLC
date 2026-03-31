@@ -24,6 +24,7 @@ import {
   updateSubProvaResult,
 } from "@/services/database/Admin/adminMultiProvaDbServices";
 import AdminAddSubProvaDialog from "./AdminAddSubProvaDialog";
+import AdminBracketPanel from "@/components/admin/Proves/Bracket/adminBracketPanel";
 import { TimeRollingInput } from "@/components/shared/PenyaProvaResults/TimeInput/timeInput";
 import { PointsInput } from "@/components/shared/PenyaProvaResults/PointsInput/pointsInput";
 import { ParticipatesInput } from "@/components/shared/PenyaProvaResults/ParticipatesInput/participatesInput";
@@ -131,14 +132,16 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
     });
   }, [year, prova.id]);
 
-  // Load participants whenever selected sub-prova changes
+  // Load participants whenever selected sub-prova changes (skip for Rondes — bracket handles its own data)
   useEffect(() => {
     if (!selectedId) { setParticipants([]); return; }
+    const sp = subProves.find((s) => s.id === selectedId);
+    if (sp?.challengeType === "Rondes") { setParticipants([]); return; }
     setLoadingParticipants(true);
     getSubProvaParticipants(year, prova.id, selectedId)
       .then(setParticipants)
       .finally(() => setLoadingParticipants(false));
-  }, [selectedId, year, prova.id]);
+  }, [selectedId, year, prova.id, subProves]);
 
   const selectedSubProva = subProves.find((s) => s.id === selectedId) ?? null;
 
@@ -214,22 +217,23 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
         )}
 
         {subProves.length > 0 && subProves.map((sp) => (
-            <TabsContent value={sp.id}>
+            <TabsContent key={sp.id} value={sp.id}>
               <div className="flex-1 overflow-y-auto p-4">
-                {!selectedSubProva ? (
-                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                    {subProves.length === 0
-                      ? "Crea la primera subprova amb el botó +"
-                      : "Selecciona una subprova"}
-                  </div>
+                {sp.challengeType === "Rondes" ? (
+                  <AdminBracketPanel
+                    year={year}
+                    prova={prova}
+                    subProvaId={sp.id}
+                    readOnly={prova.isFinished}
+                  />
                 ) : (
                   <>
                     <div className="mb-4">
-                      <h3 className="text-lg font-bold">{selectedSubProva.name}</h3>
+                      <h3 className="text-lg font-bold">{sp.name}</h3>
                       <p className="text-xs text-muted-foreground">
-                        {selectedSubProva.challengeType}
-                        {selectedSubProva.winDirection !== "NONE" && (
-                          <> · {selectedSubProva.winDirection === "ASC" ? "menys és millor" : "més és millor"}</>
+                        {sp.challengeType}
+                        {sp.winDirection !== "NONE" && (
+                          <> · {sp.winDirection === "ASC" ? "menys és millor" : "més és millor"}</>
                         )}
                       </p>
                     </div>
@@ -244,7 +248,7 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
                           <SubProvaResultRow
                             key={p.penyaId}
                             participant={p}
-                            subProva={selectedSubProva}
+                            subProva={sp}
                             provaId={prova.id}
                             year={year}
                             provaIsFinished={prova.isFinished}

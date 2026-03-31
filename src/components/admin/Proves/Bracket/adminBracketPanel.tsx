@@ -53,6 +53,7 @@ interface AdminBracketPanelProps {
   year: number;
   prova: Prova;
   readOnly?: boolean;
+  subProvaId?: string;
 }
 
 function buildTeamSnapshot(prova: Prova): BracketTeamSnapshot[] {
@@ -82,7 +83,7 @@ function buildPropagatedFinal(fs: FinalStageState): FinalStageState {
   };
 }
 
-export default function AdminBracketPanel({ year, prova, readOnly = false }: AdminBracketPanelProps) {
+export default function AdminBracketPanel({ year, prova, readOnly = false, subProvaId }: AdminBracketPanelProps) {
   const { user } = useAuth();
   const teams = useMemo(() => buildTeamSnapshot(prova), [prova]);
   const teamById = useMemo(() => {
@@ -146,7 +147,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
       setIsLoadingSavedBracket(true);
 
       try {
-        const saved = await getProvaBracket(year, prova.id);
+        const saved = await getProvaBracket(year, prova.id, subProvaId);
         if (isCancelled) return;
 
         if (!saved) {
@@ -203,7 +204,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
   const revertToFirebase = async () => {
     if (!prova.id) return;
     try {
-      const saved = await getProvaBracket(year, prova.id);
+      const saved = await getProvaBracket(year, prova.id, subProvaId);
       if (!saved) return;
       const propagatedMatches = propagateBracketByes([...saved.finalStage.bracket.matches]);
       setGroupStage(saved.groupStage);
@@ -230,7 +231,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
     if (!prova.id) return;
     setSaveStatus("saving");
     try {
-      await saveProvaBracket(year, prova.id, buildPayload(fs, tpm, gs), user?.uid);
+      await saveProvaBracket(year, prova.id, buildPayload(fs, tpm, gs), user?.uid, subProvaId);
       const now = new Date();
       setSavedAt(now);
       setSaveStatus("saved");
@@ -291,7 +292,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
       return;
     }
     if (prova.id) {
-      const existing = await getProvaBracket(year, prova.id);
+      const existing = await getProvaBracket(year, prova.id, subProvaId);
       if (existing) {
         setPendingGenerateMode("simple");
         setShowOverwriteAlert(true);
@@ -307,7 +308,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false }: Adm
       return;
     }
     if (prova.id) {
-      const existing = await getProvaBracket(year, prova.id);
+      const existing = await getProvaBracket(year, prova.id, subProvaId);
       if (existing) {
         setPendingGenerateMode("groups");
         setShowOverwriteAlert(true);

@@ -25,7 +25,7 @@ interface Props {
   onAdd: (config: Omit<SubProvaConfig, "id">) => Promise<void>;
 }
 
-type SubProvaType = "Participació" | "Temps" | "Punts";
+type SubProvaType = "Participació" | "Temps" | "Punts" | "Rondes";
 
 export default function AdminAddSubProvaDialog({ open, nextOrder, onClose, onAdd }: Props) {
   const [name, setName] = useState("");
@@ -40,7 +40,7 @@ export default function AdminAddSubProvaDialog({ open, nextOrder, onClose, onAdd
       await onAdd({
         name: name.trim(),
         challengeType,
-        winDirection: challengeType === "Participació" ? "NONE" : winDirection,
+        winDirection: challengeType === "Participació" ? "NONE" : challengeType === "Rondes" ? "ASC" : winDirection,
         order: nextOrder,
       });
       setName("");
@@ -78,7 +78,7 @@ export default function AdminAddSubProvaDialog({ open, nextOrder, onClose, onAdd
               onValueChange={(v) => {
                 setChallengeType(v as SubProvaType);
                 if (v === "Participació") setWinDirection("NONE");
-                else if (v === "Temps") setWinDirection("ASC");
+                else if (v === "Temps" || v === "Rondes") setWinDirection("ASC");
                 else setWinDirection("DESC");
               }}
             >
@@ -89,6 +89,7 @@ export default function AdminAddSubProvaDialog({ open, nextOrder, onClose, onAdd
                 <SelectItem value="Temps">Temps</SelectItem>
                 <SelectItem value="Punts">Punts</SelectItem>
                 <SelectItem value="Participació">Participació</SelectItem>
+                <SelectItem value="Rondes">Rondes</SelectItem>
               </SelectContent>
             </Select>
           </div>

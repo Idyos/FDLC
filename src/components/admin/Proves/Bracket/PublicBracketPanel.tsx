@@ -10,28 +10,38 @@ import {
   shouldHaveThirdPlaceMatch,
 } from "@/features/bracket/bracketDomain";
 import { toGlootMatches } from "@/features/bracket/glootAdapter";
-import type { FinalStageState, GroupStageState, ThirdPlaceMatch } from "@/features/bracket/types";
+import type { BracketTeamSnapshot, FinalStageState, GroupStageState, ThirdPlaceMatch } from "@/features/bracket/types";
 import { subscribeProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";
 
 interface PublicBracketPanelProps {
   year: number;
-  prova: Prova;
+  prova?: Prova;
+  /** Used when rendering inside a MultiProva sub-prova (no full Prova object available) */
+  provaId?: string;
+  subProvaId?: string;
 }
 
-export default function PublicBracketPanel({ year, prova }: PublicBracketPanelProps) {
+export default function PublicBracketPanel({ year, prova, provaId, subProvaId }: PublicBracketPanelProps) {
   const [groupStage, setGroupStage] = useState<GroupStageState | null>(null);
   const [finalStage, setFinalStage] = useState<FinalStageState | null>(null);
   const [thirdPlaceMatch, setThirdPlaceMatch] = useState<ThirdPlaceMatch | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [teamSnapshot, setTeamSnapshot] = useState<BracketTeamSnapshot[]>([]);
+
+  const effectiveProvaId = prova?.id ?? provaId;
 
   const teamById = useMemo(() => {
     const map = new Map<string, string>();
-    prova.penyes.forEach((p) => map.set(p.penyaId, p.name));
+    if (subProvaId) {
+      teamSnapshot.forEach((t) => map.set(t.teamId, t.name));
+    } else {
+      prova?.penyes.forEach((p) => map.set(p.penyaId, p.name));
+    }
     return map;
-  }, [prova.penyes]);
+  }, [prova?.penyes, subProvaId, teamSnapshot]);
 
   useEffect(() => {
-    if (!prova.id) {
+    if (!effectiveProvaId) {
       setIsLoading(false);
       return;
     }
@@ -40,13 +50,15 @@ export default function PublicBracketPanel({ year, prova }: PublicBracketPanelPr
 
     const unsubscribe = subscribeProvaBracket(
       year,
-      prova.id,
+      effectiveProvaId,
       (saved) => {
         if (!saved) {
           setGroupStage(null);
           setFinalStage(null);
           setThirdPlaceMatch(null);
+          setTeamSnapshot([]);
         } else {
+          setTeamSnapshot(saved.teamSnapshot);
           setGroupStage(saved.groupStage);
           setFinalStage({
             ...saved.finalStage,
@@ -63,10 +75,11 @@ export default function PublicBracketPanel({ year, prova }: PublicBracketPanelPr
         console.error("PublicBracketPanel subscription error:", error);
         setIsLoading(false);
       },
+      subProvaId,
     );
 
     return unsubscribe;
-  }, [year, prova.id]);
+  }, [year, effectiveProvaId, subProvaId]);
 
   const glootMatches = useMemo(
     () => (finalStage ? toGlootMatches(finalStage.bracket) : []),

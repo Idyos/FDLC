@@ -4,6 +4,7 @@ import { getSubProvas, getSubProvaParticipants } from "@/services/database/Admin
 import { TimeRollingInput } from "@/components/shared/PenyaProvaResults/TimeInput/timeInput";
 import { PointsInput } from "@/components/shared/PenyaProvaResults/PointsInput/pointsInput";
 import { ParticipatesInput } from "@/components/shared/PenyaProvaResults/ParticipatesInput/participatesInput";
+import PublicBracketPanel from "@/components/admin/Proves/Bracket/PublicBracketPanel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface Props {
@@ -90,16 +91,22 @@ export default function PublicMultiProvaPanel({ year, provaId }: Props) {
 
       {subProves.map((sp) => (
         <TabsContent key={sp.id} value={sp.id}>
-          <p className="text-xs text-muted-foreground mb-2">
-            {sp.challengeType}
-            {sp.winDirection !== "NONE" && (
-              <> · {sp.winDirection === "ASC" ? "menys és millor" : "més és millor"}</>
-            )}
-          </p>
-          <SubProvaResults
-            participants={participantsMap[sp.id] ?? []}
-            subProva={sp}
-          />
+          {sp.challengeType === "Rondes" ? (
+            <PublicBracketPanel year={year} provaId={provaId} subProvaId={sp.id} />
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground mb-2">
+                {sp.challengeType}
+                {sp.winDirection !== "NONE" && (
+                  <> · {sp.winDirection === "ASC" ? "menys és millor" : "més és millor"}</>
+                )}
+              </p>
+              <SubProvaResults
+                participants={participantsMap[sp.id] ?? []}
+                subProva={sp}
+              />
+            </>
+          )}
         </TabsContent>
       ))}
     </Tabs>
