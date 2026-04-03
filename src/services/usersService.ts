@@ -1,54 +1,19 @@
-import { db } from "@/firebase/firebase";
+import { db, auth, functions } from "@/firebase/firebase";
 import { User } from "@/interfaces/userInterface";
-import { initializeApp, deleteApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { auth } from "@/firebase/firebase";
-import { collection, doc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
-
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
-};
+import { sendPasswordResetEmail, updateProfile } from "firebase/auth";
+import { collection, doc, getDocs, updateDoc, writeBatch } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 
 export const createUser = async (user: User, password: string): Promise<void> => {
-  const email: string =
-    user.email.length === 0 ? `${user.displayName}@fdlc.com` : user.email;
+  const fn = httpsCallable<{ user: User; password?: string }, { uid: string; email: string }>(
+    functions,
+    "createUser"
+  );
+  const result = await fn({ user, password: user.isTemporary ? password : undefined });
+  const { email } = result.data;
 
-  // Use a secondary Firebase app so the current admin session is not interrupted
-  const secondaryApp = initializeApp(firebaseConfig, `secondary-${Date.now()}`);
-  const secondaryAuth = getAuth(secondaryApp);
-
-  try {
-    const userCredential = await createUserWithEmailAndPassword(
-      secondaryAuth,
-      email,
-      password
-    );
-    const uid = userCredential.user.uid;
-
-    const docRef = doc(db, `Users/${uid}`);
-    await setDoc(docRef, {
-      uid,
-      displayName: user.displayName,
-      email,
-      photoURL: user.photoURL,
-      isTemporary: user.isTemporary,
-      permissions: {
-        penyes: user.permissions.penyes,
-        proves: user.permissions.proves,
-        ...(user.permissions.specificProvaId
-          ? { specificProvaId: user.permissions.specificProvaId }
-          : {}),
-        users: user.permissions.users,
-      },
-    });
-  } finally {
-    await deleteApp(secondaryApp);
+  if (!user.isTemporary) {
+    await sendPasswordResetEmail(auth, email);
   }
 };
 
@@ -121,7 +86,8 @@ export const deleteUsersWithProva = async (provaId: string): Promise<void> => {
 };
 
 export const deleteUser = async (uid: string): Promise<void> => {
-  await deleteDoc(doc(db, `Users/${uid}`));
+  const fn = httpsCallable(functions, "deleteUser");
+  await fn({ uid });
 };
 
 export const updateUser = async (user: User): Promise<void> => {
