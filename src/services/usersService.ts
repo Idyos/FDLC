@@ -1,7 +1,7 @@
 import { db, auth, functions } from "@/firebase/firebase";
 import { User } from "@/interfaces/userInterface";
 import { sendPasswordResetEmail, updateProfile } from "firebase/auth";
-import { collection, doc, getDocs, updateDoc, writeBatch } from "firebase/firestore";
+import { doc, getDocs, collection, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
 export const createUser = async (user: User, password: string): Promise<void> => {
@@ -18,14 +18,14 @@ export const createUser = async (user: User, password: string): Promise<void> =>
 };
 
 export const getUsers = async (callback: (data: User[]) => void) => {
-  const usersRef = collection(db, `Users`);
+  const usersRef = collection(db, "Users");
 
   try {
     const snap = await getDocs(usersRef);
 
     const users: User[] = snap.docs.map((docSnap) => {
       const d = docSnap.data();
-      const user: User = {
+      return {
         uid: d.uid,
         photoURL: d.photoURL || "",
         displayName: d.displayName || "",
@@ -38,7 +38,6 @@ export const getUsers = async (callback: (data: User[]) => void) => {
           users: Array.isArray(d.permissions?.users) ? d.permissions.users : [],
         },
       };
-      return user;
     });
 
     callback(users);
@@ -56,8 +55,6 @@ export const deleteUsersWithProva = async (provaId: string): Promise<void> => {
   );
 
   if (affected.length === 0) return;
-
-  const batch = writeBatch(db);
 
   for (const docSnap of affected) {
     const d = docSnap.data();
@@ -78,11 +75,10 @@ export const deleteUsersWithProva = async (provaId: string): Promise<void> => {
         "permissions.proves": updatedProves,
       });
     } else {
-      batch.delete(docSnap.ref);
+      // Delete completely from Auth + Firestore via Cloud Function
+      await deleteUser(d.uid);
     }
   }
-
-  await batch.commit();
 };
 
 export const deleteUser = async (uid: string): Promise<void> => {

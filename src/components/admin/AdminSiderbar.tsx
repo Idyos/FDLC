@@ -39,7 +39,7 @@ import AdminProvaContextMenu from "@/components/admin/Proves/SidebarItem/adminPr
 import AdminPenyaContextMenu from "@/components/admin/Penyes/SidebarItem/adminPenyaContextMenu";
 import AdminUserContextMenu from "@/components/admin/Users/SidebarItem/AdminUserContextMenu";
 
-export default function AdminLayout() {
+export default function AdminSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { selectedYear } = useYear();
@@ -51,8 +51,6 @@ export default function AdminLayout() {
   const [penyaFilter, setPenyaFilter] = useState("");
 
   const isInitialYearMount = useRef(true);
-
-  console.log(user);
 
   useEffect(() => {
     if (isInitialYearMount.current) {

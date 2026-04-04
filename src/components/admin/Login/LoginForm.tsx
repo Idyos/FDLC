@@ -58,6 +58,9 @@ export default function LoginForm({ auth, onClick }: LoginFormProps) {
               case "auth/too-many-requests":
                 toast.error("Masses peticions. Torna-ho a intentar més tard.");
                 break;
+              case "auth/user-not-found":
+                toast.error("Usuari no trobat");
+                break;
               default:
                 toast.error("Error al iniciar sessió: " + error.message);
             }

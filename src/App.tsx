@@ -17,7 +17,7 @@ import { AdminRoutes } from './routes/admin/AdminRoutes';
 import { AuthProvider } from './routes/admin/AuthContext';
 import { FavoritePenyesProvider } from './components/shared/Contexts/FavoritePenyesContext';
 import PublicHeader from './components/public/PublicHeader/publicHeader';
-import AdminLayout from './components/admin/AdminLayout';
+import AdminSidebar from './components/admin/AdminSiderbar';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -42,7 +42,7 @@ export default function App() {
 
               {/* Admin */}
               <Route path="/admin/login" element={<Login />} />
-              <Route element={<AdminRoutes><AdminLayout /></AdminRoutes>}>
+              <Route element={<AdminRoutes><AdminSidebar /></AdminRoutes>}>
                 <Route path="/admin" element={<Dashboard />} />
                 <Route path="/admin/prova" element={<ProvaPage />} />
               </Route>
