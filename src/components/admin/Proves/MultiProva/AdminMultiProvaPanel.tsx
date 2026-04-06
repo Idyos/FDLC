@@ -60,7 +60,7 @@ function SubProvaResultRow({
     setValue(participant.result);
   }, [participant.penyaId, participant.result]);
 
-  const save = async (newVal: number) => {
+  const save = async (newVal: string) => {
     if (provaIsFinished) {
       toast.error("La prova està finalitzada! Reobre-la per modificar resultats.");
       setValue(prevResult.current);

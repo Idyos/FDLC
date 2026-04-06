@@ -58,11 +58,11 @@ export function toBCD6FromSeconds(totalSeconds: number, clampHoursTo = 99): stri
  */
 
 export type TimeInputProps = {
-  value?: number;
-  onChange?: (seconds: number) => void;
+  value?: string;  // "" = sense temps, "3661" = 1h 1s en segons
+  onChange?: (seconds: string) => void;
   className?: string;
   ariaLabel?: string;
-  onBlur?: (seconds: number) => void;
+  onBlur?: (seconds: string) => void;
 };
 
 // Funciones utilitarias (formatHHMMSS, etc.) siguen igual aquí

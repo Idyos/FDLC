@@ -79,7 +79,7 @@ export default function PenyaPage() {
     }, {} as Record<string, PenyaProvaSummary[]>);
 
     return ( 
-        <>
+        <div className="p-2">
         <AlertDialog open={noPenyaAlert} onOpenChange={setNoPenyaAlert}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -136,7 +136,7 @@ export default function PenyaPage() {
                 )))}
               </div>
             </div>
-        </>
+        </div>
 
     );    
 }  

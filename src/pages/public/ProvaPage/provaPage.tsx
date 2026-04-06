@@ -225,7 +225,7 @@ export default function ProvaPage() {
   }, [selectedYear, admin, provaId]);
 
     return (
-        <>
+        <div className="p-2">
         <AlertDialog open={noProvaAlert} onOpenChange={setNoProbaAlert}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -390,7 +390,7 @@ export default function ProvaPage() {
 
             </div>
             {admin && <AdminFooter />}
-        </>
+        </div>
 
     );
 }

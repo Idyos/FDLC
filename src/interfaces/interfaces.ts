@@ -77,7 +77,7 @@ export interface ParticipatingPenya {
   name: string;
   index?: number;
   participates: boolean;
-  result?: number;
+  result?: string;  // "" = sense resultat, "1263" = resultat
   participationTime?: Date | null;
 }
 

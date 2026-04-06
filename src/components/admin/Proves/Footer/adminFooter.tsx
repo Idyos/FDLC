@@ -40,8 +40,8 @@ export default function AdminFooter() {
       const participating = all.filter((p) => p.participates);
       return { withResult: participating.length, total, missingNames: [] };
     }
-    const done = all.filter((p) => p.result != null && p.result !== -1);
-    const missing = all.filter((p) => p.result == null || p.result === -1).map((p) => p.name);
+    const done = all.filter((p) => p.result !== undefined && p.result !== "");
+    const missing = all.filter((p) => !p.result || p.result === "").map((p) => p.name);
     return { withResult: done.length, total, missingNames: missing };
   }, [prova, showProgress]);
 
@@ -92,7 +92,7 @@ export default function AdminFooter() {
     }
 
     const penyesWithoutResults = prova.penyes
-      .filter((r) => r.result == null || r.result === -1)
+      .filter((r) => !r.result || r.result === "")
       .map((r) => r.name);
 
     if (penyesWithoutResults.length > 0 && openAlert === false && prova.challengeType != "Participació") {

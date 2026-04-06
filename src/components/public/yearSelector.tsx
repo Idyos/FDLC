@@ -22,19 +22,19 @@ export default function YearSelector() {
   }, []);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button className="min-w-fit w-[20%]" variant="outline" size="icon">
-          {selectedYear}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="center">
-        {years.map((year) => (
-          <DropdownMenuItem onClick={() => setSelectedYear(year)} key={year}>
-            {year}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button className="w-full" variant="outline" size="sm">
+            {selectedYear}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="center">
+          {years.map((year) => (
+            <DropdownMenuItem onClick={() => setSelectedYear(year)} key={year}>
+              {year}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
   );
 }

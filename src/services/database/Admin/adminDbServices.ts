@@ -5,6 +5,14 @@ import { toast } from "sonner";
 import { addImageToChallenges, addImageToPenyes } from "../../storageService";
 import { deleteUsersWithProva } from "../../usersService";
 
+/** Converteix un result de Firestore (number antic o string nou) a string de display. */
+function toResultString(raw: unknown): string {
+  if (raw == null) return "";
+  if (typeof raw === "string") return raw;
+  if (typeof raw === "number") return raw <= 0 ? "" : String(raw);
+  return "";
+}
+
 //#region PROVES
 export const getProves = async (
   year: number,
@@ -84,13 +92,13 @@ export const createProva = async (
             penyaId: string;
             penyaName: string;
             participates: boolean;
-            result?: number;
+            result: string;
             participationTime: null;
           } = {
             penyaId: penyaInfo.penyaId,
             penyaName: penyaInfo.name,
             participates: penyaInfo.participates,
-            result: -1,
+            result: "",
             participationTime: null,
           }
 
@@ -127,7 +135,7 @@ export const updateParticipationTime = async (
 export const updateProvaTimeResult = async (
   provaReference: string,
   penyaId: string,
-  timeInSeconds: number,
+  value: string,
   successCallback?: () => void,
   errorCallback?: (error: unknown) => void
 ) => {
@@ -135,7 +143,7 @@ export const updateProvaTimeResult = async (
 
   try {
     await updateDoc(participantRef, {
-      result: timeInSeconds,
+      result: value,
     });
     if (successCallback){
       successCallback();
@@ -189,7 +197,7 @@ export async function getProvaInfo(
         participates: r.participates ?? true,
         penyaName: r.penyaName ?? "",
         penyaId: r.penyaId ?? p.id,
-        result: r.result ?? 0,
+        result: toResultString(r.result),
         participationTime: r.participationTime?.toDate?.() ?? null,
       };
     })
@@ -415,7 +423,7 @@ export const updateProva = async (
           penyaId: p.penyaId,
           penyaName: p.name,
           participates: p.participates,
-          result: -1,
+          result: "",
           participationTime: null,
         });
       } else {

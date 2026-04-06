@@ -57,7 +57,7 @@ export default function AdminSingleProvaResult({ provaResultSummary}: SingleProv
     }
   };
 
-  const updateProvaResult = async (newSeconds: number) => {
+  const updateProvaResult = async (newSeconds: string) => {
     if(prova.isFinished === true){
       toast.error("La prova està finalitzada! Has de reobrir-la per modificar els resultats.");
       setValue(prevSeconds.current);
@@ -78,15 +78,18 @@ export default function AdminSingleProvaResult({ provaResultSummary}: SingleProv
 
   return (
     <motion.div
-      className={`relative w-full rounded-2xl overflow-hidden shadow-lg mb-6 cursor-pointer`}
-      whileHover={{ scale: 1.02 }}
+      className="relative w-full rounded-xl border border-border bg-card shadow-sm overflow-hidden cursor-pointer"
+      whileHover={{ y: -2, boxShadow: "0 6px 24px rgba(0,0,0,0.10)" }}
+      transition={{ type: "spring", stiffness: 400, damping: 28 }}
     >
-      {/* Contenido */}
-      <div className="relative z-10 flex flex-col justify-between items-center h-full p-4 dark:text-white text-gray-900">
-        <div className="text-left w-full">
-          <p className="text-2xl font-bold">{provaResultSummary.name}</p>
-        </div>
-        <div>
+      {/* Top accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/60 via-primary/30 to-transparent" />
+
+      <div className="flex flex-col items-center gap-3 px-5 py-5">
+        <p className="text-lg font-semibold text-card-foreground w-full text-center">
+          {provaResultSummary.name}
+        </p>
+        <div className="w-full flex justify-center">
           {renderInput()}
         </div>
       </div>

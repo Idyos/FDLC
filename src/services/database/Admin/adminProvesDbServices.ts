@@ -80,9 +80,23 @@ export async function generateProvaResults(year: number, provaId: string) {
   // 1️⃣ Obtener participantes
   const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
   const participantsSnap = await getDocs(participantsRef);
-  const participants: PenyaProvaResultData[] = participantsSnap.docs.map(
-    (d) => d.data() as PenyaProvaResultData
-  );
+  const participants: PenyaProvaResultData[] = participantsSnap.docs.map((d) => {
+    const r = d.data();
+    const rawResult = r.result;
+    let numResult: number;
+    if (rawResult == null) numResult = -1;
+    else if (typeof rawResult === "number") numResult = rawResult;
+    else if (typeof rawResult === "string") numResult = rawResult === "" ? -1 : (parseInt(rawResult) || -1);
+    else numResult = -1;
+    return new PenyaProvaResultData(
+      `Circuit/${year}/Proves/${provaId}`,
+      r.provaType ?? provaData.challengeType,
+      r.penyaId ?? d.id,
+      r.penyaName ?? "",
+      numResult,
+      r.participates ?? true,
+    );
+  });
 
   if (participants.length === 0) throw new Error("No hi ha participants.");
 

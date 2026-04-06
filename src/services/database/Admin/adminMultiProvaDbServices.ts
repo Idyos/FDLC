@@ -13,6 +13,22 @@ import {
 import { db } from "@/firebase/firebase";
 import { SubProvaConfig, PointsRange, ParticipatingPenya } from "@/interfaces/interfaces";
 import { generateProvaResults, deriveBracketPositions } from "./adminProvesDbServices";
+
+/** Converteix un result de Firestore (number antic o string nou) a string. */
+function toResultString(raw: unknown): string {
+  if (raw == null) return "";
+  if (typeof raw === "string") return raw;
+  if (typeof raw === "number") return raw <= 0 ? "" : String(raw);
+  return "";
+}
+
+/** Converteix un result de Firestore a number per ordenar (-1 = sense resultat). */
+function toNumResult(raw: unknown): number {
+  if (raw == null) return -1;
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "string") return raw === "" ? -1 : (parseInt(raw) || -1);
+  return -1;
+}
 import { getProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";
 
 // ─── Read ────────────────────────────────────────────────────────────────────
@@ -42,7 +58,7 @@ export async function getSubProvaParticipants(
       penyaId: r.penyaId ?? d.id,
       name: r.penyaName ?? "",
       participates: r.participates ?? true,
-      result: r.result ?? -1,
+      result: toResultString(r.result),
       participationTime: r.participationTime?.toDate?.() ?? null,
     } as ParticipatingPenya;
   });
@@ -99,7 +115,7 @@ export async function updateSubProvaResult(
   provaId: string,
   subProvaId: string,
   penyaId: string,
-  result: number
+  result: string
 ): Promise<void> {
   const ref = doc(
     db,
@@ -197,7 +213,7 @@ export async function generateMultiProvaResults(
     const participantsSnap = await getDocs(participantsRef);
     const participants = participantsSnap.docs.map((d) => {
       const r = d.data();
-      return { penyaId: r.penyaId ?? d.id, penyaName: r.penyaName ?? "", result: r.result ?? -1, participates: r.participates ?? true };
+      return { penyaId: r.penyaId ?? d.id, penyaName: r.penyaName ?? "", result: toNumResult(r.result), participates: r.participates ?? true };
     });
 
     // Sort valid participants to determine positions
@@ -223,7 +239,7 @@ export async function generateMultiProvaResults(
   const batch = writeBatch(db);
   for (const [penyaId, data] of Object.entries(teamPointsMap)) {
     const ref = doc(db, `Circuit/${year}/Proves/${provaId}/Participants/${penyaId}`);
-    batch.update(ref, { result: data.total, participates: true });
+    batch.update(ref, { result: String(data.total), participates: true });
   }
   await batch.commit();
 

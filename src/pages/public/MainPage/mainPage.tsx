@@ -145,7 +145,7 @@ export default function MainPage() {
   }, [selectedTab, year]);
 
   return (
-    <>
+    <div className="p-2">
       <Tabs
         defaultValue={steps[0].title}
         value={steps[selectedTab].title}
@@ -177,6 +177,6 @@ export default function MainPage() {
           {steps[selectedTab].content}
         </motion.div>
       </AnimatePresence>
-    </>
+    </div>
   );
 }

@@ -4,15 +4,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 export const TimeInputAdmin: React.FC<TimeInputProps> = ({
-  value: valueSeconds,
+  value: valueSeconds,  // string | undefined: "" o "3661"
   onChange: onChangeSeconds,
   ariaLabel = "Temps en HH:MM:SS",
   onBlur,
 }) => {
 
-  const isControlled = typeof valueSeconds === "number";
-  const [internalSeconds, setInternalSeconds] = useState<number>(valueSeconds ?? 0);
-  const seconds = isControlled ? (valueSeconds as number) : internalSeconds;
+  const isControlled = valueSeconds !== undefined;
+  const parsedProp = valueSeconds && valueSeconds !== "" ? parseInt(valueSeconds) : -1;
+  const [internalSeconds, setInternalSeconds] = useState<number>(parsedProp);
+  const seconds = isControlled ? parsedProp : internalSeconds;
 
   // Conversión a HH:MM:SS excepto si es -1
   const display = useMemo(() => {
@@ -21,10 +22,11 @@ export const TimeInputAdmin: React.FC<TimeInputProps> = ({
   }, [seconds]);
 
   function emit(next: number) {
-    if (isControlled) onChangeSeconds?.(next);
+    const str = next <= -1 ? "" : String(next);
+    if (isControlled) onChangeSeconds?.(str);
     else {
       setInternalSeconds(next);
-      onChangeSeconds?.(next);
+      onChangeSeconds?.(str);
     }
   }
 
@@ -52,14 +54,14 @@ export const TimeInputAdmin: React.FC<TimeInputProps> = ({
           emit(nextSeconds);
         }}
 
-        onBlur={() => onBlur?.(seconds)}
+        onBlur={() => onBlur?.(seconds <= -1 ? "" : String(seconds))}
       />
 
       {seconds >= 0 && (
         <Button
           onClick={() => {
             emit(-1);
-            onBlur?.(-1);
+            onBlur?.("");
           }}
         >
           Llimpiar

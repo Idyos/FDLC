@@ -61,6 +61,9 @@ export default function LoginForm({ auth, onClick }: LoginFormProps) {
               case "auth/user-not-found":
                 toast.error("Usuari no trobat");
                 break;
+              case "auth/wrong-password":
+                toast.error("Contrasenya incorrecta");
+                break;
               default:
                 toast.error("Error al iniciar sessió: " + error.message);
             }

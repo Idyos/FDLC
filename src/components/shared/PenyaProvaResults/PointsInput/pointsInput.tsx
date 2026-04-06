@@ -5,11 +5,11 @@ import { PointsInputPublic } from "./pointsInputPublic";
 
 
 export type PointsInputProps = {
-  value?: number;
-  onChange?: (value: number) => void;
+  value?: string;
+  onChange?: (value: string) => void;
   className?: string;
   ariaLabel?: string;
-  onBlur?: (value: number) => void;
+  onBlur?: (value: string) => void;
 };
 
 export const PointsInput: React.FC<PointsInputProps> = (props) => {

@@ -183,22 +183,20 @@ export const getProvaInfoRealTime = (
         snap.docs.forEach((p) => {
           const d = p.data();
 
+          const rawResult = d.result;
           const penya: ParticipatingPenya = {
             penyaId: typeof d.penyaId === "string" ? d.penyaId : p.id,
             name: typeof d.penyaName === "string" ? d.penyaName : "Sense nom",
             participates: d.participates !== false,
-            result:
-              typeof d.result === "number"
-                ? d.result
-                : d.result != null
-                ? Number(d.result)
-                : undefined,
+            result: rawResult == null ? undefined
+              : typeof rawResult === "number" ? (rawResult <= 0 ? "" : String(rawResult))
+              : String(rawResult),
             participationTime: d.participationTime?.toDate?.() ?? null,
           };
 
           if (!penya.participates) return;
 
-          if (penya.result === -1 || penya.result === undefined || penya.result === null) {
+          if (!penya.result || penya.result === "") {
             invalidPenyes.push(penya);
           } else {
             validPenyes.push(penya);
@@ -207,8 +205,8 @@ export const getProvaInfoRealTime = (
 
         if (sort && prova.winDirection !== "NONE") {
           validPenyes.sort((a, b) => {
-            const resA = a.result ?? 0;
-            const resB = b.result ?? 0;
+            const resA = a.result ? parseInt(a.result) : 0;
+            const resB = b.result ? parseInt(b.result) : 0;
             return prova.winDirection === "ASC" ? resA - resB : resB - resA;
           });
         }
@@ -374,7 +372,7 @@ export const getPenyaProvesRealTime = (
 
         summary.participates = p.participates ?? false;
         summary.position = p.participates ? p.index || undefined : undefined;
-        summary.result = p.result ?? undefined;
+        summary.result = p.result && p.result !== "" ? parseInt(p.result) : undefined;
         summary.participationTime = p.participationTime?.toDate?.() ?? null;
 
         console.log(summary);

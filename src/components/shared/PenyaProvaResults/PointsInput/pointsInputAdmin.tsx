@@ -3,11 +3,11 @@ import React from "react";
 
 
 export type PointsInputProps = {
-  value?: number;
-  onChange?: (value: number) => void;
+  value?: string;
+  onChange?: (value: string) => void;
   className?: string;
   ariaLabel?: string;
-  onBlur?: (value: number) => void;
+  onBlur?: (value: string) => void;
 };
 
 export const PointsInputAdmin: React.FC<PointsInputProps> = (props) => {
@@ -21,23 +21,9 @@ export const PointsInputAdmin: React.FC<PointsInputProps> = (props) => {
               [&::-webkit-inner-spin-button]:appearance-none
               [&::-webkit-outer-spin-button]:appearance-none
             "
-          // className="text-center text-4xl px-4 py-2 rounded-md max-w-[100px] bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-100"
-          value={props.value !== undefined && props.value !== -1 ? props.value : ""}
-          onChange={(e) => {
-            const str = e.target.value;
-            if (str === "") {
-              props.onChange?.(-1);
-            } else {
-              const newValue = parseInt(str);
-              if (!isNaN(newValue)) {
-                props.onChange?.(newValue);
-              }
-            }
-          }}
-            onBlur={() => {
-              const val = props.value !== undefined && props.value !== -1 ? props.value : -1;
-              props.onBlur?.(val);
-            }}
+          value={props.value ?? ""}
+          onChange={(e) => props.onChange?.(e.target.value)}
+          onBlur={() => props.onBlur?.(props.value ?? "")}
         />
     );
 };

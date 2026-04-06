@@ -38,6 +38,7 @@ import { getUsers } from "@/services/usersService";
 import AdminProvaContextMenu from "@/components/admin/Proves/SidebarItem/adminProvaContextMenu";
 import AdminPenyaContextMenu from "@/components/admin/Penyes/SidebarItem/adminPenyaContextMenu";
 import AdminUserContextMenu from "@/components/admin/Users/SidebarItem/AdminUserContextMenu";
+import { ModeToggle } from "../Theme/mode-toggle";
 
 export default function AdminSidebar() {
   const navigate = useNavigate();
@@ -86,7 +87,12 @@ export default function AdminSidebar() {
             <span className="text-sm font-semibold px-1">
               Circuit {selectedYear}
             </span>
-            <YearSelector />
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <YearSelector />
+              </div>
+              <ModeToggle />
+            </div>
           </SidebarHeader>
 
           {/* ── Content ─────────────────────────────────────── */}
