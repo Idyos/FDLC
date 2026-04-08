@@ -17,6 +17,7 @@ interface SingleProvaSummaryProp {
 
 export default function AdminSingleProvaResult({ provaResultSummary}: SingleProvaSummaryProp) {
   const prova = useProvaStore((state) => state.prova);
+  const setProva = useProvaStore((state) => state.setProva);
 
   const prevSeconds = useRef(provaResultSummary.result);
   const [value, setValue] = useState(provaResultSummary.result);
@@ -68,9 +69,16 @@ export default function AdminSingleProvaResult({ provaResultSummary}: SingleProv
         updateProvaTimeResult(prova.reference, provaResultSummary.penyaId, newSeconds,
         () => {
           prevSeconds.current = newSeconds;
-          setValue(prevSeconds.current);
+          setValue(newSeconds);
+          setProva({
+            ...prova,
+            penyes: prova.penyes.map((p) =>
+              p.penyaId === provaResultSummary.penyaId ? { ...p, result: newSeconds } : p
+            ),
+          });
         }, (error) => {
           setValue(prevSeconds.current);
+          toast.error("Error al actualitzar el resultat. S'ha restaurat el valor anterior.");
           console.error("Error updating prova result:", error);
         });
     }
