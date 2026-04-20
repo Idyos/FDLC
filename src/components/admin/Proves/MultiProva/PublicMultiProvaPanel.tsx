@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { SubProvaConfig, ParticipatingPenya } from "@/interfaces/interfaces";
-import { getSubProvas, getSubProvaParticipants } from "@/services/database/Admin/adminMultiProvaDbServices";
+import { subscribeSubProvas, subscribeSubProvaParticipants } from "@/services/database/publicDbService";
 import { TimeRollingInput } from "@/components/shared/PenyaProvaResults/TimeInput/timeInput";
 import { PointsInput } from "@/components/shared/PenyaProvaResults/PointsInput/pointsInput";
 import { ParticipatesInput } from "@/components/shared/PenyaProvaResults/ParticipatesInput/participatesInput";
@@ -47,40 +47,40 @@ function SubProvaResults({
 
 export default function PublicMultiProvaPanel({ year, provaId }: Props) {
   const [subProves, setSubProves] = useState<SubProvaConfig[]>([]);
-  const [participantsMap, setParticipantsMap] = useState<
-    Record<string, ParticipatingPenya[]>
-  >({});
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [participantsMap, setParticipantsMap] = useState<Record<string, ParticipatingPenya[]>>({});
   const [loading, setLoading] = useState(true);
 
+  // Subscription 1: always active — detects new/removed sub-provas in real time
   useEffect(() => {
-    let cancelled = false;
     setLoading(true);
-
-    getSubProvas(year, provaId).then(async (list) => {
-      if (cancelled) return;
+    const unsub = subscribeSubProvas(year, provaId, (list) => {
       setSubProves(list);
-
-      const map: Record<string, ParticipatingPenya[]> = {};
-      await Promise.all(
-        list.map(async (sp) => {
-          const pts = await getSubProvaParticipants(year, provaId, sp.id);
-          map[sp.id] = pts;
-        })
-      );
-      if (!cancelled) {
-        setParticipantsMap(map);
-        setLoading(false);
-      }
+      // Keep current selection if still valid; otherwise default to first
+      setSelectedId((prev) => (list.find((s) => s.id === prev) ? prev : list[0]?.id ?? null));
+      setLoading(false);
     });
-
-    return () => { cancelled = true; };
+    return unsub;
   }, [year, provaId]);
+
+  // Subscription 2: follows the selected tab — only one participant listener active at a time
+  useEffect(() => {
+    if (!selectedId) return;
+    const sp = subProves.find((s) => s.id === selectedId);
+    // Rondes type is handled by PublicBracketPanel with its own subscription
+    if (!sp || sp.challengeType === "Rondes") return;
+
+    const unsub = subscribeSubProvaParticipants(year, provaId, selectedId, (participants) => {
+      setParticipantsMap((prev) => ({ ...prev, [selectedId]: participants }));
+    });
+    return unsub;
+  }, [year, provaId, selectedId, subProves]);
 
   if (loading) return <p className="p-4 text-sm text-muted-foreground">Carregant subpruebas...</p>;
   if (subProves.length === 0) return <p className="p-4 text-sm text-muted-foreground">Aquesta multiprova encara no té subpruebas.</p>;
 
   return (
-    <Tabs defaultValue={subProves[0].id} className="p-4">
+    <Tabs value={selectedId ?? ""} onValueChange={setSelectedId} className="p-4">
       <TabsList className="flex-wrap h-auto gap-1">
         {subProves.map((sp) => (
           <TabsTrigger key={sp.id} value={sp.id}>

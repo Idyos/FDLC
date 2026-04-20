@@ -1,5 +1,5 @@
 // src/services/dbService.js
-import { PenyaInfo, PenyaProvaSummary, ChallengeResult, Prova, EmptyProva, ParticipatingPenya, PenyaProvaResultData } from "@/interfaces/interfaces";
+import { PenyaInfo, PenyaProvaSummary, ChallengeResult, Prova, EmptyProva, ParticipatingPenya, PenyaProvaResultData, SubProvaConfig } from "@/interfaces/interfaces";
 import { db } from "../../firebase/firebase";
 import { collection, getDocs, query, onSnapshot, orderBy, doc, Unsubscribe } from "firebase/firestore";
 import { toast } from "sonner";
@@ -420,4 +420,43 @@ export const getPenyaProvesRealTime = (
     unsubscribeProves();
     unsubscribes.forEach((u) => u());
   };
+};
+
+export const subscribeSubProvas = (
+  year: number,
+  provaId: string,
+  callback: (subProves: SubProvaConfig[]) => void
+): Unsubscribe => {
+  const ref = collection(db, `Circuit/${year}/Proves/${provaId}/SubProves`);
+  const q = query(ref, orderBy("order", "asc"));
+  return onSnapshot(q, (snap) => {
+    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as SubProvaConfig));
+    callback(list);
+  });
+};
+
+export const subscribeSubProvaParticipants = (
+  year: number,
+  provaId: string,
+  subProvaId: string,
+  callback: (participants: ParticipatingPenya[]) => void
+): Unsubscribe => {
+  const ref = collection(
+    db,
+    `Circuit/${year}/Proves/${provaId}/SubProves/${subProvaId}/Participants`
+  );
+  return onSnapshot(ref, (snap) => {
+    const participants = snap.docs.map((d) => {
+      const r = d.data();
+      const raw = r.result;
+      return {
+        penyaId: r.penyaId ?? d.id,
+        name: r.penyaName ?? "",
+        participates: r.participates ?? true,
+        result: raw == null ? "" : typeof raw === "number" ? (raw <= 0 ? "" : String(raw)) : String(raw),
+        participationTime: r.participationTime?.toDate?.() ?? null,
+      } as ParticipatingPenya;
+    });
+    callback(participants);
+  });
 };
