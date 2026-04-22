@@ -52,6 +52,13 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
             onChange={setValue}
           />
         );
+      case "MultiProva":
+        return (
+          <PointsInput
+            value={value}
+            onChange={setValue}
+          />
+        );
       default:
         return null;
     }

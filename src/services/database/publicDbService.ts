@@ -422,6 +422,26 @@ export const getPenyaProvesRealTime = (
   };
 };
 
+export type MultiProvaFinalResult = {
+  penyaId: string;
+  name: string;
+  position: number;
+  pointsAwarded: number;
+  result: number;
+};
+
+export const subscribeProvaFinalResults = (
+  year: number,
+  provaId: string,
+  callback: (results: MultiProvaFinalResult[] | null) => void
+): Unsubscribe => {
+  const ref = doc(db, `Circuit/${year}/Results/${provaId}`);
+  return onSnapshot(ref, (snap) => {
+    if (!snap.exists()) { callback(null); return; }
+    callback((snap.data().results ?? []) as MultiProvaFinalResult[]);
+  });
+};
+
 export const subscribeSubProvas = (
   year: number,
   provaId: string,
