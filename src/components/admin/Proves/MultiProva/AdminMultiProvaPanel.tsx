@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { rankParticipants } from "@/utils/sorting";
 import { PlusCircle, Trash2, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button";
 import {
@@ -25,9 +25,7 @@ import {
 } from "@/services/database/Admin/adminMultiProvaDbServices";
 import AdminAddSubProvaDialog from "./AdminAddSubProvaDialog";
 import AdminBracketPanel from "@/components/admin/Proves/Bracket/adminBracketPanel";
-import { TimeRollingInput } from "@/components/shared/PenyaProvaResults/TimeInput/timeInput";
-import { PointsInput } from "@/components/shared/PenyaProvaResults/PointsInput/pointsInput";
-import { ParticipatesInput } from "@/components/shared/PenyaProvaResults/ParticipatesInput/participatesInput";
+import AdminSingleProvaResult from "@/components/admin/Proves/ProvaPenyaSummary/adminSingleProvaResult";
 import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
 import { ScrollBar } from "@/components/ui/scroll-area";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -38,81 +36,6 @@ interface Props {
 }
 
 // ─── Sub-prova result row ─────────────────────────────────────────────────────
-
-function SubProvaResultRow({
-  participant,
-  subProva,
-  provaId,
-  year,
-  provaIsFinished,
-}: {
-  participant: ParticipatingPenya;
-  subProva: SubProvaConfig;
-  provaId: string;
-  year: number;
-  provaIsFinished: boolean;
-}) {
-  const prevResult = useRef(participant.result);
-  const [value, setValue] = useState(participant.result);
-
-  useEffect(() => {
-    prevResult.current = participant.result;
-    setValue(participant.result);
-  }, [participant.penyaId, participant.result]);
-
-  const save = async (newVal: string) => {
-    if (provaIsFinished) {
-      toast.error("La prova està finalitzada! Reobre-la per modificar resultats.");
-      setValue(prevResult.current);
-      return;
-    }
-    if (prevResult.current === newVal) return;
-
-    try {
-      await updateSubProvaResult(year, provaId, subProva.id, participant.penyaId, newVal);
-      prevResult.current = newVal;
-      setValue(newVal);
-    } catch {
-      setValue(prevResult.current);
-      toast.error("Error al guardar el resultat.");
-    }
-  };
-
-  const renderInput = () => {
-    switch (subProva.challengeType) {
-      case "Temps":
-        return (
-          <TimeRollingInput value={value} onChange={setValue} onBlur={save} />
-        );
-      case "Punts":
-        return (
-          <PointsInput value={value} onChange={setValue} onBlur={save} />
-        );
-      case "Participació":
-        return (
-          <ParticipatesInput
-            value={value}
-            onChange={(v) => { setValue(v); save(v); }}
-            onBlur={save}
-          />
-        );
-    }
-  };
-
-  return (
-    <motion.div
-      className="relative w-full rounded-2xl overflow-hidden shadow-lg mb-4 cursor-pointer"
-      whileHover={{ scale: 1.01 }}
-    >
-      <div className="relative z-10 flex flex-col justify-between items-center h-full p-4 dark:text-white text-gray-900">
-        <div className="text-left w-full">
-          <p className="text-2xl font-bold">{participant.name}</p>
-        </div>
-        <div>{renderInput()}</div>
-      </div>
-    </motion.div>
-  );
-}
 
 // ─── Main panel ───────────────────────────────────────────────────────────────
 
@@ -139,11 +62,10 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
     if (sp?.challengeType === "Rondes") { setParticipants([]); return; }
     setLoadingParticipants(true);
     getSubProvaParticipants(year, prova.id, selectedId)
-      .then(setParticipants)
+      .then((list) => setParticipants(rankParticipants(list, sp!.winDirection)))
       .finally(() => setLoadingParticipants(false));
   }, [selectedId, year, prova.id, subProves]);
 
-  const selectedSubProva = subProves.find((s) => s.id === selectedId) ?? null;
 
   const handleAdd = async (config: Omit<SubProvaConfig, "id">) => {
     try {
@@ -245,13 +167,11 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
                     ) : (
                       <div className="grid grid-cols-[repeat(auto-fit,_minmax(280px,_1fr))] gap-3">
                         {participants.map((p) => (
-                          <SubProvaResultRow
+                          <AdminSingleProvaResult
                             key={p.penyaId}
-                            participant={p}
-                            subProva={sp}
-                            provaId={prova.id}
-                            year={year}
-                            provaIsFinished={prova.isFinished}
+                            provaResultSummary={p}
+                            challengeTypeOverride={sp.challengeType}
+                            onSave={(val) => updateSubProvaResult(year, prova.id, sp.id, p.penyaId, val)}
                           />
                         ))}
                       </div>

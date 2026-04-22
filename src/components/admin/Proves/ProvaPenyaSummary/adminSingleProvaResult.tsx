@@ -1,5 +1,6 @@
 import {
   ParticipatingPenya,
+  ProvaType,
 } from "@/interfaces/interfaces";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
@@ -13,9 +14,11 @@ import { ParticipatesInput } from "@/components/shared/PenyaProvaResults/Partici
 interface SingleProvaSummaryProp {
   provaResultSummary: ParticipatingPenya;
   slotStatus?: 'ok' | 'overflow' | 'none';
+  challengeTypeOverride?: ProvaType;
+  onSave?: (val: string) => Promise<void>;
 }
 
-export default function AdminSingleProvaResult({ provaResultSummary}: SingleProvaSummaryProp) {
+export default function AdminSingleProvaResult({ provaResultSummary, challengeTypeOverride, onSave }: SingleProvaSummaryProp) {
   const prova = useProvaStore((state) => state.prova);
   const setProva = useProvaStore((state) => state.setProva);
 
@@ -28,7 +31,7 @@ export default function AdminSingleProvaResult({ provaResultSummary}: SingleProv
   }, [provaResultSummary.penyaId, provaResultSummary.result]);
 
   const renderInput = () => {
-    switch (prova.challengeType) {
+    switch (challengeTypeOverride ?? prova.challengeType) {
       case "Temps":
         return (
           <TimeRollingInput
@@ -66,7 +69,18 @@ export default function AdminSingleProvaResult({ provaResultSummary}: SingleProv
     }
 
     if(prevSeconds.current !== newSeconds){
-        updateProvaTimeResult(prova.reference, provaResultSummary.penyaId, newSeconds,
+      if (onSave) {
+        onSave(newSeconds).then(() => {
+          prevSeconds.current = newSeconds;
+          setValue(newSeconds);
+        }).catch(() => {
+          setValue(prevSeconds.current);
+          toast.error("Error al guardar el resultat.");
+        });
+        return;
+      }
+
+      updateProvaTimeResult(prova.reference, provaResultSummary.penyaId, newSeconds,
         () => {
           prevSeconds.current = newSeconds;
           setValue(newSeconds);

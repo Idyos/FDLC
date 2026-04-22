@@ -1,4 +1,4 @@
-import { ParticipatingPenya } from "@/interfaces/interfaces";
+import { ParticipatingPenya, WinDirection } from "@/interfaces/interfaces";
 
 export type SortMode =
   | "name-asc"
@@ -7,6 +7,28 @@ export type SortMode =
   | "result-desc"
   | "time-asc"
   | "time-desc";
+
+export function rankParticipants(
+  participants: ParticipatingPenya[],
+  winDirection: WinDirection
+): ParticipatingPenya[] {
+  const valid = participants.filter((p) => p.participates && p.result && p.result !== "");
+  const invalid = participants.filter((p) => !p.participates || !p.result || p.result === "");
+
+  if (winDirection !== "NONE") {
+    valid.sort((a, b) => {
+      const resA = parseInt(a.result ?? "0") || 0;
+      const resB = parseInt(b.result ?? "0") || 0;
+      return winDirection === "ASC" ? resA - resB : resB - resA;
+    });
+  }
+
+  invalid.sort((a, b) => a.name.localeCompare(b.name));
+
+  const combined = [...valid, ...invalid];
+  combined.forEach((p, i) => (p.index = i + 1));
+  return combined;
+}
 
 export function sortPenyes(penyes: ParticipatingPenya[], mode: SortMode): ParticipatingPenya[] {
   return [...penyes].sort((a, b) => {

@@ -1,4 +1,4 @@
-import { ParticipatingPenya } from "@/interfaces/interfaces";
+import { ParticipatingPenya, ProvaType } from "@/interfaces/interfaces";
 import { motion } from "framer-motion";
 import { TimeRollingInput } from "./TimeInput/timeInput";
 import { useEffect, useRef, useState } from "react";
@@ -10,9 +10,11 @@ import { navigateWithQuery } from "@/utils/url";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: ParticipatingPenya;
+  showPoints?: boolean;
+  challengeTypeOverride?: ProvaType;
 }
 
-export default function SingleProvaResult({ provaResultSummary }: SingleProvaSummaryProp) {
+export default function SingleProvaResult({ provaResultSummary, showPoints = true, challengeTypeOverride }: SingleProvaSummaryProp) {
   const navigate = useNavigate();
 
   const prova = useProvaStore((state) => state.prova);
@@ -30,7 +32,7 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
   }
 
   const renderInput = () => {
-    switch (prova.challengeType) {
+    switch (challengeTypeOverride ?? prova.challengeType) {
       case "Temps":
         return (
           <TimeRollingInput
@@ -90,7 +92,7 @@ export default function SingleProvaResult({ provaResultSummary }: SingleProvaSum
         </div>
         <div className="flex flex-row items-center space-x-6">
           {renderInput()}
-          {(provaResultSummary.participates && (provaResultSummary.result != null && provaResultSummary.result >= 0)) && <span className={`${!prova?.isFinished ? "text-2xl font-bold opacity-40 blur-[3px]" : "text-4xl font-extrabold"}`}>{prova.isFinished ? "+" : null}{getPointsForIndex(provaResultSummary.index ?? -1) ?? ""}</span>}
+          {showPoints && (provaResultSummary.participates && (provaResultSummary.result != null && provaResultSummary.result >= 0)) && <span className={`${!prova?.isFinished ? "text-2xl font-bold opacity-40 blur-[3px]" : "text-4xl font-extrabold"}`}>{prova.isFinished ? "+" : null}{getPointsForIndex(provaResultSummary.index ?? -1) ?? ""}</span>}
           </div>
       </div>
     </motion.div>
