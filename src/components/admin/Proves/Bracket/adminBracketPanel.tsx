@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +50,37 @@ import {
 } from "@/services/database/Admin/adminBracketsDbServices";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
+type SlotStatus = "under" | "ok" | "overflow";
+
+function formatTime(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function computeSlotStatuses(
+  matchSchedules: Record<string, string>,
+  durationMinutes: number,
+  simultaneous: number,
+  startDate: Date,
+): Record<string, SlotStatus> {
+  if (!durationMinutes || !simultaneous) return {};
+  const groups: Record<number, string[]> = {};
+  Object.entries(matchSchedules).forEach(([matchId, timeStr]) => {
+    if (!timeStr) return;
+    const [h, m] = timeStr.split(":").map(Number);
+    const d = new Date(startDate);
+    d.setHours(h, m, 0, 0);
+    const diffMins = (d.getTime() - startDate.getTime()) / 60000;
+    const slot = Math.floor(diffMins / durationMinutes);
+    (groups[slot] ??= []).push(matchId);
+  });
+  const out: Record<string, SlotStatus> = {};
+  Object.values(groups).forEach((group) => {
+    const status: SlotStatus =
+      group.length > simultaneous ? "overflow" : group.length < simultaneous ? "under" : "ok";
+    group.forEach((id) => (out[id] = status));
+  });
+  return out;
+}
 
 interface AdminBracketPanelProps {
   year: number;
@@ -60,10 +93,7 @@ function buildTeamSnapshot(prova: Prova): BracketTeamSnapshot[] {
   return sanitizeTeamSnapshot(
     prova.penyes
       .filter((penya) => penya.participates)
-      .map((penya) => ({
-        teamId: penya.penyaId,
-        name: penya.name,
-      })),
+      .map((penya) => ({ teamId: penya.penyaId, name: penya.name })),
   );
 }
 
@@ -74,14 +104,15 @@ function formatSavedAt(date: Date): string {
 }
 
 function buildPropagatedFinal(fs: FinalStageState): FinalStageState {
-  return {
-    ...fs,
-    bracket: {
-      ...fs.bracket,
-      matches: propagateBracketByes([...fs.bracket.matches]),
-    },
-  };
+  return { ...fs, bracket: { ...fs.bracket, matches: propagateBracketByes([...fs.bracket.matches]) } };
 }
+
+const SCHEDULE_LEGEND = [
+  { color: "border-yellow-400", label: "Sense hora" },
+  { color: "border-blue-400", label: "Pocs" },
+  { color: "border-green-500", label: "Òptim" },
+  { color: "border-red-500", label: "Excés" },
+] as const;
 
 export default function AdminBracketPanel({ year, prova, readOnly = false, subProvaId }: AdminBracketPanelProps) {
   const { user } = useAuth();
@@ -98,30 +129,48 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
   const [thirdPlaceMatch, setThirdPlaceMatch] = useState<ThirdPlaceMatch | null>(null);
   const [isLoadingSavedBracket, setIsLoadingSavedBracket] = useState(true);
 
+  // Schedule state (committed values synced with Firebase)
+  const [matchDurationMinutes, setMatchDurationMinutes] = useState<number>(0);
+  const [simultaneousMatches, setSimultaneousMatches] = useState<number>(1);
+  const [matchSchedules, setMatchSchedules] = useState<Record<string, string>>({});
+
+  // Local inputs for schedule config (not yet committed)
+  const [localDuration, setLocalDuration] = useState<number>(0);
+  const [localSimultaneous, setLocalSimultaneous] = useState<number>(1);
+  const pendingDuration = useRef<number>(0);
+  const pendingSimultaneous = useRef<number>(1);
+
+  // Dialog state for schedule config changes
+  const [schedConfigDialog, setSchedConfigDialog] = useState(false);
+  const [schedGenerateDialog, setSchedGenerateDialog] = useState(false);
+
   // Save state
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [savedAt, setSavedAt] = useState<Date | null>(null);
 
-  // Refs for reading latest state in async/event handlers without stale closures
+  // Refs to avoid stale closures in async handlers
   const finalStageRef = useRef<FinalStageState | null>(null);
   const thirdPlaceMatchRef = useRef<ThirdPlaceMatch | null>(null);
   const groupStageRef = useRef<GroupStageState | null>(null);
+  const matchDurationMinutesRef = useRef<number>(0);
+  const simultaneousMatchesRef = useRef<number>(1);
+  const matchSchedulesRef = useRef<Record<string, string>>({});
 
-  // Local input state for 3rd place match (allows typing without triggering save on each keystroke)
   const [localTpmA, setLocalTpmA] = useState<string>("");
   const [localTpmB, setLocalTpmB] = useState<string>("");
 
-  // Dialog state
   const [showOverwriteAlert, setShowOverwriteAlert] = useState(false);
   const [pendingGenerateMode, setPendingGenerateMode] = useState<"simple" | "groups">("simple");
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
-  // Keep refs in sync with state
+  // Sync refs
   useEffect(() => { finalStageRef.current = finalStage; }, [finalStage]);
   useEffect(() => { thirdPlaceMatchRef.current = thirdPlaceMatch; }, [thirdPlaceMatch]);
   useEffect(() => { groupStageRef.current = groupStage; }, [groupStage]);
+  useEffect(() => { matchDurationMinutesRef.current = matchDurationMinutes; }, [matchDurationMinutes]);
+  useEffect(() => { simultaneousMatchesRef.current = simultaneousMatches; }, [simultaneousMatches]);
+  useEffect(() => { matchSchedulesRef.current = matchSchedules; }, [matchSchedules]);
 
-  // Sync local 3rd-place input values when thirdPlaceMatch changes externally (e.g. Firebase revert)
   useEffect(() => {
     setLocalTpmA(thirdPlaceMatch?.scoreA != null ? String(thirdPlaceMatch.scoreA) : "");
     setLocalTpmB(thirdPlaceMatch?.scoreB != null ? String(thirdPlaceMatch.scoreB) : "");
@@ -132,59 +181,51 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
     [finalStage],
   );
 
-  // Load bracket from Firestore on mount
+  const slotStatuses = useMemo(
+    () => computeSlotStatuses(matchSchedules, localDuration, localSimultaneous, prova.startDate),
+    [matchSchedules, localDuration, localSimultaneous, prova.startDate],
+  );
+
+  const hasAnySchedule = Object.values(matchSchedules).some((t) => !!t);
+
+  // ─── Load from Firestore ─────────────────────────────────────────────────────
+
   useEffect(() => {
     let isCancelled = false;
-
-    const loadSavedBracket = async () => {
-      if (!prova.id) {
-        setGroupStage(null);
-        setFinalStage(null);
-        setIsLoadingSavedBracket(false);
-        return;
-      }
-
+    const load = async () => {
+      if (!prova.id) { setGroupStage(null); setFinalStage(null); setIsLoadingSavedBracket(false); return; }
       setIsLoadingSavedBracket(true);
-
       try {
         const saved = await getProvaBracket(year, prova.id, subProvaId);
         if (isCancelled) return;
+        if (!saved) { setGroupStage(null); setFinalStage(null); return; }
 
-        if (!saved) {
-          setGroupStage(null);
-          setFinalStage(null);
-          return;
-        }
-
-        const propagatedMatches = propagateBracketByes([...saved.finalStage.bracket.matches]);
+        const propagated = propagateBracketByes([...saved.finalStage.bracket.matches]);
         setGroupStage(saved.groupStage);
-        setFinalStage({
-          ...saved.finalStage,
-          bracket: { ...saved.finalStage.bracket, matches: propagatedMatches },
-        });
-        setThirdPlaceMatch(
-          saved.finalStage.thirdPlaceMatch ??
-            syncThirdPlaceFromSemifinals(propagatedMatches, null),
-        );
+        setFinalStage({ ...saved.finalStage, bracket: { ...saved.finalStage.bracket, matches: propagated } });
+        setThirdPlaceMatch(saved.finalStage.thirdPlaceMatch ?? syncThirdPlaceFromSemifinals(propagated, null));
         setSavedAt(saved.updatedAt ? saved.updatedAt.toDate() : null);
         setSaveStatus("saved");
-      } catch (error) {
-        if (!isCancelled) {
-          toast.error("Ha hagut un error al carregar el quadre: " + error);
-          console.error("loadSavedBracket error:", error);
-        }
+
+        const dur = saved.matchDurationMinutes ?? 0;
+        const sim = saved.simultaneousMatches ?? 1;
+        const sched = saved.matchSchedules ?? {};
+        setMatchDurationMinutes(dur); matchDurationMinutesRef.current = dur;
+        setSimultaneousMatches(sim); simultaneousMatchesRef.current = sim;
+        setMatchSchedules(sched); matchSchedulesRef.current = sched;
+        setLocalDuration(dur); pendingDuration.current = dur;
+        setLocalSimultaneous(sim); pendingSimultaneous.current = sim;
+      } catch (err) {
+        if (!isCancelled) { toast.error("Error al carregar el quadre: " + err); }
       } finally {
-        if (!isCancelled) {
-          setIsLoadingSavedBracket(false);
-        }
+        if (!isCancelled) setIsLoadingSavedBracket(false);
       }
     };
-
-    loadSavedBracket();
+    load();
     return () => { isCancelled = true; };
   }, [year, prova.id]);
 
-  // ─── Save helpers ────────────────────────────────────────────────────────────
+  // ─── Save helpers ─────────────────────────────────────────────────────────────
 
   const buildPayload = (
     fs: FinalStageState,
@@ -199,6 +240,9 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
     finalStage: { ...fs, thirdPlaceMatch: tpm },
     updatedAt: null,
     updatedBy: user?.uid ?? null,
+    matchDurationMinutes: matchDurationMinutesRef.current || null,
+    simultaneousMatches: simultaneousMatchesRef.current || null,
+    matchSchedules: Object.keys(matchSchedulesRef.current).length > 0 ? matchSchedulesRef.current : null,
   });
 
   const revertToFirebase = async () => {
@@ -206,60 +250,119 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
     try {
       const saved = await getProvaBracket(year, prova.id, subProvaId);
       if (!saved) return;
-      const propagatedMatches = propagateBracketByes([...saved.finalStage.bracket.matches]);
+      const propagated = propagateBracketByes([...saved.finalStage.bracket.matches]);
       setGroupStage(saved.groupStage);
-      setFinalStage({
-        ...saved.finalStage,
-        bracket: { ...saved.finalStage.bracket, matches: propagatedMatches },
-      });
-      setThirdPlaceMatch(
-        saved.finalStage.thirdPlaceMatch ??
-          syncThirdPlaceFromSemifinals(propagatedMatches, null),
-      );
+      setFinalStage({ ...saved.finalStage, bracket: { ...saved.finalStage.bracket, matches: propagated } });
+      setThirdPlaceMatch(saved.finalStage.thirdPlaceMatch ?? syncThirdPlaceFromSemifinals(propagated, null));
       setSavedAt(saved.updatedAt ? saved.updatedAt.toDate() : null);
       setSaveStatus("saved");
-    } catch {
-      // Si tampoc podem revertir, mantenim l'estat d'error
-    }
+      const sched = saved.matchSchedules ?? {};
+      setMatchSchedules(sched); matchSchedulesRef.current = sched;
+    } catch { /* keep error state */ }
   };
 
-  const doSave = async (
-    fs: FinalStageState,
-    tpm: ThirdPlaceMatch | null,
-    gs: GroupStageState | null,
-  ) => {
+  const doSave = async (fs: FinalStageState, tpm: ThirdPlaceMatch | null, gs: GroupStageState | null) => {
     if (!prova.id) return;
     setSaveStatus("saving");
     try {
       await saveProvaBracket(year, prova.id, buildPayload(fs, tpm, gs), user?.uid, subProvaId);
-      const now = new Date();
-      setSavedAt(now);
+      setSavedAt(new Date());
       setSaveStatus("saved");
-    } catch (error) {
+    } catch (err) {
       setSaveStatus("error");
-      toast.error("No s'ha pogut guardar el quadre. Revertint al valor anterior...");
-      console.error(error);
+      toast.error("No s'ha pogut guardar el quadre. Revertint...");
+      console.error(err);
       await revertToFirebase();
     }
   };
 
-  // ─── Generate helpers ─────────────────────────────────────────────────────────
+  // ─── Schedule handlers ────────────────────────────────────────────────────────
 
-  const doGenerateSimple = () => {
-    if (teams.length < 2) {
-      toast.error("Calen almenys 2 equips per generar el quadre.");
+  const handleMatchTimeChange = async (internalId: string, time: string) => {
+    const newSchedules = { ...matchSchedulesRef.current, [internalId]: time };
+    setMatchSchedules(newSchedules);
+    matchSchedulesRef.current = newSchedules;
+    if (finalStageRef.current) {
+      await doSave(finalStageRef.current, thirdPlaceMatchRef.current, groupStageRef.current);
+    }
+  };
+
+  const applyScheduleConfigUpdate = async () => {
+    const cleared: Record<string, string> = {};
+    setMatchSchedules(cleared); matchSchedulesRef.current = cleared;
+    setMatchDurationMinutes(localDuration); matchDurationMinutesRef.current = localDuration;
+    setSimultaneousMatches(localSimultaneous); simultaneousMatchesRef.current = localSimultaneous;
+    pendingDuration.current = localDuration;
+    pendingSimultaneous.current = localSimultaneous;
+    if (finalStageRef.current) {
+      await doSave(finalStageRef.current, thirdPlaceMatchRef.current, groupStageRef.current);
+    }
+  };
+
+  const handleScheduleConfigBlur = () => {
+    if (pendingDuration.current === localDuration && pendingSimultaneous.current === localSimultaneous) return;
+    if (hasAnySchedule) {
+      setSchedConfigDialog(true);
+    } else {
+      applyScheduleConfigUpdate();
+    }
+  };
+
+  const doGenerateSchedule = async () => {
+    if (!localDuration || !localSimultaneous || !finalStageRef.current) {
+      toast.error("Cal configurar la durada i el nombre de partits simultanis");
       return;
     }
+    const schedulableMatches = [...finalStageRef.current.bracket.matches]
+      .filter((m) => m.status !== "bye")
+      .sort((a, b) => a.roundNumber - b.roundNumber || a.position - b.position);
+
+    // Group by round to respect dependencies: round N+1 cannot start before round N ends
+    const byRound = new Map<number, typeof schedulableMatches>();
+    schedulableMatches.forEach((m) => {
+      if (!byRound.has(m.roundNumber)) byRound.set(m.roundNumber, []);
+      byRound.get(m.roundNumber)!.push(m);
+    });
+
+    const newSchedules: Record<string, string> = {};
+    let roundStartMins = 0;
+
+    for (const roundNum of [...byRound.keys()].sort((a, b) => a - b)) {
+      const roundMatches = byRound.get(roundNum)!;
+      roundMatches.forEach((match, idx) => {
+        const slotIdx = Math.floor(idx / localSimultaneous);
+        const d = new Date(prova.startDate);
+        d.setMinutes(d.getMinutes() + roundStartMins + slotIdx * localDuration);
+        d.setSeconds(0, 0);
+        newSchedules[match.id] = formatTime(d);
+      });
+      roundStartMins += Math.ceil(roundMatches.length / localSimultaneous) * localDuration;
+    }
+
+    setMatchSchedules(newSchedules); matchSchedulesRef.current = newSchedules;
+    setMatchDurationMinutes(localDuration); matchDurationMinutesRef.current = localDuration;
+    setSimultaneousMatches(localSimultaneous); simultaneousMatchesRef.current = localSimultaneous;
+    pendingDuration.current = localDuration;
+    pendingSimultaneous.current = localSimultaneous;
+
+    if (finalStageRef.current) {
+      await doSave(finalStageRef.current, thirdPlaceMatchRef.current, groupStageRef.current);
+    }
+    toast.success("Horaris generats correctament");
+  };
+
+  // ─── Bracket generate helpers ─────────────────────────────────────────────────
+
+  const doGenerateSimple = () => {
+    if (teams.length < 2) { toast.error("Calen almenys 2 equips per generar el quadre."); return; }
     const entrants = createSimpleFinalEntrants(teams);
     const next = buildFinalStageFromEntrants(entrants);
     if (!next) return;
     const propagated = buildPropagatedFinal(next);
-    setGroupStage(null);
-    groupStageRef.current = null;
-    setFinalStage(propagated);
-    finalStageRef.current = propagated;
-    setThirdPlaceMatch(null);
-    thirdPlaceMatchRef.current = null;
+    setGroupStage(null); groupStageRef.current = null;
+    setFinalStage(propagated); finalStageRef.current = propagated;
+    setThirdPlaceMatch(null); thirdPlaceMatchRef.current = null;
+    setMatchSchedules({}); matchSchedulesRef.current = {};
     doSave(propagated, null, null);
   };
 
@@ -269,35 +372,23 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
       return;
     }
     const nextGroupStage = createRandomBalancedGroupStage(teams);
-    if (!nextGroupStage) {
-      toast.error("No es pot crear una fase de grups amb el nombre d'equips actual.");
-      return;
-    }
+    if (!nextGroupStage) { toast.error("No es pot crear una fase de grups amb el nombre d'equips actual."); return; }
     const entrants = createGroupFinalEntrants(nextGroupStage, teams);
     const nextFinal = buildFinalStageFromEntrants(entrants);
     if (!nextFinal) return;
     const propagated = buildPropagatedFinal(nextFinal);
-    setGroupStage(nextGroupStage);
-    groupStageRef.current = nextGroupStage;
-    setFinalStage(propagated);
-    finalStageRef.current = propagated;
-    setThirdPlaceMatch(null);
-    thirdPlaceMatchRef.current = null;
+    setGroupStage(nextGroupStage); groupStageRef.current = nextGroupStage;
+    setFinalStage(propagated); finalStageRef.current = propagated;
+    setThirdPlaceMatch(null); thirdPlaceMatchRef.current = null;
+    setMatchSchedules({}); matchSchedulesRef.current = {};
     doSave(propagated, null, nextGroupStage);
   };
 
   const onGenerateSimple = async () => {
-    if (teams.length < 2) {
-      toast.error("Calen almenys 2 equips per generar el quadre.");
-      return;
-    }
+    if (teams.length < 2) { toast.error("Calen almenys 2 equips per generar el quadre."); return; }
     if (prova.id) {
       const existing = await getProvaBracket(year, prova.id, subProvaId);
-      if (existing) {
-        setPendingGenerateMode("simple");
-        setShowOverwriteAlert(true);
-        return;
-      }
+      if (existing) { setPendingGenerateMode("simple"); setShowOverwriteAlert(true); return; }
     }
     doGenerateSimple();
   };
@@ -309,37 +400,24 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
     }
     if (prova.id) {
       const existing = await getProvaBracket(year, prova.id, subProvaId);
-      if (existing) {
-        setPendingGenerateMode("groups");
-        setShowOverwriteAlert(true);
-        return;
-      }
+      if (existing) { setPendingGenerateMode("groups"); setShowOverwriteAlert(true); return; }
     }
     doGenerateGroups();
   };
 
   const handleConfirmGenerate = () => {
     setShowOverwriteAlert(false);
-    if (pendingGenerateMode === "groups") {
-      doGenerateGroups();
-    } else {
-      doGenerateSimple();
-    }
+    pendingGenerateMode === "groups" ? doGenerateGroups() : doGenerateSimple();
   };
 
-  // ─── Inline bracket score handler ────────────────────────────────────────────
+  // ─── Score handlers ───────────────────────────────────────────────────────────
 
-  const handleBracketScoreUpdate = (
-    internalId: string,
-    scoreA: number | null,
-    scoreB: number | null,
-  ) => {
+  const handleBracketScoreUpdate = (internalId: string, scoreA: number | null, scoreB: number | null) => {
     let newFinalStage: FinalStageState | null = null;
     let newThirdPlace: ThirdPlaceMatch | null = null;
 
     setFinalStage((prev) => {
       if (!prev) return prev;
-
       let updatedMatches;
       if (scoreA !== null && scoreB !== null && scoreA !== scoreB) {
         updatedMatches = resolveMatchWinner(prev.bracket.matches, internalId, scoreA, scoreB);
@@ -348,21 +426,12 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
       } else {
         updatedMatches = prev.bracket.matches.map((m) => {
           if (m.id !== internalId) return m;
-          return {
-            ...m,
-            teams: m.teams.map((t, i) => {
-              const newScore = i === 0 ? scoreA : scoreB;
-              if (newScore === null) return t;
-              return { ...t, score: { ...t.score, gamesWon: newScore } };
-            }),
-          };
+          return { ...m, teams: m.teams.map((t, i) => { const s = i === 0 ? scoreA : scoreB; return s === null ? t : { ...t, score: { ...t.score, gamesWon: s } }; }) };
         });
       }
-
       const synced = syncThirdPlaceFromSemifinals(updatedMatches, thirdPlaceMatchRef.current);
       newThirdPlace = synced;
       setThirdPlaceMatch(synced);
-
       const next = { ...prev, bracket: { ...prev.bracket, matches: updatedMatches } };
       newFinalStage = next;
       return next;
@@ -371,48 +440,32 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
     if (newFinalStage) doSave(newFinalStage, newThirdPlace, groupStageRef.current);
   };
 
-  // ─── Group match handlers ─────────────────────────────────────────────────────
+  // ─── Group handlers ───────────────────────────────────────────────────────────
 
   const rebuildFinalFromGroups = (gs: GroupStageState): FinalStageState | null => {
     const entrants = createGroupFinalEntrants(gs, teams);
     const next = buildFinalStageFromEntrants(entrants);
-    if (!next) return null;
-    return buildPropagatedFinal(next);
+    return next ? buildPropagatedFinal(next) : null;
   };
 
   const onWinnerChange = (groupId: string, teamId: string | null) => {
     const prev = groupStageRef.current;
     if (!prev) return;
-
     const resolved = teamId === "__NONE__" ? null : teamId;
-    const next: GroupStageState = {
-      ...prev,
-      groups: prev.groups.map((g) =>
-        g.groupId !== groupId ? g : { ...g, winnerTeamId: resolved },
-      ),
-    };
-
+    const next: GroupStageState = { ...prev, groups: prev.groups.map((g) => g.groupId !== groupId ? g : { ...g, winnerTeamId: resolved }) };
     groupStageRef.current = next;
     setGroupStage(next);
-
     const nextFinal = rebuildFinalFromGroups(next);
     if (nextFinal) {
-      finalStageRef.current = nextFinal;
-      thirdPlaceMatchRef.current = null;
-      setFinalStage(nextFinal);
-      setThirdPlaceMatch(null);
+      finalStageRef.current = nextFinal; thirdPlaceMatchRef.current = null;
+      setFinalStage(nextFinal); setThirdPlaceMatch(null);
       doSave(nextFinal, null, next);
     } else if (finalStageRef.current) {
       doSave(finalStageRef.current, thirdPlaceMatchRef.current, next);
     }
   };
 
-  const onMatchResultChange = (
-    groupId: string,
-    matchId: string,
-    scoreA: number | null,
-    scoreB: number | null,
-  ) => {
+  const onMatchResultChange = (groupId: string, matchId: string, scoreA: number | null, scoreB: number | null) => {
     const prev = groupStageRef.current;
     if (!prev) return;
     const prevGroup = prev.groups.find((g) => g.groupId === groupId);
@@ -420,16 +473,9 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
 
     const updatedMatches: GroupMatch[] = prevGroup.matches.map((match) => {
       if (match.matchId !== matchId) return match;
-      if (scoreA === null && scoreB === null) {
-        // Explicit clear (✕ button)
-        return { ...match, scoreA: null, scoreB: null, winnerTeamId: null, isDraw: false };
-      }
-      // Allow partial input (one side filled, other still null)
+      if (scoreA === null && scoreB === null) return { ...match, scoreA: null, scoreB: null, winnerTeamId: null, isDraw: false };
       const isDraw = scoreA !== null && scoreB !== null && scoreA === scoreB;
-      const winnerTeamId =
-        scoreA !== null && scoreB !== null && !isDraw
-          ? scoreA > scoreB ? match.teamAId : match.teamBId
-          : null;
+      const winnerTeamId = scoreA !== null && scoreB !== null && !isDraw ? (scoreA > scoreB ? match.teamAId : match.teamBId) : null;
       return { ...match, scoreA, scoreB, isDraw, winnerTeamId };
     });
 
@@ -439,37 +485,25 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
     const newWinnerId = suggested ?? prevGroup.winnerTeamId;
     const winnersChanged = prevGroup.winnerTeamId !== newWinnerId;
 
-    const next: GroupStageState = {
-      ...prev,
-      groups: prev.groups.map((g) =>
-        g.groupId !== groupId ? g : { ...g, matches: updatedMatches, winnerTeamId: newWinnerId },
-      ),
-    };
-
+    const next: GroupStageState = { ...prev, groups: prev.groups.map((g) => g.groupId !== groupId ? g : { ...g, matches: updatedMatches, winnerTeamId: newWinnerId }) };
     groupStageRef.current = next;
     setGroupStage(next);
 
     if (winnersChanged) {
       const nextFinal = rebuildFinalFromGroups(next);
       if (nextFinal) {
-        finalStageRef.current = nextFinal;
-        thirdPlaceMatchRef.current = null;
-        setFinalStage(nextFinal);
-        setThirdPlaceMatch(null);
-        doSave(nextFinal, null, next);
-        return;
+        finalStageRef.current = nextFinal; thirdPlaceMatchRef.current = null;
+        setFinalStage(nextFinal); setThirdPlaceMatch(null);
+        doSave(nextFinal, null, next); return;
       }
     }
-    if (finalStageRef.current) {
-      doSave(finalStageRef.current, thirdPlaceMatchRef.current, next);
-    }
+    if (finalStageRef.current) doSave(finalStageRef.current, thirdPlaceMatchRef.current, next);
   };
 
-  // ─── 3rd place match handler ──────────────────────────────────────────────────
+  // ─── 3rd place ────────────────────────────────────────────────────────────────
 
   const handleThirdPlaceScoreUpdate = (scoreA: number | null, scoreB: number | null) => {
     let newTpm: ThirdPlaceMatch | null = null;
-
     setThirdPlaceMatch((prev) => {
       if (!prev) return prev;
       let next: ThirdPlaceMatch;
@@ -483,14 +517,12 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
       newTpm = next;
       return next;
     });
-
     if (finalStageRef.current) doSave(finalStageRef.current, newTpm, groupStageRef.current);
   };
 
-  // ─── Render helpers ───────────────────────────────────────────────────────────
+  // ─── Render ───────────────────────────────────────────────────────────────────
 
   const renderSaveStatus = () => {
-    if (saveStatus === "idle") return null;
     if (saveStatus === "saving") return <Badge variant="outline">Guardant...</Badge>;
     if (saveStatus === "saved" && savedAt) return <Badge variant="secondary">{formatSavedAt(savedAt)}</Badge>;
     if (saveStatus === "error") return <Badge variant="destructive">Error en guardar</Badge>;
@@ -510,9 +542,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
             return (
               <div
                 key={group.groupId}
-                className={`rounded-lg border p-3 transition-colors ${
-                  !readOnly ? "hover:bg-muted/50 cursor-pointer" : ""
-                }`}
+                className={`rounded-lg border p-3 transition-colors ${!readOnly ? "hover:bg-muted/50 cursor-pointer" : ""}`}
                 onClick={readOnly ? undefined : () => setSelectedGroupId(group.groupId)}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -524,16 +554,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
                 </div>
                 <div className="text-xs text-muted-foreground space-y-0.5">
                   {standings.map((s, i) => (
-                    <div
-                      key={s.teamId}
-                      className={`flex justify-between gap-2 ${
-                        s.teamId === group.winnerTeamId
-                          ? "text-primary font-semibold"
-                          : i === 0 && s.played > 0
-                          ? "font-medium text-foreground"
-                          : ""
-                      }`}
-                    >
+                    <div key={s.teamId} className={`flex justify-between gap-2 ${s.teamId === group.winnerTeamId ? "text-primary font-semibold" : i === 0 && s.played > 0 ? "font-medium text-foreground" : ""}`}>
                       <span className="truncate">{teamById.get(s.teamId)?.name ?? s.teamId}</span>
                       <span className="shrink-0">{s.points}pt</span>
                     </div>
@@ -549,11 +570,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
 
   const renderFinalBracket = () => {
     if (!finalStage || glootMatches.length === 0) {
-      return (
-        <p className="text-sm text-muted-foreground">
-          Encara no hi ha cap quadre final generat.
-        </p>
-      );
+      return <p className="text-sm text-muted-foreground">Encara no hi ha cap quadre final generat.</p>;
     }
     return (
       <div className="w-full overflow-auto rounded-lg border p-4">
@@ -561,6 +578,9 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
           matches={glootMatches}
           onScoreChange={readOnly ? undefined : handleBracketScoreUpdate}
           readOnly={readOnly}
+          matchSchedules={hasAnySchedule ? matchSchedules : undefined}
+          onTimeChange={readOnly ? undefined : handleMatchTimeChange}
+          slotStatuses={readOnly ? undefined : slotStatuses}
         />
       </div>
     );
@@ -568,12 +588,10 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
 
   const renderThirdPlaceMatch = () => {
     if (!finalStage || !shouldHaveThirdPlaceMatch(finalStage.bracket.matches)) return null;
-
     const tpm = thirdPlaceMatch;
     const teamAName = tpm?.teamA.displayName ?? "Pendent de semifinal";
     const teamBName = tpm?.teamB.displayName ?? "Pendent de semifinal";
     const pending = !tpm?.teamA.teamId || !tpm?.teamB.teamId;
-
     return (
       <div className="rounded-lg border p-4 space-y-3">
         <p className="font-semibold text-sm">Partit pel 3r lloc</p>
@@ -581,42 +599,16 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
           <span className="text-sm min-w-[120px]">{teamAName}</span>
           {!readOnly && !pending ? (
             <>
-              <input
-                type="text"
-                inputMode="numeric"
-                min={0}
-                className="w-14 rounded border px-2 py-1 text-center text-sm bg-background"
-                value={localTpmA}
-                onChange={(e) => { if (/^\d*$/.test(e.target.value)) setLocalTpmA(e.target.value); }}
-                onBlur={() => {
-                  const val = localTpmA === "" ? null : Number(localTpmA);
-                  handleThirdPlaceScoreUpdate(val, localTpmB === "" ? null : Number(localTpmB));
-                }}
-              />
+              <input type="text" inputMode="numeric" min={0} className="w-14 rounded border px-2 py-1 text-center text-sm bg-background" value={localTpmA} onChange={(e) => { if (/^\d*$/.test(e.target.value)) setLocalTpmA(e.target.value); }} onBlur={() => { const val = localTpmA === "" ? null : Number(localTpmA); handleThirdPlaceScoreUpdate(val, localTpmB === "" ? null : Number(localTpmB)); }} />
               <span className="text-muted-foreground text-sm">–</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                min={0}
-                className="w-14 rounded border px-2 py-1 text-center text-sm bg-background"
-                value={localTpmB}
-                onChange={(e) => { if (/^\d*$/.test(e.target.value)) setLocalTpmB(e.target.value); }}
-                onBlur={() => {
-                  const val = localTpmB === "" ? null : Number(localTpmB);
-                  handleThirdPlaceScoreUpdate(localTpmA === "" ? null : Number(localTpmA), val);
-                }}
-              />
+              <input type="text" inputMode="numeric" min={0} className="w-14 rounded border px-2 py-1 text-center text-sm bg-background" value={localTpmB} onChange={(e) => { if (/^\d*$/.test(e.target.value)) setLocalTpmB(e.target.value); }} onBlur={() => { const val = localTpmB === "" ? null : Number(localTpmB); handleThirdPlaceScoreUpdate(localTpmA === "" ? null : Number(localTpmA), val); }} />
             </>
           ) : (
-            <span className="text-sm text-muted-foreground">
-              {tpm?.status === "finished" ? `${tpm.scoreA} – ${tpm.scoreB}` : "–"}
-            </span>
+            <span className="text-sm text-muted-foreground">{tpm?.status === "finished" ? `${tpm.scoreA} – ${tpm.scoreB}` : "–"}</span>
           )}
           <span className="text-sm min-w-[120px]">{teamBName}</span>
           {tpm?.status === "finished" && tpm.winnerTeamId && (
-            <Badge variant="secondary">
-              Guanyador: {tpm.winnerTeamId === tpm.teamA.teamId ? teamAName : teamBName}
-            </Badge>
+            <Badge variant="secondary">Guanyador: {tpm.winnerTeamId === tpm.teamA.teamId ? teamAName : teamBName}</Badge>
           )}
         </div>
       </div>
@@ -635,47 +627,121 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
 
       <CardContent className="space-y-6">
         {!readOnly && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={onGenerateSimple} disabled={isLoadingSavedBracket}>
-              Generar quadre
-            </Button>
-            {teams.length >= MIN_TEAMS_FOR_GROUP_STAGE && (
-              <Button variant="outline" onClick={onGenerateGroups} disabled={isLoadingSavedBracket}>
-                Generar amb grups
-              </Button>
-            )}
-          </div>
+          <>
+            {/* Bracket generation buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={onGenerateSimple} disabled={isLoadingSavedBracket}>Generar quadre</Button>
+              {teams.length >= MIN_TEAMS_FOR_GROUP_STAGE && (
+                <Button variant="outline" onClick={onGenerateGroups} disabled={isLoadingSavedBracket}>Generar amb grups</Button>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Schedule config */}
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-4 items-end">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-muted-foreground">Durada per partit (min)</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    className="w-28 h-8 text-sm"
+                    value={localDuration || ""}
+                    onChange={(e) => setLocalDuration(e.target.value ? Number(e.target.value) : 0)}
+                    onBlur={handleScheduleConfigBlur}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-muted-foreground">Partits simultanis màxims</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    className="w-28 h-8 text-sm"
+                    value={localSimultaneous || ""}
+                    onChange={(e) => setLocalSimultaneous(e.target.value ? Number(e.target.value) : 1)}
+                    onBlur={handleScheduleConfigBlur}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!localDuration || !localSimultaneous || !finalStage || isLoadingSavedBracket}
+                  onClick={() => hasAnySchedule ? setSchedGenerateDialog(true) : doGenerateSchedule()}
+                >
+                  Generar horaris
+                </Button>
+              </div>
+
+              {/* Color legend */}
+              {(hasAnySchedule || localDuration > 0) && (
+                <div className="flex flex-wrap gap-4 items-center">
+                  {SCHEDULE_LEGEND.map(({ color, label }) => (
+                    <span key={label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span className={`w-3 h-3 rounded border-2 ${color} inline-block`} />
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+          </>
         )}
 
+        {/* Bracket content */}
         <div className="space-y-6">
           {renderGroupStage()}
-          {groupStage && (
-            <p className="text-sm font-semibold">Quadre Final</p>
-          )}
+          {groupStage && <p className="text-sm font-semibold">Quadre Final</p>}
           {renderFinalBracket()}
           {renderThirdPlaceMatch()}
         </div>
       </CardContent>
 
-      {/* AlertDialog: confirm overwrite existing bracket */}
+      {/* Overwrite bracket dialog */}
       <AlertDialog open={showOverwriteAlert} onOpenChange={setShowOverwriteAlert}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Ja existeix un quadre</AlertDialogTitle>
-            <AlertDialogDescription>
-              Si generes un nou quadre, el quadre actual i tots els resultats es perdran. Vols continuar?
-            </AlertDialogDescription>
+            <AlertDialogDescription>Si generes un nou quadre, el quadre actual i tots els resultats es perdran. Vols continuar?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel·lar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmGenerate}>
-              Generar de nou
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmGenerate}>Generar de nou</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* GroupMatchesDialog */}
+      {/* Schedule config change dialog */}
+      <AlertDialog open={schedConfigDialog} onOpenChange={setSchedConfigDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Modificar configuració d'horaris</AlertDialogTitle>
+            <AlertDialogDescription>Ja hi ha partits amb horari assignat. Si continues, tots els horaris s'esborren. Vols continuar?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setSchedConfigDialog(false); setLocalDuration(pendingDuration.current); setLocalSimultaneous(pendingSimultaneous.current); }}>Cancel·lar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setSchedConfigDialog(false); applyScheduleConfigUpdate(); }}>Continuar i esborrar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Schedule regenerate dialog */}
+      <AlertDialog open={schedGenerateDialog} onOpenChange={setSchedGenerateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Regenerar horaris</AlertDialogTitle>
+            <AlertDialogDescription>Ja hi ha partits amb horari assignat. Si continues, tots els horaris actuals s'esborraran i es generaran de nou. Vols continuar?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel·lar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setSchedGenerateDialog(false); doGenerateSchedule(); }}>Regenerar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Group matches dialog */}
       {groupStage && selectedGroupId && (() => {
         const group = groupStage.groups.find((g) => g.groupId === selectedGroupId);
         if (!group) return null;
@@ -685,9 +751,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
             onOpenChange={(open) => { if (!open) setSelectedGroupId(null); }}
             group={group}
             teamById={teamById}
-            onMatchResultChange={(matchId, scoreA, scoreB) =>
-              onMatchResultChange(selectedGroupId, matchId, scoreA, scoreB)
-            }
+            onMatchResultChange={(matchId, scoreA, scoreB) => onMatchResultChange(selectedGroupId, matchId, scoreA, scoreB)}
             onWinnerChange={onWinnerChange}
           />
         );

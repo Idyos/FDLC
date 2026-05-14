@@ -82,4 +82,7 @@ export interface StoredProvaBracketDoc {
   finalStage: FinalStageState;
   updatedAt: Timestamp | null;
   updatedBy: string | null;
+  matchDurationMinutes?: number | null;
+  simultaneousMatches?: number | null;
+  matchSchedules?: Record<string, string> | null;
 }

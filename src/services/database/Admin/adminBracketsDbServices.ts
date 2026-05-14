@@ -134,6 +134,9 @@ export async function getProvaBracket(
     finalStage: data.finalStage as unknown as FinalStageState,
     updatedAt,
     updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : null,
+    matchDurationMinutes: typeof data.matchDurationMinutes === "number" ? data.matchDurationMinutes : null,
+    simultaneousMatches: typeof data.simultaneousMatches === "number" ? data.simultaneousMatches : null,
+    matchSchedules: isRecord(data.matchSchedules) ? (data.matchSchedules as Record<string, string>) : null,
   };
 }
 
@@ -167,6 +170,9 @@ export function subscribeProvaBracket(
         finalStage: data.finalStage as unknown as FinalStageState,
         updatedAt,
         updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : null,
+        matchDurationMinutes: typeof data.matchDurationMinutes === "number" ? data.matchDurationMinutes : null,
+        simultaneousMatches: typeof data.simultaneousMatches === "number" ? data.simultaneousMatches : null,
+        matchSchedules: isRecord(data.matchSchedules) ? (data.matchSchedules as Record<string, string>) : null,
       });
     },
     onError,

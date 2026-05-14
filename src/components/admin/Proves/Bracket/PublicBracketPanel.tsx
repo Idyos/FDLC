@@ -27,6 +27,7 @@ export default function PublicBracketPanel({ year, prova, provaId, subProvaId }:
   const [thirdPlaceMatch, setThirdPlaceMatch] = useState<ThirdPlaceMatch | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [teamSnapshot, setTeamSnapshot] = useState<BracketTeamSnapshot[]>([]);
+  const [matchSchedules, setMatchSchedules] = useState<Record<string, string> | null>(null);
 
   const effectiveProvaId = prova?.id ?? provaId;
 
@@ -57,6 +58,7 @@ export default function PublicBracketPanel({ year, prova, provaId, subProvaId }:
           setFinalStage(null);
           setThirdPlaceMatch(null);
           setTeamSnapshot([]);
+          setMatchSchedules(null);
         } else {
           setTeamSnapshot(saved.teamSnapshot);
           setGroupStage(saved.groupStage);
@@ -68,6 +70,7 @@ export default function PublicBracketPanel({ year, prova, provaId, subProvaId }:
             },
           });
           setThirdPlaceMatch(saved.finalStage.thirdPlaceMatch ?? null);
+          setMatchSchedules(saved.matchSchedules ?? null);
         }
         setIsLoading(false);
       },
@@ -148,7 +151,11 @@ export default function PublicBracketPanel({ year, prova, provaId, subProvaId }:
               <div className="space-y-4">
                 {groupStage && <p className="text-sm font-semibold">Quadre Final</p>}
                 <div className="w-full overflow-auto rounded-lg border p-4">
-                  <BracketViewer matches={glootMatches} readOnly />
+                  <BracketViewer
+                    matches={glootMatches}
+                    readOnly
+                    matchSchedules={matchSchedules ?? undefined}
+                  />
                 </div>
                 {finalStage && shouldHaveThirdPlaceMatch(finalStage.bracket.matches) && (
                   <div className="rounded-lg border p-4 space-y-3">
