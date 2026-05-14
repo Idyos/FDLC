@@ -1,4 +1,4 @@
-import { Prova, PenyaInfo, EmptyProva, ParticipatingPenya } from "@/interfaces/interfaces";
+import { Prova, PenyaInfo, EmptyProva, ParticipatingPenya, PenyaCreationData } from "@/interfaces/interfaces";
 import { db } from "../../../firebase/firebase";
 import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, deleteDoc } from "firebase/firestore";
 import { toast } from "sonner";
@@ -290,7 +290,7 @@ export const getPenyes = async (year: number, callback: (data: PenyaInfo[]) => v
 
 export const addPenyes = async (
   year: number,
-  penyesNames: string[],
+  penyes: PenyaCreationData[],
   callback: (result: boolean[]) => void
 ) => {
   const penyesRef = collection(db, `Circuit/${year}/Penyes`);
@@ -300,16 +300,19 @@ export const addPenyes = async (
   const existingNames = snapshot.docs.map((doc) => doc.data().name);
 
   const results: boolean[] = [];
+  const toUpload: { name: string; image: File }[] = [];
 
-  penyesNames.forEach((name) => {
+  penyes.forEach(({ name, description, image }) => {
     if (!existingNames.includes(name)) {
       const newDocRef = doc(penyesRef, name);
       batch.set(newDocRef, {
-        name: name,
+        name,
+        description: description || "",
         totalPoints: 0,
         isSecret: false,
       });
       results.push(true);
+      if (image) toUpload.push({ name, image });
     } else {
       results.push(false);
     }
@@ -317,11 +320,21 @@ export const addPenyes = async (
 
   try {
     await batch.commit();
+
+    for (const { name, image } of toUpload) {
+      try {
+        const url = await addImageToPenyes(image, year, name);
+        if (url) await updateDoc(doc(penyesRef, name), { imageUrl: url });
+      } catch (e) {
+        console.error(`Error uploading image for ${name}:`, e);
+      }
+    }
+
     console.log("Penyes afegides correctament.");
     callback(results);
   } catch (error) {
     console.error("Error afegint penyes:", error);
-    callback(penyesNames.map(() => false));
+    callback(penyes.map(() => false));
   }
 };
 

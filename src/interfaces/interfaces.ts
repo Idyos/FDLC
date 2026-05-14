@@ -48,6 +48,12 @@ export abstract class BaseEntity {
   }
 }
 
+export interface PenyaCreationData {
+  name: string;
+  description: string;
+  image?: File | null;
+}
+
 export class PenyaInfo extends BaseEntity {
   position: number;
   isSecret: boolean;

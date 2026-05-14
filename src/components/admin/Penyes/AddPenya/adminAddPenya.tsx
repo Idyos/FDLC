@@ -10,265 +10,364 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/components/Theme/theme-provider";
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Ban, Check, Loader, Plus } from "lucide-react";
+import { Ban, Check, ChevronDown, ChevronUp, Loader, Plus, X } from "lucide-react";
 import { addPenyes } from "@/services/database/Admin/adminDbServices";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 
+interface PenyaFormData {
+  name: string;
+  description: string;
+  image: File | null;
+  imagePreview: string | null;
+}
 
 export default function AdminAddPenya({ triggerElement }: { triggerElement?: ReactNode } = {}) {
-    const { selectedYear } = useYear();
+  const { selectedYear } = useYear();
+  const { theme } = useTheme();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [penyes, setPenyes] = useState<PenyaFormData[]>([]);
+  const [updateStates, setUpdateStates] = useState<string[]>([]);
+  const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set());
+  const removeAllTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const { theme } = useTheme();
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [penyesNames, setPenyesNames] = useState<string[]>([]);
-    const [updatePenyesNamesState, setUpdatePenyesNamesState] = useState<string[]>([]);
-    const removeAllPenyesTimer = useRef<NodeJS.Timeout | null>(null);
+  const handleMouseDown = () => {
+    removeAllTimer.current = setTimeout(() => {
+      removeAllPenyes();
+    }, 1000);
+  };
 
-    useEffect(() => {
-        const penyesState = penyesNames.map(() => "3");
-        setUpdatePenyesNamesState(penyesState);
-    }, [penyesNames]);
-    
-    const handleMouseDown = () => {
-        removeAllPenyesTimer.current = setTimeout(() => {
-          removeAllPenyes();
-        }, 1000);
-      };
-    
-      const handleMouseUp = () => {
-        if (removeAllPenyesTimer.current) {
-          clearTimeout(removeAllPenyesTimer.current);
-          removeAllPenyesTimer.current = null;
-          if(penyesNames.length > 0) removePenya();
-        }
-      };
+  const handleMouseUp = () => {
+    if (removeAllTimer.current) {
+      clearTimeout(removeAllTimer.current);
+      removeAllTimer.current = null;
+      if (penyes.length > 0) removeLastPenya();
+    }
+  };
 
-      const handleMouseOut = () => {
-        if (removeAllPenyesTimer.current) {
-          clearTimeout(removeAllPenyesTimer.current);
-          removeAllPenyesTimer.current = null;
-        }
+  const handleMouseOut = () => {
+    if (removeAllTimer.current) {
+      clearTimeout(removeAllTimer.current);
+      removeAllTimer.current = null;
+    }
+  };
+
+  const addNewPenya = () => {
+    for (let i = 0; i < penyes.length - 1; i++) {
+      if (!penyes[i].name.trim()) {
+        toast.warning(`El nom de la Penya ${i + 1} no pot estar buit.`);
+        return;
       }
-
-    const addNewPenya = () => {
-        for(let i = 0; i < penyesNames.length - 1; i++) {
-            if (!penyesNames[i].trim()) {
-                toast.warning(`El nom de la Penya ${i+1} no pot estar buit.`);
-                return;
-            }
-        }
-
-        if(penyesNames[penyesNames.length - 1] == "") {
-            toast.warning("L'ultima penya no te el nom establert.");
-            return;
-        }
-
-        setPenyesNames([...penyesNames, ""]);
     }
 
-    const removePenya = () => {
-        if(penyesNames.length == 0) {
-            toast.warning("No hi ha penyes per eliminar.");
-            return;
-        }
-
-        setPenyesNames(penyesNames.slice(0, -1));
+    if (penyes.length > 0 && penyes[penyes.length - 1].name === "") {
+      toast.warning("L'ultima penya no te el nom establert.");
+      return;
     }
 
-    const removeAllPenyes = () => {
-        if(penyesNames.length == 0) {
-            toast.warning("No hi ha penyes per eliminar.");
-            return;
-        }
+    const newIndex = penyes.length;
+    setPenyes(prev => [...prev, { name: "", description: "", image: null, imagePreview: null }]);
+    setUpdateStates(prev => [...prev, "3"]);
+    setExpandedIndices(prev => new Set([...prev, newIndex]));
+  };
 
-        setPenyesNames([]);
-        setUpdatePenyesNamesState([]);
+  const removePenyaAt = (index: number) => {
+    setPenyes(prev => prev.filter((_, i) => i !== index));
+    setUpdateStates(prev => prev.filter((_, i) => i !== index));
+    setExpandedIndices(prev => {
+      const next = new Set<number>();
+      prev.forEach(i => {
+        if (i < index) next.add(i);
+        else if (i > index) next.add(i - 1);
+      });
+      return next;
+    });
+  };
+
+  const removeLastPenya = () => {
+    if (penyes.length === 0) {
+      toast.warning("No hi ha penyes per eliminar.");
+      return;
+    }
+    removePenyaAt(penyes.length - 1);
+  };
+
+  const removeAllPenyes = () => {
+    if (penyes.length === 0) {
+      toast.warning("No hi ha penyes per eliminar.");
+      return;
+    }
+    setPenyes([]);
+    setUpdateStates([]);
+    setExpandedIndices(new Set());
+  };
+
+  const updatePenya = (index: number, changes: Partial<PenyaFormData>) => {
+    setPenyes(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], ...changes };
+      return updated;
+    });
+  };
+
+  const handleImageChange = (index: number, file: File | null) => {
+    const imagePreview = file ? URL.createObjectURL(file) : null;
+    updatePenya(index, { image: file, imagePreview });
+  };
+
+  const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+
+    if (penyes.length === 0) {
+      toast.warning("No hi ha cap penya afegida.");
+      return;
     }
 
-    const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
-        e.preventDefault();
-      
-        if (penyesNames.length === 0) {
-          toast.warning("No hi ha cap penya afegida.");
-          return;
+    for (let i = 0; i < penyes.length; i++) {
+      if (!penyes[i].name.trim()) {
+        toast.warning(`El nom de la penya ${i + 1} no pot estar buit.`);
+        return;
+      }
+    }
+
+    const normalizedNames = penyes.map(p => p.name.trim().toLowerCase());
+    const nameIndexMap = new Map<string, number[]>();
+    normalizedNames.forEach((name, index) => {
+      if (!nameIndexMap.has(name)) nameIndexMap.set(name, []);
+      nameIndexMap.get(name)!.push(index);
+    });
+
+    const duplicateIndices: number[] = [];
+    nameIndexMap.forEach(indices => {
+      if (indices.length > 1) duplicateIndices.push(...indices);
+    });
+
+    if (duplicateIndices.length > 0) {
+      const formatted = duplicateIndices.map(i => i + 1).join(", ");
+      toast.warning(`Hi han noms idèntics a les següents posicions: ${formatted}.`);
+      return;
+    }
+
+    try {
+      setUpdateStates(penyes.map(() => "2"));
+
+      const penyesData = penyes.map(p => ({
+        name: p.name.trim(),
+        description: p.description.trim(),
+        image: p.image,
+      }));
+
+      addPenyes(selectedYear, penyesData, (results) => {
+        setUpdateStates(results.map(s => (s ? "1" : "0")));
+
+        const failedCount = results.filter(s => !s).length;
+        if (failedCount > 0) {
+          toast.warning("Algunes penyes ja existien previament, observa quines están marcades com a no actualitzades.");
+        } else {
+          toast.success("Totes les penyes afegides correctament!");
+          setIsDialogOpen(false);
         }
-      
-        for (let i = 0; i < penyesNames.length; i++) {
-          if (!String(penyesNames[i]).trim()) {
-            toast.warning(`El nom de la penya ${i + 1} no pot estar buit.`);
-            return;
-          }
-        }
-      
-        const normalizedNames = penyesNames.map(name => name.trim().toLowerCase());
-        const nameIndexMap = new Map<string, number[]>();
-        
-        normalizedNames.forEach((name, index) => {
-          if (!nameIndexMap.has(name)) {
-            nameIndexMap.set(name, []);
-          }
-          nameIndexMap.get(name)!.push(index);
-        });
-        
-        const duplicateIndices: number[] = [];
-        nameIndexMap.forEach(indices => {
-          if (indices.length > 1) {
-            duplicateIndices.push(...indices);
-          }
-        });
-        
-        if (duplicateIndices.length > 0) {
-          const formatted = duplicateIndices.map(i => i + 1).join(", ");
-          toast.warning(`Hi han noms idèntics a les següents posicions: ${formatted}.`);
-          return;
-        }
-      
-        try {
-          const penyesState = penyesNames.map(() => "2");
-          setUpdatePenyesNamesState(penyesState);
-      
-          addPenyes(selectedYear, penyesNames, (results) => {
-            const updatedStates = results.map(success => (success ? "1" : "0"));
-            setUpdatePenyesNamesState(updatedStates);
-      
-            const failedPenyes = penyesNames.filter((_, index) => !results[index]);
-            if (failedPenyes.length > 0) {
-              toast.warning("Algunes penyes ja existien previament, observa quines están marcades com a no actualitzades.");
-            } else {
-              toast.success("Totes les penyes afegides correctament!");
-              setIsDialogOpen(false);
-            }
-          });
-        } catch (error) {
-          toast.error("Error al guardar");
-        }
-      };
+      });
+    } catch {
+      toast.error("Error al guardar");
+    }
+  };
 
   const onFileAdded = (file: File) => {
     const allowedTypes = [
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "application/vnd.ms-excel",
     ];
-  
+
     if (!allowedTypes.includes(file.type)) {
       toast.warning("Només es permeten fitxers d'Excel (.xls o .xlsx)");
       return;
     }
-  
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const data = event.target?.result;
       const workbook = XLSX.read(data, { type: 'binary' });
-  
-      const sheetName = workbook.SheetNames[0]; // primera hoja
+      const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-  
-      const jsonData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-  
-      const penyesNamesTemp: string[] = []; 
-      jsonData.forEach((row, index) => {
-        const firstColumnValue = (row as any[])[0];
-        if (firstColumnValue !== undefined) {
-          console.log(`Fila ${index + 1}: ${firstColumnValue}`);
-          penyesNamesTemp.push(String(firstColumnValue));
+      const jsonData: unknown[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      const newPenyes: PenyaFormData[] = [];
+      jsonData.forEach((row) => {
+        const name = (row as unknown[])[0];
+        if (name !== undefined) {
+          const descRaw = (row as unknown[])[1];
+          const description = descRaw !== undefined ? String(descRaw) : "";
+          newPenyes.push({ name: String(name), description, image: null, imagePreview: null });
         }
       });
-      setPenyesNames([...penyesNames, ...penyesNamesTemp]);
+
+      setPenyes(prev => [...prev, ...newPenyes]);
+      setUpdateStates(prev => [...prev, ...newPenyes.map(() => "3")]);
     };
-  
+
     reader.readAsBinaryString(file);
   };
 
-//   const closeDialog = () => {
-//     setIsDialogOpen(false);
-//   }
-
   const dialogContent = (
-    <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+    <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Crear penya/es</DialogTitle>
       </DialogHeader>
       <DialogDescription>
-        Aquí pots crear penyes d'una en una o si ho tens, amb un excel. Els noms de les penyes han d'estar a la primera columna de l'excel.
+        Aquí pots crear penyes d'una en una o amb un excel. Columna A = nom, Columna B = descripció.
       </DialogDescription>
       <div className="grid gap-4 py-4">
         <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="name" className="text-right">
-            Afegir llista de penyes
+          <Label htmlFor="excel-input" className="text-right">
+            Afegir des d'Excel
           </Label>
           <Input
             type="file"
-            id="name"
+            id="excel-input"
             className="col-span-3"
             onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) onFileAdded(file);
+              const file = e.target.files?.[0];
+              if (file) onFileAdded(file);
             }}
-            />
+          />
         </div>
       </div>
-      <div className="max-h-[35vh] overflow-y-auto">
-            {penyesNames.map((penya, index) => (
-                <div key={index} className="flex flex-row items-center gap-4 mb-2">
-                  <Badge variant="outline" className="hover: cursor-pointer" onClick={() => {
-                    const updated = [...penyesNames];
-                    updated.splice(index, 1);
-                    setPenyesNames(updated);
-                  }}> - </Badge>
-                    <Label htmlFor="name" className="text-right">
-                        Penya {index + 1}
-                    </Label>
-                    <Input
-                        id="name"
-                        value={penya}
-                        className="col-span-3 flex-1"
-                        onKeyDown={(e) => {
-                          if (e.key === "Backspace") {
-                            const isEmpty = penyesNames[index] === "";
-                            if (isEmpty) {
-                              const updated = [...penyesNames];
-                              updated.splice(index, 1);
-                              setPenyesNames(updated);
-                            }
-                          }
-                        }}
+      <div className="max-h-[45vh] overflow-y-auto space-y-2 pr-1">
+        {penyes.map((penya, index) => (
+          <Collapsible
+            key={index}
+            open={expandedIndices.has(index)}
+            onOpenChange={(open) => {
+              setExpandedIndices(prev => {
+                const next = new Set(prev);
+                if (open) next.add(index);
+                else next.delete(index);
+                return next;
+              });
+            }}
+          >
+            <div className="border rounded-lg overflow-hidden">
+              <div className="flex flex-row items-center gap-2 p-2">
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer shrink-0 h-6 w-6 flex items-center justify-center p-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removePenyaAt(index);
+                  }}
+                >
+                  <X size={12} />
+                </Badge>
+                <span className="shrink-0 text-xs text-muted-foreground w-5 text-right">
+                  {index + 1}.
+                </span>
+                <Input
+                  value={penya.name}
+                  className="flex-1 h-8 text-sm"
+                  placeholder="Nom de la penya"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Backspace" && penya.name === "") {
+                      removePenyaAt(index);
+                    }
+                  }}
+                  onChange={(e) => {
+                    const newName = e.target.value;
+                    if (newName.length > penya.name.length && index === penyes.length - 1) {
+                      setPenyes(prev => {
+                        const updated = [...prev];
+                        updated[index] = { ...updated[index], name: newName };
+                        return [...updated, { name: "", description: "", image: null, imagePreview: null }];
+                      });
+                      setUpdateStates(prev => [...prev, "3"]);
+                    } else {
+                      updatePenya(index, { name: newName });
+                    }
+                  }}
+                />
+                {index < updateStates.length && updateStates[index] !== "3" && (
+                  <Badge variant="default" className="h-7 shrink-0 px-1">
+                    {updateStates[index] === "2" && <Loader className="h-4 w-4" />}
+                    {updateStates[index] === "1" && <Check color="green" size={16} />}
+                    {updateStates[index] === "0" && <Ban color="red" className="h-4 w-4" />}
+                  </Badge>
+                )}
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
+                    {expandedIndices.has(index) ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
+
+              <CollapsibleContent>
+                <div className="border-t px-3 pb-3 pt-2 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Label className="text-xs shrink-0 w-20 text-right">Imatge</Label>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        className="text-xs flex-1 min-w-0"
                         onChange={(e) => {
-                            const newPenyesNames = [...penyesNames];
-                            if(e.target.value.length > newPenyesNames[index].length && index == newPenyesNames.length - 1)
-                              newPenyesNames.push("");
-                            newPenyesNames[index] = e.target.value;
-                            setPenyesNames(newPenyesNames);
+                          const file = e.target.files?.[0] ?? null;
+                          handleImageChange(index, file);
                         }}
+                      />
+                      {penya.imagePreview && (
+                        <img
+                          src={penya.imagePreview}
+                          alt="preview"
+                          className="h-8 w-8 rounded object-cover shrink-0"
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Label className="text-xs shrink-0 w-20 text-right pt-2">Descripció</Label>
+                    <Textarea
+                      value={penya.description}
+                      placeholder="Descripció de la penya (opcional)"
+                      className="flex-1 text-sm"
+                      onChange={(e) => updatePenya(index, { description: e.target.value })}
                     />
-                    {index < updatePenyesNamesState.length && updatePenyesNamesState[index] != "3" ? (
-                        <Badge variant="default" className="h-7">
-                            {updatePenyesNamesState[index] == "2" ? <Loader className="h-8 w-4" /> : null}
-                            {updatePenyesNamesState[index] == "1" ? <Check color="green" size={30} /> : null}
-                            {updatePenyesNamesState[index] == "0" ? <Ban color="red" className="h-8 w-4" /> : null}
-                        </Badge>
-                    ) : null}
+                  </div>
                 </div>
-            ))}
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        ))}
       </div>
       <div className="flex flex-row items-center mt-4">
-          <Button variant="default" className="mr-2" onClick={() => addNewPenya()}>+</Button>
-          <Button
-              variant="outline"
-              onMouseDown={handleMouseDown}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseOut}
-              >
-              -
-              </Button>
+        <Button variant="default" className="mr-2" onClick={addNewPenya}>+</Button>
+        <Button
+          variant="outline"
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseOut}
+        >
+          -
+        </Button>
       </div>
       <DialogFooter>
-        <Button disabled={penyesNames.length == 0} type="submit" onClick={handleClick}>{penyesNames.length == 1 ? "Crear penya" : "Crear Penyes"}</Button>
+        <Button
+          disabled={penyes.length === 0}
+          type="submit"
+          onClick={handleClick}
+        >
+          {penyes.length === 1 ? "Crear penya" : "Crear Penyes"}
+        </Button>
       </DialogFooter>
     </DialogContent>
   );
@@ -288,16 +387,15 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
       className="relative h-36 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
     >
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogTrigger asChild className="w-full h-full " onClick={() => setIsDialogOpen(true)}>
-            {/* Contenido */}
-            <div className="cursor-pointer w-full h-fullrelative z-10 flex items-center justify-center h-full dark:text-white text-gray-900">
-                <div className="dark:bg-neutral-800 bg-gray-200 flex justify-center items-center p-8 rounded-full shadow-lg w-24 h-24">
-                    <Plus size={40} color={theme == "dark" ? "white" : "black"} />
-                </div>
+        <DialogTrigger asChild className="w-full h-full" onClick={() => setIsDialogOpen(true)}>
+          <div className="cursor-pointer w-full h-full relative z-10 flex items-center justify-center dark:text-white text-gray-900">
+            <div className="dark:bg-neutral-800 bg-gray-200 flex justify-center items-center p-8 rounded-full shadow-lg w-24 h-24">
+              <Plus size={40} color={theme === "dark" ? "white" : "black"} />
             </div>
+          </div>
         </DialogTrigger>
         {dialogContent}
       </Dialog>
     </motion.div>
-    );
+  );
 }
