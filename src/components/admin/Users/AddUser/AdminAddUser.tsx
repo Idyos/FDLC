@@ -24,6 +24,7 @@ import { useTheme } from "@/components/Theme/theme-provider";
 import { ReactNode, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
+import { z } from "zod";
 import { createUser, updateUser } from "@/services/usersService";
 import { getProves } from "@/services/database/Admin/adminDbServices";
 import { useYear } from "@/components/shared/Contexts/YearContext";
@@ -38,6 +39,15 @@ import {
 } from "@/interfaces/userInterface";
 import type { Prova } from "@/interfaces/interfaces";
 import { cn } from "@/lib/utils";
+
+const getSchema = (isTemporary: boolean) =>
+  z.object({
+    displayName: z.string().min(1, "El nom és obligatori."),
+    email: isTemporary
+      ? z.union([z.string().email("El correu no és vàlid."), z.literal("")])
+      : z.string().email("El correu no és vàlid.").min(1, "El correu és obligatori per a comptes no temporals."),
+    password: z.string().min(6, "La contrasenya ha de tenir almenys 6 caràcters."),
+  });
 
 const PENYES_LABELS: Record<PenyesPermissions, string> = {
   create: "Crear",
@@ -57,6 +67,7 @@ const PROVES_LABELS: Record<ProvesPermissions, string> = {
 const USERS_LABELS: Record<UsersPermissions, string> = {
   create: "Crear",
   delete: "Eliminar",
+  edit: "Editar",
   "*": "Tot",
 };
 
@@ -175,8 +186,7 @@ export default function AdminAddUser({
   const showProvaSelector =
     selectedProves.includes("editResults") && !selectedProves.includes("*");
 
-  // Password is only relevant when no email is provided (auto-generated account)
-  const needsPassword = !editMode && !email.trim();
+  const showTemporaryToggle = showProvaSelector && specificProvaId !== "";
 
   useEffect(() => {
     if (isDialogOpen) {
@@ -210,16 +220,21 @@ export default function AdminAddUser({
     }
   }, [showProvaSelector, selectedYear]);
 
+  useEffect(() => {
+    if (!showTemporaryToggle) setIsTemporary(false);
+  }, [showTemporaryToggle]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!displayName.trim()) {
+    if (!editMode) {
+      const result = getSchema(isTemporary).safeParse({ displayName, email, password });
+      if (!result.success) {
+        toast.warning(result.error.errors[0].message);
+        return;
+      }
+    } else if (!displayName.trim()) {
       toast.warning("El nom és obligatori.");
-      return;
-    }
-
-    if (needsPassword && password.length < 6) {
-      toast.warning("La contrasenya ha de tenir almenys 6 caràcters.");
       return;
     }
 
@@ -271,7 +286,7 @@ export default function AdminAddUser({
         <DialogDescription>
           {editMode
             ? "Modifica les dades i permisos de l'usuari."
-            : "Crea un nou usuari d'administració. Si no especifiques un correu, es generarà automàticament i no caldrà contrasenya."}
+            : "Crea un nou usuari d'administració. Per a comptes temporals, el correu és opcional i es generarà automàticament."}
         </DialogDescription>
       </DialogHeader>
 
@@ -291,62 +306,63 @@ export default function AdminAddUser({
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="email">
               Email{" "}
-              <span className="text-muted-foreground font-normal text-xs">
-                (opcional)
-              </span>
+              {isTemporary && (
+                <span className="text-muted-foreground font-normal text-xs">
+                  (opcional)
+                </span>
+              )}
             </Label>
             <Input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="es genera automàticament si no s'especifica"
+              placeholder={isTemporary ? "es genera automàticament si no s'especifica" : "correu de l'usuari"}
               disabled={editMode}
             />
           </div>
 
+          {!editMode && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="password">Contrasenya</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="mínim 6 caràcters"
+              />
+            </div>
+          )}
+
           <AnimatePresence initial={false}>
-            {needsPassword && (
+            {showTemporaryToggle && (
               <motion.div
-                key="password"
+                key="temporary"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="password">Contrasenya</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="mínim 6 caràcters"
+                <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+                  <div>
+                    <Label htmlFor="isTemporary" className="cursor-pointer">
+                      Compte temporal
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      S'eliminarà en tancar la prova associada
+                    </p>
+                  </div>
+                  <Switch
+                    id="isTemporary"
+                    checked={isTemporary}
+                    onCheckedChange={setIsTemporary}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Necessària per a comptes sense correu real.
-                  </p>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
-
-          <div className="flex items-center justify-between rounded-lg border px-4 py-3">
-            <div>
-              <Label htmlFor="isTemporary" className="cursor-pointer">
-                Compte temporal
-              </Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                S'eliminarà en tancar la prova associada
-              </p>
-            </div>
-            <Switch
-              id="isTemporary"
-              checked={isTemporary}
-              onCheckedChange={setIsTemporary}
-            />
-          </div>
         </div>
 
         {/* Permissions section */}

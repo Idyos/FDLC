@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e \"const d = require\\('C:/Users/progr/Desktop/FDLC-1/functions/node_modules/firebase-functions/package.json'\\); console.log\\(JSON.stringify\\(d.exports['.'], null, 2\\)\\)\")"
+      "Bash(node -e \"const d = require\\('C:/Users/progr/Desktop/FDLC-1/functions/node_modules/firebase-functions/package.json'\\); console.log\\(JSON.stringify\\(d.exports['.'], null, 2\\)\\)\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 33324)",
+      "Bash(taskkill //F //PID 41104)"
     ]
   }
 }

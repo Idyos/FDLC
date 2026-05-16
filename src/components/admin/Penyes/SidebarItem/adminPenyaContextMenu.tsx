@@ -29,12 +29,16 @@ import AdminPenyaSummary from "@/components/admin/Penyes/PenyaSummary/adminPenya
 interface AdminPenyaContextMenuProps {
   penya: PenyaInfo;
   year: number;
+  canEdit?: boolean;
+  canDelete?: boolean;
   onDeleted: (penyaId: string) => void;
 }
 
 export default function AdminPenyaContextMenu({
   penya,
   year,
+  canEdit = true,
+  canDelete = true,
   onDeleted,
 }: AdminPenyaContextMenuProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -60,28 +64,38 @@ export default function AdminPenyaContextMenu({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <SidebarMenuItem>
-            <AdminPenyaSummary
-              rankingInfo={penya}
-              triggerElement={<SidebarMenuButton>{penya.name}</SidebarMenuButton>}
-              open={editDialogOpen}
-              onOpenChange={setEditDialogOpen}
-            />
+            {canEdit ? (
+              <AdminPenyaSummary
+                rankingInfo={penya}
+                triggerElement={<SidebarMenuButton>{penya.name}</SidebarMenuButton>}
+                open={editDialogOpen}
+                onOpenChange={setEditDialogOpen}
+              />
+            ) : (
+              <SidebarMenuButton>{penya.name}</SidebarMenuButton>
+            )}
           </SidebarMenuItem>
         </ContextMenuTrigger>
-        <ContextMenuContent>
-          <ContextMenuItem onClick={() => setEditDialogOpen(true)}>
-            <Pencil />
-            Editar
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            variant="destructive"
-            onClick={() => setDeleteDialogOpen(true)}
-          >
-            <Trash2 />
-            Eliminar
-          </ContextMenuItem>
-        </ContextMenuContent>
+        {(canEdit || canDelete) && (
+          <ContextMenuContent>
+            {canEdit && (
+              <ContextMenuItem onClick={() => setEditDialogOpen(true)}>
+                <Pencil />
+                Editar
+              </ContextMenuItem>
+            )}
+            {canEdit && canDelete && <ContextMenuSeparator />}
+            {canDelete && (
+              <ContextMenuItem
+                variant="destructive"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 />
+                Eliminar
+              </ContextMenuItem>
+            )}
+          </ContextMenuContent>
+        )}
       </ContextMenu>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

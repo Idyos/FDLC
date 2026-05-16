@@ -1,20 +1,15 @@
 import { db, auth, functions } from "@/firebase/firebase";
 import { User } from "@/interfaces/userInterface";
-import { sendPasswordResetEmail, updateProfile } from "firebase/auth";
+import { updateProfile } from "firebase/auth";
 import { doc, getDocs, collection, updateDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
 export const createUser = async (user: User, password: string): Promise<void> => {
-  const fn = httpsCallable<{ user: User; password?: string }, { uid: string; email: string }>(
+  const fn = httpsCallable<{ user: User; password: string }, { uid: string; email: string }>(
     functions,
     "createUser"
   );
-  const result = await fn({ user, password: user.isTemporary ? password : undefined });
-  const { email } = result.data;
-
-  if (!user.isTemporary) {
-    await sendPasswordResetEmail(auth, email);
-  }
+  await fn({ user, password });
 };
 
 export const getUsers = async (callback: (data: User[]) => void) => {

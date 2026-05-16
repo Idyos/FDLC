@@ -28,12 +28,16 @@ import AdminAddUser from "../AddUser/AdminAddUser";
 
 interface AdminUserContextMenuProps {
   user: User;
+  canEdit?: boolean;
+  canDelete?: boolean;
   onDeleted: (uid: string) => void;
   onUpdated: (user: User) => void;
 }
 
 export default function AdminUserContextMenu({
   user,
+  canEdit = true,
+  canDelete = true,
   onDeleted,
   onUpdated,
 }: AdminUserContextMenuProps) {
@@ -60,25 +64,31 @@ export default function AdminUserContextMenu({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={() => setEditDialogOpen(true)}>
+            <SidebarMenuButton onClick={canEdit ? () => setEditDialogOpen(true) : undefined}>
               {user.displayName || user.email}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </ContextMenuTrigger>
-        <ContextMenuContent>
-          <ContextMenuItem onClick={() => setEditDialogOpen(true)}>
-            <Pencil />
-            Editar
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            variant="destructive"
-            onClick={() => setDeleteDialogOpen(true)}
-          >
-            <Trash2 />
-            Eliminar
-          </ContextMenuItem>
-        </ContextMenuContent>
+        {(canEdit || canDelete) && (
+          <ContextMenuContent>
+            {canEdit && (
+              <ContextMenuItem onClick={() => setEditDialogOpen(true)}>
+                <Pencil />
+                Editar
+              </ContextMenuItem>
+            )}
+            {canEdit && canDelete && <ContextMenuSeparator />}
+            {canDelete && (
+              <ContextMenuItem
+                variant="destructive"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 />
+                Eliminar
+              </ContextMenuItem>
+            )}
+          </ContextMenuContent>
+        )}
       </ContextMenu>
 
       <AdminAddUser

@@ -4,10 +4,11 @@ export interface User {
   displayName: string;
   photoURL: string;
   isTemporary: boolean;
+  hasResetPassword?: boolean;
   permissions: {
     penyes: PenyesPermissions[];
     proves: ProvesPermissions[];
-    specificProvaId?: string; // if set, proves permissions apply only to this specific prova
+    specificProvaId?: string;
     users: UsersPermissions[];
   };
 }
@@ -32,6 +33,7 @@ export type ProvesPermissions = (typeof provesPermissions)[number];
 export const usersPermissions = [
   "create",
   "delete",
+  "edit",
   "*",
 ] as const;
 export type UsersPermissions = (typeof usersPermissions)[number];

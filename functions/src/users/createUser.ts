@@ -7,7 +7,7 @@ export const createUserFn = onCall(async (request) => {
     throw new HttpsError("unauthenticated", "Cal estar autenticat per crear usuaris.");
   }
 
-  const { user, password } = request.data as { user: User; password?: string };
+  const { user, password } = request.data as { user: User; password: string };
 
   if (!user?.displayName) {
     throw new HttpsError("invalid-argument", "Cal un nom d'usuari.");
@@ -21,7 +21,7 @@ export const createUserFn = onCall(async (request) => {
     const userRecord = await admin.auth().createUser({
       email,
       displayName: user.displayName,
-      ...(password ? { password } : {}),
+      password,
     });
     uid = userRecord.uid;
   } catch (err: unknown) {
@@ -38,6 +38,7 @@ export const createUserFn = onCall(async (request) => {
     email,
     photoURL: user.photoURL ?? "",
     isTemporary: user.isTemporary ?? false,
+    hasResetPassword: false,
     permissions: {
       penyes: user.permissions.penyes,
       proves: user.permissions.proves,

@@ -30,12 +30,18 @@ import { deleteProva } from "@/services/database/Admin/adminDbServices";
 interface AdminProvaContextMenuProps {
   prova: Prova;
   year: number;
+  canNavigate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
   onDeleted: (provaId: string) => void;
 }
 
 export default function AdminProvaContextMenu({
   prova,
   year,
+  canNavigate = true,
+  canEdit = true,
+  canDelete = true,
   onDeleted,
 }: AdminProvaContextMenuProps) {
   const navigate = useNavigate();
@@ -69,25 +75,31 @@ export default function AdminProvaContextMenu({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={navigateToProva}>
+            <SidebarMenuButton onClick={canNavigate ? navigateToProva : undefined}>
               {prova.isSecret ? "Secreta" : prova.name}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </ContextMenuTrigger>
-        <ContextMenuContent>
-          <ContextMenuItem onClick={navigateToEditProva}>
-            <Pencil />
-            Editar
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem
-            variant="destructive"
-            onClick={() => setDeleteDialogOpen(true)}
-          >
-            <Trash2 />
-            Eliminar
-          </ContextMenuItem>
-        </ContextMenuContent>
+        {(canEdit || canDelete) && (
+          <ContextMenuContent>
+            {canEdit && (
+              <ContextMenuItem onClick={navigateToEditProva}>
+                <Pencil />
+                Editar
+              </ContextMenuItem>
+            )}
+            {canEdit && canDelete && <ContextMenuSeparator />}
+            {canDelete && (
+              <ContextMenuItem
+                variant="destructive"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 />
+                Eliminar
+              </ContextMenuItem>
+            )}
+          </ContextMenuContent>
+        )}
       </ContextMenu>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
