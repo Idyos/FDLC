@@ -20,7 +20,7 @@ const auth = getAuth(app);
 const storage = getStorage(app);
 const functions = getFunctions(app);
 
-if (import.meta.env.DEV) {
+if (import.meta.env.VITE_USE_EMULATOR === "true") {
   connectFirestoreEmulator(db, "localhost", 8081);
   connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
   connectFunctionsEmulator(functions, "localhost", 5001);
