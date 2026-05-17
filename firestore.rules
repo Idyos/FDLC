@@ -2,39 +2,48 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isAuth() {
+    function hasPerm(list, perm) {
+      return list != null && ('*' in list || perm in list);
+    }
+
+    function authed() {
       return request.auth != null;
     }
 
-    function userDocExists() {
-      return isAuth() && exists(/databases/$(database)/documents/Users/$(request.auth.uid));
+    function userPath() {
+      return /databases/$(database)/documents/Users/$(request.auth.uid);
     }
 
-    function userPerms() {
-      return get(/databases/$(database)/documents/Users/$(request.auth.uid)).data.permissions;
+    function userExists() {
+      return authed() && exists(userPath());
     }
 
-    function hasPerm(permList, perm) {
-      return '*' in permList || perm in permList;
+    function canProves(perm) {
+      return userExists() && hasPerm(get(userPath()).data.permissions.proves, perm);
     }
 
-    function canDo(section, perm) {
-      return hasPerm(userPerms()[section], perm);
+    function canPenyes(perm) {
+      return userExists() && hasPerm(get(userPath()).data.permissions.penyes, perm);
+    }
+
+    function canUsers(perm) {
+      return userExists() && hasPerm(get(userPath()).data.permissions.users, perm);
     }
 
     function canEditResults(provaId) {
-      return hasPerm(userPerms().proves, 'editResults') && (
-        !('specificProvaId' in userPerms()) ||
-        userPerms().specificProvaId == provaId
-      );
+      return userExists()
+        && hasPerm(get(userPath()).data.permissions.proves, 'editResults')
+        && (
+          !('specificProvaId' in get(userPath()).data.permissions)
+          || get(userPath()).data.permissions.specificProvaId == provaId
+        );
     }
 
     match /Users/{userId} {
       allow get, list: if true;
-      allow create, delete: if isAuth();
-      allow update: if isAuth() && (
-        request.auth.uid == userId ||
-        (userDocExists() && canDo('users', 'edit'))
+      allow create, delete: if authed();
+      allow update: if authed() && (
+        request.auth.uid == userId || canUsers('edit')
       );
     }
 
@@ -43,48 +52,46 @@ service cloud.firestore {
 
       match /Proves/{provaId} {
         allow get, list: if true;
-        allow create: if userDocExists() && canDo('proves', 'create');
-        allow update: if userDocExists() && canDo('proves', 'editInfo');
-        allow delete: if userDocExists() && canDo('proves', 'delete');
+        allow create: if canProves('create');
+        allow update: if canProves('editInfo');
+        allow delete: if canProves('delete');
 
         match /Participants/{participantId} {
           allow get, list: if true;
-          allow create, update, delete: if userDocExists() && canEditResults(provaId);
+          allow create, update, delete: if canEditResults(provaId);
         }
 
         match /Bracket/{bracketId} {
           allow get, list: if true;
-          allow create, update, delete: if userDocExists() && canEditResults(provaId);
+          allow create, update, delete: if canEditResults(provaId);
         }
 
         match /SubProves/{subProvaId} {
           allow get, list: if true;
-          allow create, update, delete: if userDocExists() && (
-            canDo('proves', 'editInfo') || canEditResults(provaId)
-          );
+          allow create, update, delete: if canProves('editInfo') || canEditResults(provaId);
 
           match /Participants/{participantId} {
             allow get, list: if true;
-            allow create, update, delete: if userDocExists() && canEditResults(provaId);
+            allow create, update, delete: if canEditResults(provaId);
           }
 
           match /Bracket/{bracketId} {
             allow get, list: if true;
-            allow create, update, delete: if userDocExists() && canEditResults(provaId);
+            allow create, update, delete: if canEditResults(provaId);
           }
         }
       }
 
       match /Penyes/{penyaId} {
         allow get, list: if true;
-        allow create: if userDocExists() && canDo('penyes', 'create');
-        allow update: if userDocExists() && canDo('penyes', 'edit');
-        allow delete: if userDocExists() && canDo('penyes', 'delete');
+        allow create: if canPenyes('create');
+        allow update: if canPenyes('edit');
+        allow delete: if canPenyes('delete');
       }
 
       match /Results/{resultId} {
         allow get, list: if true;
-        allow create, update, delete: if userDocExists() && canDo('proves', 'editResults');
+        allow create, update, delete: if canProves('editResults');
       }
     }
 

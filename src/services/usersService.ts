@@ -1,7 +1,7 @@
 import { db, auth, functions } from "@/firebase/firebase";
 import { User } from "@/interfaces/userInterface";
 import { updateProfile } from "firebase/auth";
-import { doc, getDocs, collection, updateDoc } from "firebase/firestore";
+import { doc, getDocs, collection, updateDoc, deleteField } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
 export const createUser = async (user: User, password: string): Promise<void> => {
@@ -95,13 +95,11 @@ export const updateUser = async (user: User): Promise<void> => {
     photoURL: user.photoURL,
     displayName: user.displayName,
     isTemporary: user.isTemporary,
-    permissions: {
-      penyes: user.permissions.penyes,
-      proves: user.permissions.proves,
-      ...(user.permissions.specificProvaId
-        ? { specificProvaId: user.permissions.specificProvaId }
-        : { specificProvaId: null }),
-      users: user.permissions.users,
-    },
+    "permissions.penyes": user.permissions.penyes,
+    "permissions.proves": user.permissions.proves,
+    "permissions.users": user.permissions.users,
+    ...(user.permissions.specificProvaId
+      ? { "permissions.specificProvaId": user.permissions.specificProvaId }
+      : { "permissions.specificProvaId": deleteField() }),
   });
 };
