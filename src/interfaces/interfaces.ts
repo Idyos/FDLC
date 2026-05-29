@@ -296,7 +296,7 @@ export class ChallengeByDiscalification extends Prova {
     byes: number;
   };
 
-  getResults(penyesInfo: PenyaInfo[]) {
+  getResults(_penyesInfo: PenyaInfo[]) {
     // Lo calculas leyendo los winnerTeamId de cada match
   }
 }

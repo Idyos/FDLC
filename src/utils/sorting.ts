@@ -35,8 +35,8 @@ export function sortPenyes(penyes: ParticipatingPenya[], mode: SortMode): Partic
     switch (mode) {
       case "name-asc":    return a.name.localeCompare(b.name);
       case "name-desc":   return b.name.localeCompare(a.name);
-      case "result-asc":  return (a.result ?? 0) - (b.result ?? 0);
-      case "result-desc": return (b.result ?? 0) - (a.result ?? 0);
+      case "result-asc":  return (parseFloat(a.result ?? "0") || 0) - (parseFloat(b.result ?? "0") || 0);
+      case "result-desc": return (parseFloat(b.result ?? "0") || 0) - (parseFloat(a.result ?? "0") || 0);
       case "time-asc": {
         if (!a.participationTime && !b.participationTime) return a.name.localeCompare(b.name);
         if (!a.participationTime) return 1;

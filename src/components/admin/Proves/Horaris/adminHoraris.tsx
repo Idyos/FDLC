@@ -184,8 +184,8 @@ export default function AdminHoraris({ prova, sortMode, onProvaConfigUpdated }: 
     switch (sortMode) {
       case "name-asc":    return a.name.localeCompare(b.name);
       case "name-desc":   return b.name.localeCompare(a.name);
-      case "result-asc":  return (a.result ?? 0) - (b.result ?? 0);
-      case "result-desc": return (b.result ?? 0) - (a.result ?? 0);
+      case "result-asc":  return (parseFloat(a.result ?? "0") || 0) - (parseFloat(b.result ?? "0") || 0);
+      case "result-desc": return (parseFloat(b.result ?? "0") || 0) - (parseFloat(a.result ?? "0") || 0);
       case "time-asc":
       case "time-desc": {
         const aTime = committedTimes[a.penyaId] ?? "";

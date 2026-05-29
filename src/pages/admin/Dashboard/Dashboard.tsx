@@ -123,7 +123,7 @@ function ClassamentChart({ data }: { data: { name: string; pts: number }[] }) {
             fontSize: 13,
           }}
           cursor={{ fill: "rgba(128,128,128,0.08)" }}
-          formatter={(v: number) => [v, "Punts"]}
+          formatter={(v) => [v, "Punts"]}
         />
         <Bar
           dataKey="pts"
@@ -170,7 +170,7 @@ function ProvaTypesChart({ data }: { data: { name: string; value: number }[] }) 
             borderRadius: 8,
             fontSize: 13,
           }}
-          formatter={(v: number, name: string) => [v, name]}
+          formatter={(v, name) => [v, name]}
         />
         <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
       </PieChart>

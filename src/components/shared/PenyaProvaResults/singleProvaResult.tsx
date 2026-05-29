@@ -92,7 +92,7 @@ export default function SingleProvaResult({ provaResultSummary, showPoints = tru
         </div>
         <div className="flex flex-row items-center space-x-6">
           {renderInput()}
-          {showPoints && (provaResultSummary.participates && (provaResultSummary.result != null && provaResultSummary.result >= 0)) && <span className={`${!prova?.isFinished ? "text-2xl font-bold opacity-40 blur-[3px]" : "text-4xl font-extrabold"}`}>{prova.isFinished ? "+" : null}{getPointsForIndex(provaResultSummary.index ?? -1) ?? ""}</span>}
+          {showPoints && (provaResultSummary.participates && (provaResultSummary.result != null && Number(provaResultSummary.result) >= 0)) && <span className={`${!prova?.isFinished ? "text-2xl font-bold opacity-40 blur-[3px]" : "text-4xl font-extrabold"}`}>{prova.isFinished ? "+" : null}{getPointsForIndex(provaResultSummary.index ?? -1) ?? ""}</span>}
           </div>
       </div>
     </motion.div>

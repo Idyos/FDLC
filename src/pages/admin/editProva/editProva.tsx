@@ -30,7 +30,6 @@ import {
 } from "@/interfaces/interfaces";
 import StepBasicInfo from "../createProva/components/steps/stepBasicInfo";
 import StepTypeAndPenyes from "../createProva/components/steps/stepTypeAndPenyes";
-import StepConfirm from "../createProva/components/steps/stepConfirm";
 import StepPointsRange from "../createProva/components/steps/stepPointsRange";
 import { buildChallenge } from "../createProva/challengeFactory";
 import { useProvaPreviewSync } from "../createProva/useProvaPreviewSync";
@@ -106,7 +105,7 @@ export default function EditProva() {
         penyaId: p.id,
         name: p.name,
         participates: participatingSet.has(p.id),
-        result: -1,
+        result: "",
       }));
       setPenyes(mergedPenyes);
 
@@ -271,9 +270,9 @@ export default function EditProva() {
           penyaSearch={penyaSearch}
           setPenyaSearch={setPenyaSearch}
           filteredPenyes={filteredPenyes}
-          onTogglePenya={(i, checked) => {
+          onTogglePenya={(penyaId, checked) => {
             setPenyes((prev) =>
-              prev.map((p, idx) => (idx === i ? { ...p, participates: checked } : p))
+              prev.map((p) => (p.penyaId === penyaId ? { ...p, participates: checked } : p))
             );
           }}
         />

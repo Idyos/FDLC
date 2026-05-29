@@ -71,7 +71,7 @@ export default function CreateProva() {
   useEffect(() => {
     setIsLoading(true);
     getPenyes(selectedYear, (data) => {
-      setPenyes(data.map((p: PenyaInfo) => ({ index: -1, penyaId: p.id, name: p.name, participates: true, result: -1 })));
+      setPenyes(data.map((p: PenyaInfo) => ({ index: -1, penyaId: p.id, name: p.name, participates: true, result: "" })));
       setIsLoading(false);
     });
   }, [selectedYear]);
