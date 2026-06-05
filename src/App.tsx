@@ -9,8 +9,6 @@ import PenyaPage from './pages/public/PenyaPage/penyaPage';
 import Login from './pages/admin/Login/Login';
 import Dashboard from './pages/admin/Dashboard/Dashboard';
 import { YearProvider } from './components/shared/Contexts/YearContext';
-import CreateProva from './pages/admin/createProva/createProva';
-import EditProva from './pages/admin/editProva/editProva';
 import MainPage from './pages/public/MainPage/mainPage';
 import ProvaPage from './pages/public/ProvaPage/provaPage';
 import { AdminRoutes } from './routes/admin/AdminRoutes';
@@ -18,7 +16,7 @@ import { AuthProvider } from './routes/admin/AuthContext';
 import { FavoritePenyesProvider } from './components/shared/Contexts/FavoritePenyesContext';
 import PublicHeader from './components/public/PublicHeader/publicHeader';
 import AdminSidebar from './components/admin/AdminSiderbar';
-import CreateOrEditProva from './pages/admin/createOrEditProva/createOrEditProva';
+import CreateOrEditProva from './pages/admin/createProva/createOrEditProva';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -49,9 +47,6 @@ export default function App() {
               </Route>
               <Route path="/admin/createProva" element={<AdminRoutes><CreateOrEditProva /></AdminRoutes>} />
               <Route path="/admin/editProva" element={<AdminRoutes><CreateOrEditProva /></AdminRoutes>} />
-              {/* <Route path="/admin/createOrEditProva" element={<AdminRoutes><CreateOrEditProva /></AdminRoutes>} />         
-              <Route path="/admin/createProva" element={<AdminRoutes><CreateProva /></AdminRoutes>} />
-              <Route path="/admin/editProva" element={<AdminRoutes><EditProva /></AdminRoutes>} /> */}
             </Routes>
           </FavoritePenyesProvider>
         </YearProvider>
