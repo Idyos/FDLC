@@ -18,6 +18,7 @@ import { AuthProvider } from './routes/admin/AuthContext';
 import { FavoritePenyesProvider } from './components/shared/Contexts/FavoritePenyesContext';
 import PublicHeader from './components/public/PublicHeader/publicHeader';
 import AdminSidebar from './components/admin/AdminSiderbar';
+import CreateOrEditProva from './pages/admin/createOrEditProva/createOrEditProva';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -46,8 +47,11 @@ export default function App() {
                 <Route path="/admin" element={<Dashboard />} />
                 <Route path="/admin/prova" element={<ProvaPage />} />
               </Route>
+              <Route path="/admin/createProva" element={<AdminRoutes><CreateOrEditProva /></AdminRoutes>} />
+              <Route path="/admin/editProva" element={<AdminRoutes><CreateOrEditProva /></AdminRoutes>} />
+              {/* <Route path="/admin/createOrEditProva" element={<AdminRoutes><CreateOrEditProva /></AdminRoutes>} />         
               <Route path="/admin/createProva" element={<AdminRoutes><CreateProva /></AdminRoutes>} />
-              <Route path="/admin/editProva" element={<AdminRoutes><EditProva /></AdminRoutes>} />
+              <Route path="/admin/editProva" element={<AdminRoutes><EditProva /></AdminRoutes>} /> */}
             </Routes>
           </FavoritePenyesProvider>
         </YearProvider>

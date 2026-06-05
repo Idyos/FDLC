@@ -279,7 +279,7 @@ export default function EditProva() {
       ),
     },
     {
-      title: "Puntuaciós",
+      title: "Puntuacions",
       content: <StepPointsRange challengeType={challengeType} />,
     },
     {
