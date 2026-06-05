@@ -40,6 +40,7 @@
     "git-filter-repo": "^0.0.30",
     "input-otp": "^1.4.2",
     "install": "^0.13.0",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.487.0",
     "next-themes": "^0.4.6",
     "radix-ui": "^1.4.3",

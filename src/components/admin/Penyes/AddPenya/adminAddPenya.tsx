@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
 import {
   Dialog,
   DialogContent,
@@ -22,9 +23,102 @@ import { useTheme } from "@/components/Theme/theme-provider";
 import { ReactNode, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Ban, Check, ChevronDown, ChevronUp, Loader, Plus, X } from "lucide-react";
+import { Ban, Check, ChevronDown, ChevronUp, Loader, Minus, Plus, X } from "lucide-react";
 import { addPenyes } from "@/services/database/Admin/adminDbServices";
 import { useYear } from "@/components/shared/Contexts/YearContext";
+
+async function extractImagesFromBuffer(buffer: ArrayBuffer): Promise<Map<number, File>> {
+  const imageMap = new Map<number, File>();
+  try {
+    const zip = await JSZip.loadAsync(buffer);
+
+    // Find the drawing path from the first sheet's rels
+    const sheetRelsFile = zip.file('xl/worksheets/_rels/sheet1.xml.rels');
+    if (!sheetRelsFile) return imageMap;
+
+    const sheetRelsDoc = new DOMParser().parseFromString(
+      await sheetRelsFile.async('text'),
+      'application/xml'
+    );
+
+    let drawingPath: string | null = null;
+    const sheetRels = sheetRelsDoc.getElementsByTagNameNS('*', 'Relationship');
+    for (let i = 0; i < sheetRels.length; i++) {
+      if (sheetRels[i].getAttribute('Type')?.includes('drawing')) {
+        const target = sheetRels[i].getAttribute('Target') ?? '';
+        drawingPath = 'xl/' + target.replace('../', '');
+        break;
+      }
+    }
+    if (!drawingPath) return imageMap;
+
+    const drawingFile = zip.file(drawingPath);
+    if (!drawingFile) return imageMap;
+
+    const drawingDoc = new DOMParser().parseFromString(
+      await drawingFile.async('text'),
+      'application/xml'
+    );
+
+    // Map rId → media path from drawing rels
+    const drawingRelsPath = drawingPath.replace(
+      /xl\/drawings\/(.+)$/,
+      'xl/drawings/_rels/$1.rels'
+    );
+    const drawingRelsFile = zip.file(drawingRelsPath);
+    if (!drawingRelsFile) return imageMap;
+
+    const drawingRelsDoc = new DOMParser().parseFromString(
+      await drawingRelsFile.async('text'),
+      'application/xml'
+    );
+    const relIdToMedia = new Map<string, string>();
+    const drawingRels = drawingRelsDoc.getElementsByTagNameNS('*', 'Relationship');
+    for (let i = 0; i < drawingRels.length; i++) {
+      const id = drawingRels[i].getAttribute('Id') ?? '';
+      const target = drawingRels[i].getAttribute('Target') ?? '';
+      relIdToMedia.set(id, 'xl/' + target.replace('../', ''));
+    }
+
+    // Process each anchor (one or two cell anchors)
+    const anchorTypes = ['twoCellAnchor', 'oneCellAnchor'];
+    for (const anchorType of anchorTypes) {
+      const anchors = drawingDoc.getElementsByTagNameNS('*', anchorType);
+      for (let i = 0; i < anchors.length; i++) {
+        const anchor = anchors[i];
+        const fromEl = anchor.getElementsByTagNameNS('*', 'from')[0];
+        if (!fromEl) continue;
+
+        const rowText = fromEl.getElementsByTagNameNS('*', 'row')[0]?.textContent;
+        const row = parseInt(rowText ?? '-1', 10);
+        if (row < 0) continue;
+
+        const blipEl = anchor.getElementsByTagNameNS('*', 'blip')[0];
+        if (!blipEl) continue;
+
+        const rId = blipEl.getAttributeNS(
+          'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+          'embed'
+        );
+        if (!rId) continue;
+
+        const mediaPath = relIdToMedia.get(rId);
+        if (!mediaPath) continue;
+
+        const mediaFile = zip.file(mediaPath);
+        if (!mediaFile) continue;
+
+        const ext = mediaPath.split('.').pop() ?? 'png';
+        const mime = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : `image/${ext}`;
+        const blob = await mediaFile.async('blob');
+        imageMap.set(row, new File([blob], `penya-row${row}.${ext}`, { type: mime }));
+      }
+    }
+  } catch {
+    // If the file has no drawings, return empty map silently
+  }
+  return imageMap;
+}
 
 interface PenyaFormData {
   name: string;
@@ -184,7 +278,7 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
     }
   };
 
-  const onFileAdded = (file: File) => {
+  const onFileAdded = async (file: File) => {
     const allowedTypes = [
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "application/vnd.ms-excel",
@@ -195,29 +289,29 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const data = event.target?.result;
-      const workbook = XLSX.read(data, { type: 'binary' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData: unknown[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    const buffer = await file.arrayBuffer();
 
-      const newPenyes: PenyaFormData[] = [];
-      jsonData.forEach((row) => {
-        const name = (row as unknown[])[0];
-        if (name !== undefined) {
-          const descRaw = (row as unknown[])[1];
-          const description = descRaw !== undefined ? String(descRaw) : "";
-          newPenyes.push({ name: String(name), description, image: null, imagePreview: null });
-        }
-      });
+    const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const jsonData: unknown[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-      setPenyes(prev => [...prev, ...newPenyes]);
-      setUpdateStates(prev => [...prev, ...newPenyes.map(() => "3")]);
-    };
+    const imageMap = await extractImagesFromBuffer(buffer);
 
-    reader.readAsBinaryString(file);
+    const newPenyes: PenyaFormData[] = [];
+    jsonData.forEach((row, rowIndex) => {
+      const name = (row as unknown[])[0];
+      if (name !== undefined) {
+        const descRaw = (row as unknown[])[1];
+        const description = descRaw !== undefined ? String(descRaw) : "";
+        const imgFile = imageMap.get(rowIndex) ?? null;
+        const imagePreview = imgFile ? URL.createObjectURL(imgFile) : null;
+        newPenyes.push({ name: String(name), description, image: imgFile, imagePreview });
+      }
+    });
+
+    setPenyes(prev => [...prev, ...newPenyes]);
+    setUpdateStates(prev => [...prev, ...newPenyes.map(() => "3")]);
   };
 
   const dialogContent = (
@@ -226,7 +320,7 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
         <DialogTitle>Crear penya/es</DialogTitle>
       </DialogHeader>
       <DialogDescription>
-        Aquí pots crear penyes d'una en una o amb un excel. Columna A = nom, Columna B = descripció.
+        Aquí pots crear penyes d'una en una o amb un excel. Columna A = nom, Columna B = descripció, Columna C = imatge (incrustada).
       </DialogDescription>
       <div className="grid gap-4 py-4">
         <div className="grid grid-cols-4 items-center gap-4">
@@ -349,15 +443,16 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
           </Collapsible>
         ))}
       </div>
-      <div className="flex flex-row items-center mt-4">
-        <Button variant="default" className="mr-2" onClick={addNewPenya}>+</Button>
+      <div className="flex flex-row items-center">
+        <Button variant="default" className="mr-2 flex-1" onClick={addNewPenya}><Plus size={16} /></Button>
         <Button
           variant="outline"
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseOut}
+          className="flex-1"
         >
-          -
+          <Minus size={16} />
         </Button>
       </div>
       <DialogFooter>
