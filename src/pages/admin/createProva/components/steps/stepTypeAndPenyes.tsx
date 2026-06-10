@@ -39,7 +39,6 @@ export default function StepTypeAndPenyes({
               <Select onValueChange={field.onChange}>
                 <FormControl><SelectTrigger id="winDirection"><SelectValue placeholder="Selecciona forma de guanyar" /></SelectTrigger></FormControl>
                 <SelectContent position="popper">
-                  <SelectItem value="NONE">Cap</SelectItem>
                   <SelectItem value="DESC">{challengeType === "Punts" ? "Com més punts millor" : "Com més temps millor"}</SelectItem>
                   <SelectItem value="ASC">{challengeType === "Punts" ? "Com menys punts millor" : "Com menys temps millor"}</SelectItem>
                 </SelectContent>
