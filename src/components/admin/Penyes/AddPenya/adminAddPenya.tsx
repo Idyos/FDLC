@@ -367,7 +367,7 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
               });
             }}
           >
-            <div className={cn("border rounded-lg overflow-hidden", isSubmitting && "pointer-events-none opacity-60")}>
+            <div className={cn("border rounded-lg overflow-hidden", isSubmitting && "pointer-events-none")}>
               <div className="flex flex-row items-center gap-2 p-2">
                 <Badge
                   variant="outline"
