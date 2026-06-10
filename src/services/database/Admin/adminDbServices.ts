@@ -288,10 +288,22 @@ export const getPenyes = async (year: number, callback: (data: PenyaInfo[]) => v
   });
 };
 
+const UPLOAD_TIMEOUT_MS = 15000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Temps d'espera de pujada exhaurit")), ms)
+    ),
+  ]);
+}
+
 export const addPenyes = async (
   year: number,
   penyes: PenyaCreationData[],
-  callback: (result: boolean[]) => void
+  onProgress: (index: number, success: boolean) => void,
+  onComplete: (results: boolean[]) => void
 ) => {
   const penyesRef = collection(db, `Circuit/${year}/Penyes`);
   const batch = writeBatch(db);
@@ -300,9 +312,9 @@ export const addPenyes = async (
   const existingNames = snapshot.docs.map((doc) => doc.data().name);
 
   const results: boolean[] = [];
-  const toUpload: { name: string; image: File }[] = [];
+  const toUpload: { index: number; name: string; image: File }[] = [];
 
-  penyes.forEach(({ name, description, image }) => {
+  penyes.forEach(({ name, description, image }, index) => {
     if (!existingNames.includes(name)) {
       const newDocRef = doc(penyesRef, name);
       batch.set(newDocRef, {
@@ -312,7 +324,7 @@ export const addPenyes = async (
         isSecret: false,
       });
       results.push(true);
-      if (image) toUpload.push({ name, image });
+      if (image) toUpload.push({ index, name, image });
     } else {
       results.push(false);
     }
@@ -320,22 +332,33 @@ export const addPenyes = async (
 
   try {
     await batch.commit();
-
-    for (const { name, image } of toUpload) {
-      try {
-        const url = await addImageToPenyes(image, year, name);
-        if (url) await updateDoc(doc(penyesRef, name), { imageUrl: url });
-      } catch (e) {
-        console.error(`Error uploading image for ${name}:`, e);
-      }
-    }
-
-    console.log("Penyes afegides correctament.");
-    callback(results);
   } catch (error) {
     console.error("Error afegint penyes:", error);
-    callback(penyes.map(() => false));
+    const failed = penyes.map(() => false);
+    failed.forEach((success, index) => onProgress(index, success));
+    onComplete(failed);
+    return;
   }
+
+  // Penyes without an image are already done at this point.
+  const uploadIndices = new Set(toUpload.map((u) => u.index));
+  results.forEach((success, index) => {
+    if (!uploadIndices.has(index)) onProgress(index, success);
+  });
+
+  for (const item of toUpload) {
+    try {
+      const url = await withTimeout(addImageToPenyes(item.image, year, item.name), UPLOAD_TIMEOUT_MS);
+      if (url) await updateDoc(doc(penyesRef, item.name), { imageUrl: url });
+      onProgress(item.index, true);
+    } catch (e) {
+      console.error(`Error uploading image for ${item.name}:`, e);
+      results[item.index] = false;
+      onProgress(item.index, false);
+    }
+  }
+
+  onComplete(results);
 };
 
 export const updatePenyaInfo = async (year: number, penyaId: string, name: string, isSecret: boolean, description: string, image: File | null) => {

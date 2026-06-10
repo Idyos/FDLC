@@ -23,9 +23,10 @@ import { useTheme } from "@/components/Theme/theme-provider";
 import { ReactNode, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Ban, Check, ChevronDown, ChevronUp, Loader, Minus, Plus, X } from "lucide-react";
+import { Ban, Check, ChevronDown, ChevronUp, LoaderCircle, Minus, Plus, X } from "lucide-react";
 import { addPenyes } from "@/services/database/Admin/adminDbServices";
 import { useYear } from "@/components/shared/Contexts/YearContext";
+import { cn } from "@/lib/utils";
 
 async function extractImagesFromBuffer(buffer: ArrayBuffer): Promise<Map<number, File>> {
   const imageMap = new Map<number, File>();
@@ -134,6 +135,7 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
   const [penyes, setPenyes] = useState<PenyaFormData[]>([]);
   const [updateStates, setUpdateStates] = useState<string[]>([]);
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set());
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const removeAllTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMouseDown = () => {
@@ -254,6 +256,7 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
     }
 
     try {
+      setIsSubmitting(true);
       setUpdateStates(penyes.map(() => "2"));
 
       const penyesData = penyes.map(p => ({
@@ -262,19 +265,31 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
         image: p.image,
       }));
 
-      addPenyes(selectedYear, penyesData, (results) => {
-        setUpdateStates(results.map(s => (s ? "1" : "0")));
-
-        const failedCount = results.filter(s => !s).length;
-        if (failedCount > 0) {
-          toast.warning("Algunes penyes ja existien previament, observa quines están marcades com a no actualitzades.");
-        } else {
-          toast.success("Totes les penyes afegides correctament!");
-          setIsDialogOpen(false);
+      await addPenyes(
+        selectedYear,
+        penyesData,
+        (index, success) => {
+          setUpdateStates(prev => {
+            const updated = [...prev];
+            updated[index] = success ? "1" : "0";
+            return updated;
+          });
+        },
+        (results) => {
+          const failedCount = results.filter(s => !s).length;
+          if (failedCount > 0) {
+            toast.warning("Algunes penyes ja existien previament o no s'han pogut actualitzar, observa quines están marcades com a no actualitzades.");
+          } else {
+            toast.success("Totes les penyes afegides correctament!");
+            setIsDialogOpen(false);
+          }
         }
-      });
+      );
     } catch {
       toast.error("Error al guardar");
+      setUpdateStates(penyes.map(() => "0"));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -322,7 +337,7 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
       <DialogDescription>
         Aquí pots crear penyes d'una en una o amb un excel. Columna A = nom, Columna B = descripció, Columna C = imatge (incrustada).
       </DialogDescription>
-      <div className="grid gap-4 py-4">
+      <div className={cn("grid gap-4 py-4", isSubmitting && "pointer-events-none opacity-60")}>
         <div className="grid grid-cols-4 items-center gap-4">
           <Label htmlFor="excel-input" className="text-right">
             Afegir des d'Excel
@@ -352,7 +367,7 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
               });
             }}
           >
-            <div className="border rounded-lg overflow-hidden">
+            <div className={cn("border rounded-lg overflow-hidden", isSubmitting && "pointer-events-none opacity-60")}>
               <div className="flex flex-row items-center gap-2 p-2">
                 <Badge
                   variant="outline"
@@ -393,7 +408,7 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
                 />
                 {index < updateStates.length && updateStates[index] !== "3" && (
                   <Badge variant="default" className="h-7 shrink-0 px-1">
-                    {updateStates[index] === "2" && <Loader className="h-4 w-4" />}
+                    {updateStates[index] === "2" && <LoaderCircle className="animate-spin" />}
                     {updateStates[index] === "1" && <Check color="green" size={16} />}
                     {updateStates[index] === "0" && <Ban color="red" className="h-4 w-4" />}
                   </Badge>
@@ -443,7 +458,7 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
           </Collapsible>
         ))}
       </div>
-      <div className="flex flex-row items-center">
+      <div className={cn("flex flex-row items-center", isSubmitting && "pointer-events-none opacity-60")}>
         <Button variant="default" className="mr-2 flex-1" onClick={addNewPenya}><Plus size={16} /></Button>
         <Button
           variant="outline"
@@ -457,10 +472,11 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
       </div>
       <DialogFooter>
         <Button
-          disabled={penyes.length === 0}
+          disabled={penyes.length === 0 || isSubmitting}
           type="submit"
           onClick={handleClick}
         >
+          {isSubmitting && <LoaderCircle className="animate-spin" />}
           {penyes.length === 1 ? "Crear penya" : "Crear Penyes"}
         </Button>
       </DialogFooter>
@@ -469,7 +485,7 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
 
   if (triggerElement) {
     return (
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => !isSubmitting && setIsDialogOpen(open)}>
         <DialogTrigger asChild>{triggerElement}</DialogTrigger>
         {dialogContent}
       </Dialog>
@@ -481,7 +497,7 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
       whileHover={{ scale: 1.02 }}
       className="relative h-36 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
     >
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => !isSubmitting && setIsDialogOpen(open)}>
         <DialogTrigger asChild className="w-full h-full" onClick={() => setIsDialogOpen(true)}>
           <div className="cursor-pointer w-full h-full relative z-10 flex items-center justify-center dark:text-white text-gray-900">
             <div className="dark:bg-neutral-800 bg-gray-200 flex justify-center items-center p-8 rounded-full shadow-lg w-24 h-24">
