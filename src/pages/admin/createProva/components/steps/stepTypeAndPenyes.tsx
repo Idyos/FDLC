@@ -3,16 +3,18 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Input } from "@/components/ui/input";
 import { ParticipatingPenya, ProvaType, provaTypes } from "@/interfaces/interfaces";
 import PenyesGrid from "../penyesGrid";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   challengeType: ProvaType | undefined;
   penyaSearch: string; setPenyaSearch: (s: string) => void;
   filteredPenyes: ParticipatingPenya[];
   onTogglePenya: (penyaId: string, checked: boolean) => void;
+  onSelectAll: (select: boolean) => void;
 };
 
 export default function StepTypeAndPenyes({
-  challengeType, penyaSearch, setPenyaSearch, filteredPenyes, onTogglePenya
+  challengeType, penyaSearch, setPenyaSearch, filteredPenyes, onTogglePenya, onSelectAll
 }: Props) {
   return (
     <>
@@ -98,6 +100,15 @@ export default function StepTypeAndPenyes({
             <FormItem id="penyes">
               <FormLabel>Penyes que hi participen: *</FormLabel>
               <Input value={penyaSearch} id="penya" placeholder="Buscar penya" onChange={(e) => setPenyaSearch(e.target.value)} />
+              <div className="flex gap-1.5">
+                <Button variant="outline" onClick={(e) => { e.preventDefault(); onSelectAll(true)}}>
+                    Seleccionar tots
+                </Button>
+                <Button variant="outline" onClick={(e) => { e.preventDefault(); onSelectAll(false) }}>
+                    Desseleccionar tots
+                </Button>
+              </div>
+              
               <PenyesGrid
                 items={filteredPenyes}
                 checkedByIndex={(i) => filteredPenyes[i].participates}

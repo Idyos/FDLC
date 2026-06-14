@@ -280,6 +280,9 @@ export default function CreateOrEditProva() {
             onTogglePenya={(penyaId, checked) => {
               setPenyes(prev => prev.map((p) => p.penyaId === penyaId ? { ...p, participates: checked } : p));
             }}
+          onSelectAll={(select) => {
+            setPenyes(prev => prev.map((p) => ({ ...p, participates: select })));
+            }}
           />
     )},
     { title: "Puntuacions", content: (

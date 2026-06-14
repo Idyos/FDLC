@@ -43,9 +43,9 @@ export default function PenyesGrid({
               }
             }}
             className={cn(
-              "h-15 flex flex-row items-center justify-center px-3 py-2 cursor-pointer select-none transition-colors",
+              "h-15 shadow-[0px_0px_6px_0px_#0000003d] flex flex-row items-center justify-center px-3 py-2 cursor-pointer select-none transition-colors",
               checked
-                ? "bg-green-500/20 border-green-500 dark:bg-green-500/30 dark:border-green-500"
+                ? "bg-green-500/60 dark:bg-green-500/80"
                 : "bg-card hover:bg-accent"
             )}
           >
