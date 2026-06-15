@@ -68,7 +68,6 @@ export default function CreateOrEditProva() {
 
     const [loadingProva, setLoadingProva] = useState(isCreating ? false : true);
     const [isFinished, setIsFinished] = useState(false);
-    const [isPenyesLoading, setIsPenyesLoading] = useState(false);
 
     const goToStep = (next: number) => {
         directionRef.current = next > currentStep ? 1 : -1;
@@ -92,7 +91,6 @@ export default function CreateOrEditProva() {
     useEffect(() => {
         if (!isCreating && provaId) {
             setLoadingProva(true);
-            setIsPenyesLoading(true);
 
             Promise.all([
                 getProvaInfo(selectedYear, provaId),
@@ -150,7 +148,6 @@ export default function CreateOrEditProva() {
                 });
 
                 setLoadingProva(false);
-                setIsPenyesLoading(false);
             });
         } else if (isCreating) {
             setIsLoading(true);
