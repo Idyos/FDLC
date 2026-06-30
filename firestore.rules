@@ -49,6 +49,7 @@ service cloud.firestore {
 
     match /Circuit/{year} {
       allow get, list: if true;
+      allow create: if canProves('create');
 
       match /Proves/{provaId} {
         allow get, list: if true;

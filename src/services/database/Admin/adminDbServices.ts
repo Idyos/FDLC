@@ -1,6 +1,6 @@
 import { Prova, PenyaInfo, EmptyProva, ParticipatingPenya, PenyaCreationData } from "@/interfaces/interfaces";
 import { db } from "../../../firebase/firebase";
-import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, deleteDoc, setDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { addImageToChallenges, addImageToPenyes } from "../../storageService";
 import { deleteUsersWithProva } from "../../usersService";
@@ -12,6 +12,25 @@ function toResultString(raw: unknown): string {
   if (typeof raw === "number") return raw <= 0 ? "" : String(raw);
   return "";
 }
+
+//#region YEARS
+export const createYear = async (year: number): Promise<void> => {
+  const yearRef = doc(db, "Circuit", year.toString());
+
+  try {
+    const existing = await getDoc(yearRef);
+    if (existing.exists()) {
+      throw new Error("Aquest any ja existeix.");
+    }
+
+    await setDoc(yearRef, { createdAt: new Date() });
+  } catch (error) {
+    console.error("Error creant l'any:", error);
+    toast.error("Error al crear l'any: " + error);
+    throw error;
+  }
+};
+//#endregion
 
 //#region PROVES
 export const getProves = async (
