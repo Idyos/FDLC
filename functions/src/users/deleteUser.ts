@@ -1,7 +1,7 @@
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/https";
 
-export const deleteUserFn = onCall(async (request) => {
+export const deleteUserFn = onCall({ cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Cal estar autenticat per eliminar usuaris.");
   }

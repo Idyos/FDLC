@@ -18,7 +18,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
-const functions = getFunctions(app);
+const functions = getFunctions(app, "europe-west1");
 
 if (import.meta.env.VITE_USE_EMULATOR === "true") {
   connectFirestoreEmulator(db, "localhost", 8081);
