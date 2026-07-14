@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/https";
 import { User } from "../types";
 
-export const getUsersFn = onCall({ cors: true }, async (request) => {
+export const getUsersFn = onCall({ cors: true, region: "europe-west1" }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Cal estar autenticat per veure usuaris.");
   }

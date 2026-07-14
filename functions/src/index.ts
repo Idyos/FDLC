@@ -5,7 +5,7 @@ import { deleteUserFn } from "./users/deleteUser";
 import { getUsersFn } from "./users/getUsers";
 
 admin.initializeApp();
-setGlobalOptions({ maxInstances: 10, region: "europe-west1" });
+setGlobalOptions({ maxInstances: 10 });
 
 export const createUser = createUserFn;
 export const deleteUser = deleteUserFn;
