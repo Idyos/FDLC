@@ -23,12 +23,11 @@ import { toast } from "sonner";
 import { getYears } from "@/services/database/publicDbService";
 import { createYear } from "@/services/database/Admin/adminDbServices";
 import { useYear } from "../shared/Contexts/YearContext";
-import { useAuth } from "@/routes/admin/AuthContext";
+import { isAdmin } from "@/services/authService";
 
 export default function YearSelector() {
   const [years, setYears] = useState<number[]>([]);
   const { selectedYear, setSelectedYear } = useYear();
-  const { user } = useAuth();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newYear, setNewYear] = useState("");
@@ -90,7 +89,7 @@ export default function YearSelector() {
               {year}
             </DropdownMenuItem>
           ))}
-          {user && (
+          {isAdmin() && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -107,7 +106,7 @@ export default function YearSelector() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {user && (
+      {isAdmin() && (
         <Dialog open={isDialogOpen} onOpenChange={(open) => !isSubmitting && setIsDialogOpen(open)}>
           <DialogContent className="sm:max-w-[400px]">
             <DialogHeader>
