@@ -97,7 +97,7 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
     <div>
       {/* ── Left sidebar: sub-prova list ─────────────────── */}
 
-      <Tabs value={selectedId ?? ""} className="max-w-[calc(100%-2rem)] mb-5">
+      <Tabs value={selectedId ?? ""} className="max-w-[calc(100%)] mb-5">
         {subProves.length > 0 && (
           <TabsList className="ml-3 mr-3 max-w-full rounded-full">
             <Button variant="outline" className="m-1 h-7.25 shrink-0 rounded-full" disabled={prova.isFinished}  onClick={() => setShowAddDialog(true)}>

@@ -10,8 +10,12 @@ import PublicBracketPanel from "@/components/admin/Proves/Bracket/PublicBracketP
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Trophy } from "lucide-react";
 import SingleProvaResult from "@/components/shared/PenyaProvaResults/singleProvaResult";
+import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
+import { ScrollBar } from "@/components/ui/scroll-area";
+
 const RESULTATS_TAB = "resultats";
 import { rankParticipants } from "@/utils/sorting";
+import { Separator } from "@/components/ui/separator";
 
 interface Props {
   year: number;
@@ -125,18 +129,27 @@ export default function PublicMultiProvaPanel({ year, provaId }: Props) {
     <Tabs
       value={selectedId ?? ""}
       onValueChange={setSelectedId}
-      className="p-4"
+      className="max-w-full mb-5 mx-0 sm:mx-5"
     >
-      <TabsList className="flex-wrap h-auto gap-1">
-        <TabsTrigger value={RESULTATS_TAB} className="gap-1.5">
-          <Trophy className="h-3.5 w-3.5" />
+      <TabsList className="w-full rounded-full">
+        <TabsTrigger value={RESULTATS_TAB} className="mr-2 flex-none w-auto rounded-full">
+          <Trophy />
           Resultats
-        </TabsTrigger>
-        {subProves.map((sp) => (
-          <TabsTrigger key={sp.id} value={sp.id}>
-            {sp.name}
-          </TabsTrigger>
-        ))}
+        </TabsTrigger> 
+        <Separator orientation="vertical" color="red"/>
+        <ScrollAreaPrimitive.Root className="relative flex-1 min-w-0 h-full ml-2" type="auto">
+          <ScrollAreaPrimitive.Viewport className="h-full w-full">
+            <div className="flex">
+              {subProves.map((sp) => (
+                <TabsTrigger className="rounded-full flex-none w-auto" key={sp.id} value={sp.id}>
+                  {sp.name}
+                </TabsTrigger>
+              ))}
+            </div>
+          </ScrollAreaPrimitive.Viewport>
+          <ScrollBar orientation="horizontal" />
+          <ScrollAreaPrimitive.Corner />
+        </ScrollAreaPrimitive.Root>
       </TabsList>
 
       <TabsContent value={RESULTATS_TAB}>
@@ -180,6 +193,6 @@ export default function PublicMultiProvaPanel({ year, provaId }: Props) {
           )}
         </TabsContent>
       ))}
-    </Tabs>
+      </Tabs>
   );
 }
