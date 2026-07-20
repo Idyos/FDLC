@@ -91,7 +91,7 @@ export const createChallengeSchema = z.object({
       return data.length === new Set(sorted.map((item) => item.from)).size;
     }, "Les posicions inicials no poden repetir-se"),
 }).superRefine((data, ctx) => {
-  const tiposQueRequierenWinDirection: ProvaType[] = ["Punts", "Temps"];
+  const tiposQueRequierenWinDirection: ProvaType[] = ["Punts", "Temps", "Rondes"];
   const direccionsValides: WinDirection[] = ["ASC", "DESC"];
 
   if (tiposQueRequierenWinDirection.includes(data.challengeType)) {

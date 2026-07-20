@@ -11,51 +11,19 @@ import { Prova, PenyaProvaFinalResultData, PenyaProvaResultData } from "@/interf
 import { db } from "@/firebase/firebase";
 import { deleteUsersWithProva } from "@/services/usersService";
 import { getProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";
-import { calculateGroupStandings } from "@/features/bracket/bracketDomain";
+import { calculateGroupStandings, computeBracketPositions } from "@/features/bracket/bracketDomain";
 import type { StoredProvaBracketDoc } from "@/features/bracket/types";
 
 /** Derives a teamId → position map from a stored bracket doc.
  *  Returns an empty map if the final match has not been played yet. */
 export function deriveBracketPositions(saved: StoredProvaBracketDoc): Map<string, number> {
   const { bracket, thirdPlaceMatch } = saved.finalStage;
-  const { matches, bracketSize } = bracket;
-  const positionMap = new Map<string, number>();
-
-  const totalRounds = Math.max(...matches.map((m) => m.roundNumber));
-  const finalMatch = matches.find((m) => m.roundNumber === totalRounds);
-  if (!finalMatch?.winnerTeamId) return positionMap;
-
-  const semifinalRound = totalRounds - 1;
-
-  positionMap.set(finalMatch.winnerTeamId, 1);
-  const finalLoserIdx = finalMatch.winnerSlot === "A" ? 1 : 0;
-  const finalLoserTeamId = finalMatch.teams[finalLoserIdx]?.teamId;
-  if (finalLoserTeamId) positionMap.set(finalLoserTeamId, 2);
-
-  if (thirdPlaceMatch?.status === "finished" && thirdPlaceMatch.winnerTeamId) {
-    positionMap.set(thirdPlaceMatch.winnerTeamId, 3);
-    if (thirdPlaceMatch.loserTeamId) positionMap.set(thirdPlaceMatch.loserTeamId, 4);
-  }
-
-  for (let r = totalRounds - 1; r >= 1; r--) {
-    const roundMatches = matches.filter((m) => m.roundNumber === r && m.status === "finished");
-    for (const m of roundMatches) {
-      if (!m.winnerSlot || !m.winnerTeamId) continue;
-      const loserIdx = m.winnerSlot === "A" ? 1 : 0;
-      const loserTeamId = m.teams[loserIdx]?.teamId;
-      if (!loserTeamId || positionMap.has(loserTeamId)) continue;
-      if (r === semifinalRound) {
-        positionMap.set(loserTeamId, 3);
-      } else {
-        positionMap.set(loserTeamId, bracketSize / Math.pow(2, r) + 1);
-      }
-    }
-  }
+  const positionMap = computeBracketPositions(bracket, thirdPlaceMatch);
 
   if (saved.mode === "groups_to_final" && saved.groupStage) {
     const { groups } = saved.groupStage;
     const numGroups = groups.length;
-    const groupLoserBasePos = bracketSize + 1;
+    const groupLoserBasePos = bracket.bracketSize + 1;
     for (const group of groups) {
       const standings = calculateGroupStandings(group.matches, group.teamIds);
       let loserTier = 0;
@@ -200,39 +168,7 @@ export async function generateBracketResults(year: number, provaId: string) {
   if (!finalMatch?.winnerTeamId) throw new Error("La final encara no s'ha jugat.");
 
   // 5. Build teamId → position map
-  const positionMap = new Map<string, number>();
-  const semifinalRound = totalRounds - 1;
-
-  // Final: winner → 1, loser → 2
-  positionMap.set(finalMatch.winnerTeamId, 1);
-  const finalLoserIdx = finalMatch.winnerSlot === "A" ? 1 : 0;
-  const finalLoserTeamId = finalMatch.teams[finalLoserIdx]?.teamId;
-  if (finalLoserTeamId) positionMap.set(finalLoserTeamId, 2);
-
-  // 3rd place match (when played): winner → 3, loser → 4
-  if (thirdPlaceMatch?.status === "finished" && thirdPlaceMatch.winnerTeamId) {
-    positionMap.set(thirdPlaceMatch.winnerTeamId, 3);
-    if (thirdPlaceMatch.loserTeamId) positionMap.set(thirdPlaceMatch.loserTeamId, 4);
-  }
-
-  // All other rounds: loser gets startPos = bracketSize / 2^round + 1
-  for (let r = totalRounds - 1; r >= 1; r--) {
-    const roundMatches = matches.filter((m) => m.roundNumber === r && m.status === "finished");
-    for (const m of roundMatches) {
-      if (!m.winnerSlot || !m.winnerTeamId) continue;
-      const loserIdx = m.winnerSlot === "A" ? 1 : 0;
-      const loserTeamId = m.teams[loserIdx]?.teamId;
-      if (!loserTeamId || positionMap.has(loserTeamId)) continue;
-
-      if (r === semifinalRound) {
-        // Semifinal losers: 3rd place match not played → share position 3
-        positionMap.set(loserTeamId, 3);
-      } else {
-        const startPos = bracketSize / Math.pow(2, r) + 1;
-        positionMap.set(loserTeamId, startPos);
-      }
-    }
-  }
+  const positionMap = computeBracketPositions(bracket, thirdPlaceMatch);
 
   // 5b. Groups-to-final: assign positions to group-stage losers
   if (saved.mode === "groups_to_final" && saved.groupStage) {

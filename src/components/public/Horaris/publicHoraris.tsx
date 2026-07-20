@@ -39,7 +39,7 @@ export default function PublicHoraris({ penyes }: Props) {
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             Les teves penyes
           </p>
-          <div className="grid grid-cols-[repeat(auto-fill,_minmax(220px,_1fr))] gap-3 mb-3">
+          <div className="grid grid-cols-[repeat(auto-fill,_minmax(250px,_1fr))] gap-3 mb-3">
             {favoriteItems.map((penya) => (
               <HorariCard key={penya.penyaId} penya={penya} />
             ))}
@@ -57,7 +57,7 @@ export default function PublicHoraris({ penyes }: Props) {
           <Separator className="mb-3" />
         </>
       )}
-      <div className="grid grid-cols-[repeat(auto-fill,_minmax(220px,_1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fill,_minmax(200px,_1fr))] gap-3">
         {penyes.map((penya) => (
           <HorariCard key={penya.penyaId} penya={penya} />
         ))}

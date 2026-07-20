@@ -532,7 +532,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
             <Card className="lg:col-span-3">
               <CardHeader>
-                <CardTitle className="text-base">Classament (top 10)</CardTitle>
+                <CardTitle className="text-base">Classificació (top 10)</CardTitle>
               </CardHeader>
               <CardContent>
                 <ClassamentChart data={stats.top10} />

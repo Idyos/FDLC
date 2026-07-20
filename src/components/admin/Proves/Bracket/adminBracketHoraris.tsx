@@ -51,9 +51,10 @@ function formatTime(date: Date): string {
 }
 
 function getMatchLabel(match: Match): string {
-  const nameA = match.teams[0]?.displayName ?? "Pendent";
-  const nameB = match.teams[1]?.displayName ?? "Pendent";
-  return `${nameA} vs ${nameB}`;
+  const names = match.teams
+    .filter((t) => t.source.type !== "bye")
+    .map((t) => t.displayName ?? "Pendent");
+  return names.join(" vs ");
 }
 
 interface Props {
@@ -190,7 +191,7 @@ export default function AdminBracketHoraris({
       {!readOnly && (
         <div className="flex flex-wrap gap-6 items-end">
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Durada per partit (min):</label>
+            <label className="text-sm font-medium">Durada per enfrentament (min):</label>
             <Input
               type="number"
               min={1}
@@ -203,7 +204,7 @@ export default function AdminBracketHoraris({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Partits simultanis màxims:</label>
+            <label className="text-sm font-medium">Enfrentaments simultanis màxims:</label>
             <Input
               type="number"
               min={1}

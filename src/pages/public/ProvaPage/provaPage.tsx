@@ -244,8 +244,8 @@ export default function ProvaPage() {
               <ProvaTitle />
 
               {provaInfo.intervalMinutes ? (
-                <Tabs defaultValue="resultats" className="p-4">
-                  <TabsList>
+                <Tabs defaultValue="resultats">
+                  <TabsList className="px-4 w-full gap-2">
                     <TabsTrigger value="resultats">Resultats</TabsTrigger>
                     <TabsTrigger value="horaris">Horaris</TabsTrigger>
                   </TabsList>

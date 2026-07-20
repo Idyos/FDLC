@@ -34,15 +34,15 @@ export default function StepTypeAndPenyes({
           </FormItem>
         )} />
 
-        {(challengeType === "Temps" || challengeType === "Punts") && (
+        {(challengeType === "Temps" || challengeType === "Punts" || challengeType === "Rondes") && (
           <FormField name="winDirection" render={({ field }) => (
             <FormItem id="winDirection">
               <FormLabel>Com es guanya: *</FormLabel>
-              <Select onValueChange={field.onChange}>
+              <Select value={field.value} onValueChange={field.onChange}>
                 <FormControl><SelectTrigger id="winDirection"><SelectValue placeholder="Selecciona forma de guanyar" /></SelectTrigger></FormControl>
                 <SelectContent position="popper">
-                  <SelectItem value="DESC">{challengeType === "Punts" ? "Com més punts millor" : "Com més temps millor"}</SelectItem>
-                  <SelectItem value="ASC">{challengeType === "Punts" ? "Com menys punts millor" : "Com menys temps millor"}</SelectItem>
+                  <SelectItem value="DESC">{challengeType === "Punts" ? "Com més punts millor" : challengeType === "Temps" ? "Com més temps millor" : "Com més puntuació millor"}</SelectItem>
+                  <SelectItem value="ASC">{challengeType === "Punts" ? "Com menys punts millor" : challengeType === "Temps" ? "Com menys temps millor" : "Com menys puntuació millor"}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

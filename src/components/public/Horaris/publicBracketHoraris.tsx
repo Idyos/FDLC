@@ -14,8 +14,10 @@ function formatTime(timeStr: string): string {
 }
 
 function MatchScheduleCard({ match, time }: { match: Match; time: string }) {
-  const nameA = match.teams[0]?.displayName ?? "Pendent";
-  const nameB = match.teams[1]?.displayName ?? "Pendent";
+  const label = match.teams
+    .filter((t) => t.source.type !== "bye")
+    .map((t) => t.displayName ?? "Pendent")
+    .join(" vs ");
   return (
     <div className="rounded-xl p-3 flex items-center justify-between gap-3 bg-white dark:bg-neutral-800 shadow-sm border">
       <div className="flex flex-col min-w-0">
@@ -23,7 +25,7 @@ function MatchScheduleCard({ match, time }: { match: Match; time: string }) {
           {match.roundName} · {match.position}
         </span>
         <span className="font-medium text-sm truncate">
-          {nameA} vs {nameB}
+          {label}
         </span>
       </div>
       <span className="text-sm font-mono text-gray-600 dark:text-neutral-300 whitespace-nowrap shrink-0">

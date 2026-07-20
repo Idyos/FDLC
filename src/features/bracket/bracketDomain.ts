@@ -1,5 +1,6 @@
 import {
   generateSingleElimBracket,
+  type GeneratedBracket,
   type Match,
   type Slot,
   type Team,
@@ -13,6 +14,7 @@ import type {
   GroupStanding,
   ThirdPlaceMatch,
 } from "@/features/bracket/types";
+import type { WinDirection } from "@/interfaces/interfaces";
 
 const MIN_GROUP_SIZE = 4;
 const MAX_GROUP_SIZE = 6;
@@ -301,6 +303,7 @@ export function createGroupFinalEntrants(
 
 export function buildFinalStageFromEntrants(
   entrants: FinalEntrant[],
+  teamsPerMatch: number = 2,
 ): FinalStageState | null {
   if (entrants.length < 2) {
     return null;
@@ -311,6 +314,7 @@ export function buildFinalStageFromEntrants(
     bracketId: "final",
     teams: toBracketTeams(entrants),
     pairingMode: "sequential",
+    teamsPerMatch,
   });
 
   return {
@@ -338,7 +342,7 @@ export function propagateBracketByes(matches: Match[]): Match[] {
       if (!match.winnerTeamId || !match.advanceTo) continue;
       const next = byId.get(match.advanceTo.matchId);
       if (!next) continue;
-      const slotIdx: number = match.advanceTo.slot === "A" ? 0 : 1;
+      const slotIdx = match.advanceTo.slot;
       if (next.teams[slotIdx].teamId == null) {
         const winner = match.teams.find((t) => t.teamId === match.winnerTeamId);
         next.teams = [...next.teams];
@@ -368,7 +372,7 @@ function propagateTeamToSlot(
   const idx = matches.findIndex((m) => m.id === matchId);
   if (idx === -1) return;
 
-  const slotIdx = slot === "A" ? 0 : 1;
+  const slotIdx = slot;
   if (matches[idx].teams[slotIdx].teamId === teamId) return;
 
   const match = matches[idx];
@@ -387,38 +391,71 @@ function propagateTeamToSlot(
   }
 }
 
-/** Records the result of a bracket match and propagates the winner to the next
- *  match slot. scoreA / scoreB must differ (no draws in knockout).
- *  If the winner changes, the new team is propagated through subsequent rounds
- *  while preserving their existing scores and results. */
-export function resolveMatchWinner(
+/** Records the result of a bracket match (up to K scores, one per team.length
+ *  slot, null for slots without an entered score yet) and propagates the
+ *  winner to the next match slot.
+ *  - If any real (non-BYE, resolved) participant is still missing a score,
+ *    the entered scores are stored but nothing is resolved.
+ *  - Once every real participant has a score, the best value (per
+ *    winDirection: lowest wins for "ASC", highest wins otherwise) determines
+ *    the winner.
+ *  - If 2+ participants tie for the best value, the match stays unresolved
+ *    (scores are stored, no winner/advance) until the tie is broken.
+ *  If the winner changes, the new team is propagated through subsequent
+ *  rounds while preserving their existing scores and results. */
+export function resolveMatchResult(
   matches: Match[],
   matchId: string,
-  scoreA: number,
-  scoreB: number,
+  scores: (number | null)[],
+  winDirection: WinDirection,
 ): Match[] {
   const updated = matches.map((m) => ({ ...m, teams: [...m.teams] }));
   const idx = updated.findIndex((m) => m.id === matchId);
   if (idx === -1) return updated;
 
-  const winnerSlot: Slot = scoreA > scoreB ? "A" : "B";
-  const winnerIdx = winnerSlot === "A" ? 0 : 1;
-  const newWinnerId = updated[idx].teams[winnerIdx].teamId ?? null;
+  const match = updated[idx];
+  const teamsWithScores = match.teams.map((t, i) => {
+    const s = scores[i];
+    return s == null ? t : { ...t, score: { ...t.score, gamesWon: s } };
+  });
+
+  const realSlots = match.teams
+    .map((t, i) => (t.source.type !== "bye" && t.teamId ? i : -1))
+    .filter((i) => i !== -1);
+  const allRealScored = realSlots.length > 0 && realSlots.every((i) => scores[i] != null);
+
+  if (!allRealScored) {
+    updated[idx] = { ...match, teams: teamsWithScores };
+    return updated;
+  }
+
+  const ascending = winDirection === "ASC";
+  const bestSlot = realSlots.reduce((bestIdx, i) => {
+    const value = scores[i]!;
+    const bestValue = scores[bestIdx]!;
+    return (ascending ? value < bestValue : value > bestValue) ? i : bestIdx;
+  }, realSlots[0]);
+  const winners = realSlots.filter((i) => scores[i] === scores[bestSlot]);
+
+  if (winners.length !== 1) {
+    updated[idx] = { ...match, status: "scheduled", winnerSlot: null, winnerTeamId: null, teams: teamsWithScores };
+    return updated;
+  }
+
+  const winnerSlot = winners[0];
+  const newWinnerId = match.teams[winnerSlot].teamId ?? null;
 
   updated[idx] = {
-    ...updated[idx],
+    ...match,
     status: "finished",
     winnerSlot,
     winnerTeamId: newWinnerId,
-    teams: updated[idx].teams.map((t, i) => ({
-      ...t,
-      score: { ...t.score, gamesWon: i === 0 ? scoreA : scoreB },
-    })),
+    teams: teamsWithScores,
   };
 
   const advanceTo = updated[idx].advanceTo;
   if (advanceTo && newWinnerId) {
-    const winnerTeam = updated[idx].teams[winnerIdx];
+    const winnerTeam = updated[idx].teams[winnerSlot];
     propagateTeamToSlot(updated, advanceTo.matchId, advanceTo.slot, newWinnerId, winnerTeam.displayName ?? newWinnerId);
   }
 
@@ -429,24 +466,30 @@ export function resolveMatchWinner(
 // 3rd-place match helpers
 // ---------------------------------------------------------------------------
 
-/** Returns true when the bracket has enough rounds to have a semifinal,
- *  meaning a 3rd-place playoff makes sense (≥4 teams, ≥2 rounds). */
+/** Returns true when the bracket has enough rounds to have a semifinal
+ *  (≥4 teams, ≥2 rounds) AND is a classic 2-teams-per-match bracket. A 3rd
+ *  place playoff has no clean generalization when K>2 (the round before the
+ *  final has K matches, not 2, so there's no single pair of semifinal losers
+ *  to seed it from), so it's intentionally not offered for K≠2 brackets. */
 export function shouldHaveThirdPlaceMatch(matches: Match[]): boolean {
   if (matches.length === 0) return false;
+  const teamsPerMatch = matches[0].teams.length;
+  if (teamsPerMatch !== 2) return false;
   const totalRounds = Math.max(...matches.map((m) => m.roundNumber));
   return totalRounds >= 2;
 }
 
 /** Derives the 3rd-place match from the two semifinal losers.
  *  Preserves existing scores if the participants haven't changed.
- *  Returns null if no semifinal has been played yet. */
+ *  Returns null if no semifinal has been played yet, or if the bracket
+ *  doesn't have a 3rd place match (see shouldHaveThirdPlaceMatch). */
 export function syncThirdPlaceFromSemifinals(
   matches: Match[],
   current: ThirdPlaceMatch | null | undefined,
 ): ThirdPlaceMatch | null {
-  const totalRounds = Math.max(...matches.map((m) => m.roundNumber));
-  if (totalRounds < 2) return null;
+  if (!shouldHaveThirdPlaceMatch(matches)) return null;
 
+  const totalRounds = Math.max(...matches.map((m) => m.roundNumber));
   const semifinalRound = totalRounds - 1;
   const semifinals = matches
     .filter((m) => m.roundNumber === semifinalRound)
@@ -455,8 +498,8 @@ export function syncThirdPlaceFromSemifinals(
   if (semifinals.length < 2) return null;
 
   const getLoser = (m: Match): { teamId: string | null; displayName: string | null } | null => {
-    if (!m.winnerSlot || !m.winnerTeamId) return null;
-    const loserIdx = m.winnerSlot === "A" ? 1 : 0;
+    if (m.winnerSlot == null || !m.winnerTeamId) return null;
+    const loserIdx = 1 - m.winnerSlot;
     const loserTeam = m.teams[loserIdx];
     return {
       teamId: loserTeam?.teamId ?? null,
@@ -507,7 +550,7 @@ export function clearMatchResult(matches: Match[], matchId: string): Match[] {
   if (match.advanceTo) {
     const nextIdx = updated.findIndex((m) => m.id === match.advanceTo!.matchId);
     if (nextIdx !== -1) {
-      const slotIdx = match.advanceTo.slot === "A" ? 0 : 1;
+      const slotIdx = match.advanceTo.slot;
       updated[nextIdx] = {
         ...updated[nextIdx],
         status: updated[nextIdx].status === "finished" ? "scheduled" : updated[nextIdx].status,
@@ -530,4 +573,50 @@ export function clearMatchResult(matches: Match[], matchId: string): Match[] {
   };
 
   return updated;
+}
+
+// ---------------------------------------------------------------------------
+// Final standings / positions
+// ---------------------------------------------------------------------------
+
+/** Computes teamId → final position for a finished (or partially finished)
+ *  elimination bracket. Every finished match's non-winning participants
+ *  (K-1 of them) tie for the same position tier: bracketSize / K^round + 1.
+ *  This reproduces the classic K=2 tiers (final loser → 2, semifinal loser →
+ *  3) as special cases. When the 3rd place match has been played (K=2 only),
+ *  it overrides the semifinal-tier tie with a clean 3rd/4th split. */
+export function computeBracketPositions(
+  bracket: Pick<GeneratedBracket, "matches" | "bracketSize" | "teamsPerMatch">,
+  thirdPlaceMatch: ThirdPlaceMatch | null | undefined,
+): Map<string, number> {
+  const { matches, bracketSize, teamsPerMatch } = bracket;
+  const positionMap = new Map<string, number>();
+  if (matches.length === 0) return positionMap;
+
+  const totalRounds = Math.max(...matches.map((m) => m.roundNumber));
+  const finalMatch = matches.find((m) => m.roundNumber === totalRounds);
+  if (!finalMatch?.winnerTeamId) return positionMap;
+
+  positionMap.set(finalMatch.winnerTeamId, 1);
+
+  if (teamsPerMatch === 2 && thirdPlaceMatch?.status === "finished" && thirdPlaceMatch.winnerTeamId) {
+    positionMap.set(thirdPlaceMatch.winnerTeamId, 3);
+    if (thirdPlaceMatch.loserTeamId) positionMap.set(thirdPlaceMatch.loserTeamId, 4);
+  }
+
+  for (let r = totalRounds; r >= 1; r -= 1) {
+    const tier = bracketSize / Math.pow(teamsPerMatch, r) + 1;
+    const roundMatches = matches.filter((m) => m.roundNumber === r && m.status === "finished");
+    for (const m of roundMatches) {
+      if (m.winnerSlot == null || !m.winnerTeamId) continue;
+      m.teams.forEach((participant, slotIdx) => {
+        if (slotIdx === m.winnerSlot) return;
+        const loserTeamId = participant.teamId;
+        if (!loserTeamId || positionMap.has(loserTeamId)) return;
+        positionMap.set(loserTeamId, tier);
+      });
+    }
+  }
+
+  return positionMap;
 }

@@ -98,6 +98,60 @@ function sanitizeTeamSnapshot(value: unknown): BracketTeamSnapshot[] {
   return teams;
 }
 
+/** Legacy documents (written before matchups became configurable) store
+ *  slots as the strings "A"/"B" instead of a numeric index. Normalizes
+ *  either shape to a number so the rest of the app can always assume
+ *  numeric slots. */
+function normalizeSlot(value: unknown): number {
+  if (typeof value === "number") return value;
+  if (value === "A") return 0;
+  if (value === "B") return 1;
+  return 0;
+}
+
+/** `finalStage` (bracket matches, entrants, 3rd place match) has never been
+ *  schema-validated on read — it's trusted as-is. This normalizes the two
+ *  concerns introduced by configurable teams-per-match, so both legacy and
+ *  current documents are safe to use as `FinalStageState`:
+ *  - `bracket.teamsPerMatch` defaults to 2 when missing (all brackets
+ *    generated before this feature were implicitly 2 teams per match).
+ *  - Legacy string slots ("A"/"B") are converted to numeric (0/1).
+ *  Documents are rewritten in the new shape the next time they're saved
+ *  (saveProvaBracket always overwrites the full document), so this is a
+ *  read-time, self-healing normalization rather than a migration script. */
+function normalizeFinalStage(value: unknown): FinalStageState {
+  const raw = isRecord(value) ? value : {};
+  const rawBracket = isRecord(raw.bracket) ? raw.bracket : {};
+  const rawMatches = Array.isArray(rawBracket.matches) ? rawBracket.matches : [];
+
+  const matches = rawMatches.map((item, idx) => {
+    const match = isRecord(item) ? item : {};
+    const rawTeams = Array.isArray(match.teams) ? match.teams : [];
+    const teams = rawTeams.map((t, teamIdx) => {
+      const participant = isRecord(t) ? t : {};
+      return { ...participant, slot: normalizeSlot(participant.slot ?? teamIdx) };
+    });
+    const advanceTo = isRecord(match.advanceTo)
+      ? { ...match.advanceTo, slot: normalizeSlot(match.advanceTo.slot) }
+      : (match.advanceTo as null | undefined) ?? null;
+    const winnerSlot = match.winnerSlot == null ? null : normalizeSlot(match.winnerSlot);
+
+    return { ...match, teams, advanceTo, winnerSlot, id: match.id ?? idx };
+  });
+
+  const teamsPerMatch =
+    typeof rawBracket.teamsPerMatch === "number" &&
+    rawBracket.teamsPerMatch >= 2 &&
+    rawBracket.teamsPerMatch <= 8
+      ? rawBracket.teamsPerMatch
+      : 2;
+
+  return {
+    ...raw,
+    bracket: { ...rawBracket, matches, teamsPerMatch },
+  } as unknown as FinalStageState;
+}
+
 function bracketDocPath(year: number, provaId: string, subProvaId?: string): string {
   if (subProvaId) {
     return `Circuit/${year}/Proves/${provaId}/SubProves/${subProvaId}/Bracket/current`;
@@ -131,7 +185,7 @@ export async function getProvaBracket(
     mode: sanitizeBracketMode(data.mode),
     teamSnapshot: sanitizeTeamSnapshot(data.teamSnapshot),
     groupStage: sanitizeGroupStage(data.groupStage),
-    finalStage: data.finalStage as unknown as FinalStageState,
+    finalStage: normalizeFinalStage(data.finalStage),
     updatedAt,
     updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : null,
     matchDurationMinutes: typeof data.matchDurationMinutes === "number" ? data.matchDurationMinutes : null,
@@ -167,7 +221,7 @@ export function subscribeProvaBracket(
         mode: sanitizeBracketMode(data.mode),
         teamSnapshot: sanitizeTeamSnapshot(data.teamSnapshot),
         groupStage: sanitizeGroupStage(data.groupStage),
-        finalStage: data.finalStage as unknown as FinalStageState,
+        finalStage: normalizeFinalStage(data.finalStage),
         updatedAt,
         updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : null,
         matchDurationMinutes: typeof data.matchDurationMinutes === "number" ? data.matchDurationMinutes : null,

@@ -1,6 +1,7 @@
 import { Prova, PenyaInfo, EmptyProva, ParticipatingPenya, PenyaCreationData } from "@/interfaces/interfaces";
-import { db } from "../../../firebase/firebase";
-import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, deleteDoc, setDoc } from "firebase/firestore";
+import { db, functions } from "../../../firebase/firebase";
+import { httpsCallable } from "firebase/functions";
+import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, setDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import { addImageToChallenges, addImageToPenyes } from "../../storageService";
 import { deleteUsersWithProva } from "../../usersService";
@@ -398,9 +399,9 @@ export const updatePenyaInfo = async (year: number, penyaId: string, name: strin
 }
 
 export const deletePenya = async (year: number, penyaId: string): Promise<void> => {
-  const penyaRef = doc(db, `Circuit/${year}/Penyes/${penyaId}`);
   try {
-    await deleteDoc(penyaRef);
+    const fn = httpsCallable(functions, "deletePenya");
+    await fn({ year, penyaId });
   } catch (error) {
     console.error("Error eliminant la penya:", error);
     toast.error("Error al eliminar la penya: " + error);

@@ -1,8 +1,8 @@
 /**
- * Sing/**
  * Single-Elimination Bracket Generator (TypeScript)
  * -------------------------------------------------
- * - Admite N parejas (no potencia de 2) ⇒ pone BYEs para que los mejores seeds empiecen más tarde.
+ * - Admite N equipos (no potencia de K) ⇒ pone BYEs para que los mejores seeds empiecen más tarde.
+ * - Admite de 2 a 8 equipos por enfrentamiento (teamsPerMatch / K), fijo para todo el cuadro.
  * - Genera rondas, posiciones, conexiones (advanceTo / comesFrom) y participantes por match.
  * - Pensado para persistir en Firestore con el modelo que comentamos.
  *
@@ -17,6 +17,7 @@
  *   bracketId: 'b-masculino-A',
  *   teams,
  *   bestOfSets: 3,
+ *   teamsPerMatch: 4,
  * });
  * // bracket.matches ⇒ array listo para guardar/renderizar
  */
@@ -25,7 +26,7 @@
 // ---------------------- Tipos ----------------------
 
 
-export type Slot = 'A' | 'B';
+export type Slot = number; // 0..K-1
 
 
 export type SourceType = 'seed' | 'match' | 'bye' | 'manual';
@@ -39,17 +40,20 @@ export interface Team {
 }
 
 
+export interface SourceRef {
+  type: SourceType;
+  matchId?: string | null;
+  take?: 'winner' | 'loser' | null;
+}
+
+
 export interface Participant {
   slot: Slot;
   teamId?: string;
   displayName?: string;
   seed?: number;
   players?: { id: string; name: string }[];
-  source: {
-    type: SourceType;
-    matchId?: string | null;
-    take?: 'winner' | 'loser' | null;
-  };
+  source: SourceRef;
   score?: { sets?: number[]; tiebreaks?: (number | null)[]; gamesWon?: number };
   wo?: boolean;
 }
@@ -66,11 +70,11 @@ export interface Match {
   scheduledAt?: number; // opcional
   court?: string; // opcional
   format?: { bestOfSets?: number; tiebreakAt6All?: boolean; finalSetTiebreak?: boolean };
-  teams: Participant[]; // dos slots A/B
+  teams: Participant[]; // K slots (0..K-1)
   winnerSlot?: Slot | null;
   winnerTeamId?: string | null;
   advanceTo?: { matchId: string; slot: Slot } | null;
-  comesFrom?: Record<Slot, { type: SourceType; matchId?: string | null; take?: 'winner' | 'loser' | null } | undefined>;
+  comesFrom?: SourceRef[]; // paralelo a teams[], por índice de slot
   createdAt?: number;
   updatedAt?: number;
 }
@@ -79,32 +83,39 @@ export interface Match {
 export interface GenerateOptions {
   tournamentId: string;
   bracketId: string;
-  teams: Team[]; // longitud N, N puede no ser potencia de 2
+  teams: Team[]; // longitud N, N puede no ser potencia de K
   bestOfSets?: number; // por defecto 3
   tiebreakAt6All?: boolean; // por defecto true
   finalSetTiebreak?: boolean; // por defecto true
   pairingMode?: 'balanced_seeded' | 'sequential';
   // Si prefieres orden de semillas custom, pásalo aquí (array de seeds en orden de colocación)
   customSeedOrder?: number[];
+  teamsPerMatch?: number; // equipos por enfrentamiento, 2..8. Por defecto 2.
 }
 
 
 export interface GeneratedBracket {
   matches: Match[];
   rounds: { roundNumber: number; roundName: string; matchCount: number }[];
-  bracketSize: number; // potencia de 2 utilizada
+  bracketSize: number; // potencia de K utilizada
   byes: number; // cuántos huecos quedaron como bye
+  teamsPerMatch: number; // K resuelto para este cuadro
 }
 
 
 // ---------------------- Utilidades ----------------------
 
 
-function nextPowerOfTwo(n: number): number {
-  if (n < 1) return 1;
+/** Menor potencia de K que es ≥ n, junto con el exponente (número de rondas). */
+function nextPowerOfK(n: number, k: number): { value: number; exponent: number } {
+  if (n < 1) return { value: 1, exponent: 0 };
   let p = 1;
-  while (p < n) p <<= 1;
-  return p;
+  let exponent = 0;
+  while (p < n) {
+    p *= k;
+    exponent += 1;
+  }
+  return { value: p, exponent };
 }
 
 
@@ -121,8 +132,9 @@ function roundName(roundIndex: number, totalRounds: number): string {
 
 /**
  * Genera el orden de colocación de seeds en un cuadro de tamaño P (potencia de 2)
- * usando el patrón clásico de "balanced/fixed seeding".
- * Devuelve un array de posiciones 1..P donde va cada seed.
+ * usando el patrón clásico de "balanced/fixed seeding". Solo válido para K=2
+ * (pairingMode 'balanced_seeded' no está generalizado a K>2, ver guarda en
+ * generateSingleElimBracket).
  *
  * Ejemplo P=8 → [1,8,5,4,3,6,7,2]
  */
@@ -145,7 +157,7 @@ function generateSeedPositions(P: number): number[] {
 
 /**
  * A partir de P (potencia de 2), devuelve las parejas de posiciones que se enfrentan
- * en la primera ronda (roundNumber=1). Cada par es [posA, posB].
+ * en la primera ronda (roundNumber=1). Cada par es [posA, posB]. Solo K=2.
  */
 function firstRoundPairs(P: number): [number, number][] {
   const pos = generateSeedPositions(P);
@@ -156,43 +168,49 @@ function firstRoundPairs(P: number): [number, number][] {
   return pairs;
 }
 
-function sequentialPairs(P: number): [number, number][] {
-  const pairs: [number, number][] = [];
-  for (let i = 1; i <= P; i += 2) {
-    pairs.push([i, i + 1]);
-  }
-  return pairs;
-}
 
 /**
- * Construye un tablero secuencial evitando partidos BYE vs BYE en ronda 1.
- * Reparte primero partidos real vs real y luego real vs BYE.
+ * A partir de P (potencia de K), devuelve los grupos de K posiciones que se
+ * enfrentan en la primera ronda (roundNumber=1), en orden secuencial de entrada.
  */
-function buildSequentialByeSafeBoard(sortedTeams: Team[], P: number): (Team | 'BYE')[] {
-  const N = sortedTeams.length;
-  const totalPairs = P / 2;
-  const byes = P - N;
-  const byeMatches = byes;
-  const realRealMatches = totalPairs - byeMatches;
+function sequentialGroups(P: number, K: number): number[][] {
+  const groups: number[][] = [];
+  for (let i = 1; i <= P; i += K) {
+    const group: number[] = [];
+    for (let j = 0; j < K; j += 1) group.push(i + j);
+    groups.push(group);
+  }
+  return groups;
+}
 
-  const pairSlots: [Team | 'BYE', Team | 'BYE'][] = [];
+
+/**
+ * Construye un tablero secuencial de tamaño P repartiendo los N equipos reales
+ * lo más uniformemente posible entre P/K grupos de K posiciones (evitando BYE vs
+ * BYE en ronda 1): cada grupo recibe floor(N/totalGroups) o floor(N/totalGroups)+1
+ * equipos reales, rellenando el resto del grupo con BYE. Como P es la menor
+ * potencia de K ≥ N, totalGroups siempre es ≤ N, así que ningún grupo queda
+ * completamente vacío.
+ */
+function buildSequentialByeSafeBoard(sortedTeams: Team[], P: number, K: number): (Team | 'BYE')[] {
+  const N = sortedTeams.length;
+  const totalGroups = P / K;
+  const baseline = Math.floor(N / totalGroups);
+  const extra = N % totalGroups;
+
+  const board: (Team | 'BYE')[] = [];
   let cursor = 0;
 
-  // 1) Partidos real vs real
-  for (let i = 0; i < realRealMatches; i += 1) {
-    const teamA = sortedTeams[cursor++];
-    const teamB = sortedTeams[cursor++];
-    pairSlots.push([teamA, teamB]);
+  for (let g = 0; g < totalGroups; g += 1) {
+    const realCount = g < extra ? baseline + 1 : baseline;
+    const byeCount = K - realCount;
+    const reals = sortedTeams.slice(cursor, cursor + realCount);
+    cursor += realCount;
+    const byes: 'BYE'[] = new Array(byeCount).fill('BYE');
+    // Alterna si los BYE van al principio o al final del grupo (puramente cosmético).
+    const byesFirst = byeCount > 0 && g % 2 === 1;
+    board.push(...(byesFirst ? [...byes, ...reals] : [...reals, ...byes]));
   }
-
-  // 2) Partidos real vs BYE (alternando lado del BYE)
-  for (let i = 0; i < byeMatches; i += 1) {
-    const team = sortedTeams[cursor++];
-    const byeOnA = i % 2 === 0;
-    pairSlots.push(byeOnA ? ['BYE', team] : [team, 'BYE']);
-  }
-
-  const board = pairSlots.flatMap((pair) => pair);
 
   // Fallback defensivo por si se dan inputs fuera de contrato.
   while (board.length < P) {
@@ -256,11 +274,21 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
     finalSetTiebreak = true,
     pairingMode = 'balanced_seeded',
     customSeedOrder,
+    teamsPerMatch = 2,
   } = opts;
 
 
   if (!teams || teams.length < 2) {
     throw new Error('Se requieren al menos 2 parejas.');
+  }
+
+
+  const K = Math.round(teamsPerMatch);
+  if (!Number.isFinite(K) || K < 2 || K > 8) {
+    throw new Error('teamsPerMatch debe ser un número entero entre 2 y 8.');
+  }
+  if (pairingMode === 'balanced_seeded' && K !== 2) {
+    throw new Error('El modo de emparejamiento "balanced_seeded" solo admite 2 equipos por enfrentamiento.');
   }
 
 
@@ -272,7 +300,7 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
 
 
   // 2) Tamaño de cuadro y BYEs
-  const P = nextPowerOfTwo(N); // bracketSize
+  const { value: P, exponent: totalRounds } = nextPowerOfK(N, K); // bracketSize
   const byes = P - N;
 
 
@@ -280,7 +308,7 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
   let board: (Team | 'BYE')[] = new Array(P).fill('BYE');
 
   if (pairingMode === 'sequential') {
-    board = buildSequentialByeSafeBoard(sorted, P);
+    board = buildSequentialByeSafeBoard(sorted, P, K);
   } else {
     const basePositions = customSeedOrder && customSeedOrder.length === P
       ? customSeedOrder.slice()
@@ -296,23 +324,20 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
 
 
   // 4) Construimos rondas
-  const totalRounds = Math.log2(P);
-
-
   // Matriz con los IDs de match por ronda/posición para enlazar advanceTo fácilmente
   const matchIdGrid: string[][] = [];
   const matches: Match[] = [];
 
 
-  // Round 1: modo clásico por seeds o secuencial por orden de entrada
-  const r1Pairs = pairingMode === 'sequential'
-    ? sequentialPairs(P)
-    : firstRoundPairs(P); // pares de posiciones (índices 1..P)
+  // Round 1: modo clásico por seeds (K=2) o secuencial por orden de entrada (grupos de K)
+  const r1Groups: number[][] = pairingMode === 'sequential'
+    ? sequentialGroups(P, K)
+    : firstRoundPairs(P); // firstRoundPairs solo se alcanza con K=2, ver guarda arriba
 
 
   // Crea todos los matches vacíos por cada ronda y posición (IDs primero)
   for (let r = 1; r <= totalRounds; r++) {
-    const matchCount = P / Math.pow(2, r);
+    const matchCount = P / Math.pow(K, r);
     matchIdGrid[r - 1] = [];
     for (let pos = 1; pos <= matchCount; pos++) {
       const id = idFor(r, pos, totalRounds);
@@ -322,37 +347,24 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
 
 
   // Construye Round 1 con participantes y BYEs
-  r1Pairs.forEach(([posA, posB], i) => {
-    const teamA = board[posA - 1];
-    const teamB = board[posB - 1];
-
-
+  r1Groups.forEach((positions, i) => {
     const matchId = matchIdGrid[0][i];
 
-
-    const participants: Participant[] = [
-      teamA === 'BYE'
-        ? { slot: 'A', source: { type: 'bye', matchId: null, take: null } }
+    const participants: Participant[] = positions.map((pos, slot) => {
+      const team = board[pos - 1];
+      return team === 'BYE'
+        ? { slot, source: { type: 'bye' as SourceType, matchId: null, take: null } }
         : {
-            slot: 'A',
-            teamId: teamA.teamId,
-            displayName: teamA.displayName,
-            seed: teamA.seed,
-            players: teamA.players,
-            source: { type: 'seed', matchId: null, take: null },
-          },
-      teamB === 'BYE'
-        ? { slot: 'B', source: { type: 'bye', matchId: null, take: null } }
-        : {
-            slot: 'B',
-            teamId: teamB.teamId,
-            displayName: teamB.displayName,
-            seed: teamB.seed,
-            players: teamB.players,
-            source: { type: 'seed', matchId: null, take: null },
-          },
-    ];
+            slot,
+            teamId: team.teamId,
+            displayName: team.displayName,
+            seed: team.seed,
+            players: team.players,
+            source: { type: 'seed' as SourceType, matchId: null, take: null },
+          };
+    });
 
+    const comesFrom: SourceRef[] = participants.map((p) => ({ ...p.source }));
 
     const m: Match = {
       id: matchId,
@@ -366,11 +378,8 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
       teams: participants,
       winnerSlot: null,
       winnerTeamId: null,
-      advanceTo: null, // se rellenará tras crear la ronda 2
-      comesFrom: {
-        A: participants[0].source.type === 'seed' ? { type: 'seed', matchId: null, take: null } : { type: 'bye', matchId: null, take: null },
-        B: participants[1].source.type === 'seed' ? { type: 'seed', matchId: null, take: null } : { type: 'bye', matchId: null, take: null },
-      },
+      advanceTo: null, // se rellenará tras crear la ronda siguiente
+      comesFrom,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -382,29 +391,21 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
 
   // Crea rondas 2..R con placeholders que se alimentan de ganadores anteriores
   for (let r = 2; r <= totalRounds; r++) {
-    // const prevCount = P / Math.pow(2, r - 1);
-    const currCount = P / Math.pow(2, r);
-
+    const currCount = P / Math.pow(K, r);
 
     for (let pos = 1; pos <= currCount; pos++) {
       const id = matchIdGrid[r - 1][pos - 1];
-      // Los dos partidos previos que alimentan este match
-      const prevAIndex = (pos - 1) * 2; // 0-based
-      const prevBIndex = prevAIndex + 1;
-      const prevMatchA = matchIdGrid[r - 2][prevAIndex];
-      const prevMatchB = matchIdGrid[r - 2][prevBIndex];
 
-
-      const participants: Participant[] = [
-        {
-          slot: 'A',
-          source: { type: 'match', matchId: prevMatchA, take: 'winner' },
-        },
-        {
-          slot: 'B',
-          source: { type: 'match', matchId: prevMatchB, take: 'winner' },
-        },
-      ];
+      // Los K partidos previos que alimentan este match
+      const participants: Participant[] = [];
+      const comesFrom: SourceRef[] = [];
+      for (let slot = 0; slot < K; slot += 1) {
+        const prevIndex = (pos - 1) * K + slot; // 0-based en la ronda anterior
+        const prevMatchId = matchIdGrid[r - 2][prevIndex];
+        const ref: SourceRef = { type: 'match', matchId: prevMatchId, take: 'winner' };
+        participants.push({ slot, source: ref });
+        comesFrom.push({ ...ref });
+      }
 
 
       const m: Match = {
@@ -420,10 +421,7 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
         winnerSlot: null,
         winnerTeamId: null,
         advanceTo: null, // se rellena salvo que sea la final
-        comesFrom: {
-          A: { type: 'match', matchId: prevMatchA, take: 'winner' },
-          B: { type: 'match', matchId: prevMatchB, take: 'winner' },
-        },
+        comesFrom,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -436,30 +434,30 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
 
   // Rellenar advanceTo en todas las rondas excepto la final
   for (let r = 1; r < totalRounds; r++) {
-    const currCount = P / Math.pow(2, r);
+    const currCount = P / Math.pow(K, r);
     for (let pos = 1; pos <= currCount; pos++) {
-      const thisId = matchIdGrid[r - 1][pos - 1];
-      const nextId = matchIdGrid[r][Math.ceil(pos / 2) - 1];
-      // El ganador ocupa A si pos impar, B si pos par
-      const slot: Slot = (pos % 2 === 1) ? 'A' : 'B';
+      const pos0 = pos - 1; // 0-based
+      const thisId = matchIdGrid[r - 1][pos0];
+      const nextId = matchIdGrid[r][Math.floor(pos0 / K)];
+      const slot: Slot = pos0 % K;
       const m = matches.find(mm => mm.id === thisId)!;
       m.advanceTo = { matchId: nextId, slot };
     }
   }
 
 
-  // Auto-resolución de BYEs en ronda 1 (opcional):
-  // si un match tiene un BYE real (uno de los slots BYE y el otro seed), puedes marcar ganadorSlot automáticamente.
+  // Auto-resolución de BYEs en ronda 1: si en un match solo queda 1 participante
+  // real (el resto son BYE), ese participante gana automáticamente.
   matches.forEach(m => {
     if (m.roundNumber === 1) {
-      const aBye = m.teams[0].source.type === 'bye';
-      const bBye = m.teams[1].source.type === 'bye';
-      if (aBye !== bBye) {
-        // ganador es el que NO es bye
-        const winnerSlot: Slot = aBye ? 'B' : 'A';
+      const realSlots = m.teams
+        .map((t, idx) => (t.source.type !== 'bye' ? idx : -1))
+        .filter((idx) => idx !== -1);
+      if (realSlots.length === 1) {
+        const winnerSlot = realSlots[0];
         m.status = 'bye';
         m.winnerSlot = winnerSlot;
-        m.winnerTeamId = m.teams[winnerSlot === 'A' ? 0 : 1].teamId ?? null;
+        m.winnerTeamId = m.teams[winnerSlot].teamId ?? null;
       }
     }
   });
@@ -469,11 +467,11 @@ export function generateSingleElimBracket(opts: GenerateOptions): GeneratedBrack
   const rounds = Array.from({ length: totalRounds }, (_, i) => ({
     roundNumber: i + 1,
     roundName: roundName(i + 1, totalRounds),
-    matchCount: P / Math.pow(2, i + 1),
+    matchCount: P / Math.pow(K, i + 1),
   }));
 
 
-  return { matches, rounds, bracketSize: P, byes };
+  return { matches, rounds, bracketSize: P, byes, teamsPerMatch: K };
 }
 
 

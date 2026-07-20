@@ -52,7 +52,7 @@ export function toGlootMatches(
       teamId != null && !teamId.startsWith("placeholder-");
 
     const participants = match.teams.map((participant, participantIndex) => {
-      const slot: Slot = participantIndex === 0 ? "A" : "B";
+      const slot: Slot = participantIndex;
       return {
         id:
           participant.teamId ??

@@ -6,16 +6,16 @@ type SlotStatus = "under" | "ok" | "overflow";
 
 interface BracketViewerProps {
   matches: GlootMatchData[];
-  onScoreChange?: (internalId: string, scoreA: number | null, scoreB: number | null) => void;
+  onScoreChange?: (internalId: string, scores: (number | null)[]) => void;
   readOnly?: boolean;
   matchSchedules?: Record<string, string>;
   onTimeChange?: (internalId: string, time: string) => void;
   slotStatuses?: Record<string, SlotStatus>;
 }
 
-const BASE_MH = 60;
+const ROW_H = 30; // altura per fila d'equip dins una targeta
 const SCHED_ROW_H = 22;
-const BASE_S = 80;
+const CARD_GAP = 20; // separació vertical entre targetes de la ronda 1
 const MW = 220;
 const CG = 40;
 const HDR = 28;
@@ -25,16 +25,39 @@ function getRoundLabel(m: GlootMatchData): string {
   return parts.slice(0, -1).join(" ") || m.name;
 }
 
-function matchTop(roundNum: number, matchIndex: number, S: number): number {
-  const step = Math.pow(2, roundNum - 1);
-  return HDR + ((matchIndex * 2 * step + step - 1) * S) / 2;
+/** Calcula, per a cada ronda i posició dins la ronda, la coordenada Y superior
+ *  de la targeta. La ronda 1 es reparteix uniformement cada S; a partir d'aquí,
+ *  cada partit se centra a la mitjana dels centres dels seus K fills. Evita
+ *  fórmules tancades basades en K^ronda, que resulten fràgils de mantenir. */
+function computeTops(roundsMatches: GlootMatchData[][], K: number, MH: number, S: number): number[][] {
+  const tops: number[][] = [];
+  if (roundsMatches.length === 0) return tops;
+
+  tops[0] = roundsMatches[0].map((_, i) => HDR + i * S);
+
+  for (let col = 1; col < roundsMatches.length; col += 1) {
+    tops[col] = roundsMatches[col].map((_, i) => {
+      let sum = 0;
+      let count = 0;
+      for (let s = 0; s < K; s += 1) {
+        const childTop = tops[col - 1][i * K + s];
+        if (childTop !== undefined) {
+          sum += childTop + MH / 2;
+          count += 1;
+        }
+      }
+      return count > 0 ? sum / count - MH / 2 : HDR;
+    });
+  }
+
+  return tops;
 }
 
 interface BracketMatchCardProps {
   match: GlootMatchData;
   top: number;
   readOnly?: boolean;
-  onScoreChange?: (internalId: string, scoreA: number | null, scoreB: number | null) => void;
+  onScoreChange?: (internalId: string, scores: (number | null)[]) => void;
   scheduledTime?: string;
   onTimeChange?: (internalId: string, time: string) => void;
   slotStatus?: SlotStatus;
@@ -53,29 +76,30 @@ function BracketMatchCard({
   showTimeRow,
   matchHeight,
 }: BracketMatchCardProps) {
-  const p0 = match.participants[0];
-  const p1 = match.participants[1];
-
-  const [rawA, setRawA] = useState(p0.score != null ? String(p0.score) : "");
-  const [rawB, setRawB] = useState(p1.score != null ? String(p1.score) : "");
+  const [rawScores, setRawScores] = useState<string[]>(
+    () => match.participants.map((p) => (p.score != null ? String(p.score) : "")),
+  );
   const [localTime, setLocalTime] = useState(scheduledTime ?? "");
 
-  useEffect(() => { setRawA(p0.score != null ? String(p0.score) : ""); }, [p0.score]);
-  useEffect(() => { setRawB(p1.score != null ? String(p1.score) : ""); }, [p1.score]);
+  useEffect(() => {
+    setRawScores(match.participants.map((p) => (p.score != null ? String(p.score) : "")));
+  }, [match.participants]);
   useEffect(() => { setLocalTime(scheduledTime ?? ""); }, [scheduledTime]);
 
-  const parsedA = rawA === "" ? null : parseInt(rawA, 10);
-  const parsedB = rawB === "" ? null : parseInt(rawB, 10);
-  const isDraw = parsedA !== null && parsedB !== null && parsedA === parsedB;
+  const parsedScores = rawScores.map((raw) => (raw === "" ? null : parseInt(raw, 10)));
 
-  const handleChange = (slot: "A" | "B", value: string) => {
+  const tiedValueCounts = new Map<number, number>();
+  parsedScores.forEach((v) => {
+    if (v !== null) tiedValueCounts.set(v, (tiedValueCounts.get(v) ?? 0) + 1);
+  });
+  const isTiedValue = (v: number | null) => v !== null && (tiedValueCounts.get(v) ?? 0) > 1;
+
+  const handleScoreInputChange = (idx: number, value: string) => {
     if (value !== "" && !/^\d+$/.test(value)) return;
-    if (slot === "A") setRawA(value);
-    else setRawB(value);
+    setRawScores((prev) => prev.map((v, i) => (i === idx ? value : v)));
   };
 
-  const isFinished = p0.isWinner || p1.isWinner;
-  const teamRowH = BASE_MH / 2;
+  const isFinished = match.participants.some((p) => p.isWinner);
 
   // Border: slot status (admin) takes priority over finished state
   const borderClass = onTimeChange
@@ -119,9 +143,8 @@ function BracketMatchCard({
         </div>
       )}
 
-      {([p0, p1] as const).map((p, idx) => {
-        const raw = idx === 0 ? rawA : rawB;
-        const slot = idx === 0 ? "A" : "B";
+      {match.participants.map((p, idx) => {
+        const raw = rawScores[idx] ?? "";
         return (
           <div
             key={p.id}
@@ -129,7 +152,7 @@ function BracketMatchCard({
               "flex items-center px-2 text-xs border-b last:border-b-0 gap-1",
               p.isWinner ? "bg-primary/10 font-semibold text-primary" : "text-foreground/60",
             )}
-            style={{ height: teamRowH }}
+            style={{ height: ROW_H }}
           >
             <span className="truncate flex-1">{p.name}</span>
             {p.editable && !readOnly && (
@@ -139,12 +162,12 @@ function BracketMatchCard({
                   inputMode="numeric"
                   value={raw}
                   placeholder="—"
-                  onChange={(e) => handleChange(slot, e.target.value)}
-                  onBlur={() => onScoreChange?.(match.internalId, parsedA, parsedB)}
+                  onChange={(e) => handleScoreInputChange(idx, e.target.value)}
+                  onBlur={() => onScoreChange?.(match.internalId, parsedScores)}
                   className={cn(
                     "w-full h-5 text-center text-xs rounded border bg-background px-0",
                     "focus:outline-none focus:ring-1 focus:ring-primary",
-                    isDraw && "border-destructive",
+                    isTiedValue(parsedScores[idx]) && "border-destructive",
                   )}
                 />
               </div>
@@ -171,9 +194,6 @@ export function BracketViewer({
     !!onTimeChange ||
     (!!matchSchedules && Object.values(matchSchedules).some((t) => !!t));
 
-  const MH = showTimeRow ? BASE_MH + SCHED_ROW_H : BASE_MH;
-  const S = showTimeRow ? BASE_S + SCHED_ROW_H : BASE_S;
-
   const rounds = useMemo(() => {
     const map = new Map<number, GlootMatchData[]>();
     for (const m of matches) {
@@ -192,29 +212,51 @@ export function BracketViewer({
 
   if (rounds.length === 0) return null;
 
+  // Cada match té sempre exactament K participants (per construcció del generador,
+  // incloent-hi els slots BYE), així que K es pot deduir directament de les dades.
+  const K = matches[0].participants.length || 2;
+  const MH = K * ROW_H + (showTimeRow ? SCHED_ROW_H : 0);
+  const S = MH + CARD_GAP;
+
+  const roundsMatches = rounds.map((r) => r.matches);
+  const tops = computeTops(roundsMatches, K, MH, S);
+
   const firstRoundCount = rounds[0].matches.length;
   const contentH = (firstRoundCount - 1) * S + MH;
   const totalW = rounds.length * (MW + CG) - CG;
 
   const connectorLines: { key: string; x1: number; y1: number; x2: number; y2: number }[] = [];
 
-  rounds.forEach(({ roundNum, matches: ms }, colIdx) => {
+  rounds.forEach(({ matches: ms }, colIdx) => {
     if (colIdx === rounds.length - 1) return;
     const colX = colIdx * (MW + CG);
     const midX = colX + MW + CG / 2;
     const nextColX = (colIdx + 1) * (MW + CG);
 
     ms.forEach((match, i) => {
-      const top = matchTop(roundNum, i, S);
+      const top = tops[colIdx][i];
       const cy = top + MH / 2;
       connectorLines.push({ key: `h-${match.id}`, x1: colX + MW, y1: cy, x2: midX, y2: cy });
-      if (i % 2 === 0) {
-        const pairPartner = ms[i + 1];
-        if (pairPartner) {
-          const partnerCy = matchTop(roundNum, i + 1, S) + MH / 2;
-          connectorLines.push({ key: `v-${match.id}`, x1: midX, y1: cy, x2: midX, y2: partnerCy });
-          const nextCy = matchTop(roundNum + 1, Math.floor(i / 2), S) + MH / 2;
-          connectorLines.push({ key: `hn-${match.id}`, x1: midX, y1: nextCy, x2: nextColX, y2: nextCy });
+
+      if (i % K === 0) {
+        const siblingCys: number[] = [];
+        for (let s = 0; s < K; s += 1) {
+          const siblingTop = tops[colIdx][i + s];
+          if (siblingTop !== undefined) siblingCys.push(siblingTop + MH / 2);
+        }
+        if (siblingCys.length > 0) {
+          connectorLines.push({
+            key: `v-${match.id}`,
+            x1: midX,
+            y1: siblingCys[0],
+            x2: midX,
+            y2: siblingCys[siblingCys.length - 1],
+          });
+          const nextTop = tops[colIdx + 1]?.[Math.floor(i / K)];
+          if (nextTop !== undefined) {
+            const nextCy = nextTop + MH / 2;
+            connectorLines.push({ key: `hn-${match.id}`, x1: midX, y1: nextCy, x2: nextColX, y2: nextCy });
+          }
         }
       }
     });
@@ -249,7 +291,7 @@ export function BracketViewer({
                 <BracketMatchCard
                   key={match.id}
                   match={match}
-                  top={matchTop(roundNum, i, S)}
+                  top={tops[colIdx][i]}
                   readOnly={readOnly}
                   onScoreChange={onScoreChange}
                   scheduledTime={matchSchedules?.[match.internalId]}
