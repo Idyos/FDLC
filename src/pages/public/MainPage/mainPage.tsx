@@ -11,6 +11,8 @@ import PenyaSummaryGrid from "@/components/public/penyaSummaryGrid";
 import LoadingAnimation from "@/components/shared/loadingAnim";
 import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
 import { Separator } from "@/components/ui/separator";
+import { Trophy, Flag, Megaphone } from "lucide-react";
+import BottomNavBar from "@/components/public/BottomNavBar/bottomNavBar";
 
 export default function MainPage() {
   const previousRankingsRef = useRef<PenyaInfo[]>([]);
@@ -30,6 +32,7 @@ export default function MainPage() {
   const steps = [
     {
       title: "Ranking",
+      icon: Trophy,
       content: (
         <>
           <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
@@ -79,6 +82,7 @@ export default function MainPage() {
     },
     {
       title: "Proves",
+      icon: Flag,
       content: (
         <>
           <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
@@ -100,6 +104,7 @@ export default function MainPage() {
     },
     {
       title: "Comunicats",
+      icon: Megaphone,
       content: (
         <>
           <p>Pàgina de comunicats</p>
@@ -145,11 +150,11 @@ export default function MainPage() {
   }, [selectedTab, year]);
 
   return (
-    <div className="p-2">
+    <div className="p-2 pb-16 md:pb-2">
       <Tabs
         defaultValue={steps[0].title}
         value={steps[selectedTab].title}
-        className="w-full mt-4"
+        className="w-full mt-4 hidden md:block"
       >
         <TabsList className="rounded-3xl w-full mb-4 pl-1 pr-1">
           {steps.map((step, index) => (
@@ -177,6 +182,13 @@ export default function MainPage() {
           {steps[selectedTab].content}
         </motion.div>
       </AnimatePresence>
+
+      <BottomNavBar
+        items={steps.map(({ title, icon }) => ({ label: title, icon }))}
+        activeIndex={selectedTab}
+        onChange={setSelectedTab}
+        className="md:hidden"
+      />
     </div>
   );
 }
