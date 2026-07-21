@@ -34,7 +34,7 @@ export default function PenyaPage() {
     const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
     const penyaId = searchParams.get("penyaId") || "";
-    const year = searchParams.get("year") || "";
+    // const year = searchParams.get("year") || "";
 
     useEffect(() => {
         setIsPenyaLoading(true);
