@@ -3,6 +3,7 @@ import { setGlobalOptions } from "firebase-functions";
 import { createUserFn } from "./users/createUser";
 import { deleteUserFn } from "./users/deleteUser";
 import { getUsersFn } from "./users/getUsers";
+import { onImageResizedFn } from "./images/onImageResized";
 
 admin.initializeApp();
 setGlobalOptions({ maxInstances: 10 });
@@ -10,3 +11,4 @@ setGlobalOptions({ maxInstances: 10 });
 export const createUser = createUserFn;
 export const deleteUser = deleteUserFn;
 export const getUsers = getUsersFn;
+export const onImageResized = onImageResizedFn;
