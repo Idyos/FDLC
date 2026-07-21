@@ -17,12 +17,14 @@ import { FavoritePenyesProvider } from './components/shared/Contexts/FavoritePen
 import PublicHeader from './components/public/PublicHeader/publicHeader';
 import AdminSidebar from './components/admin/AdminSiderbar';
 import CreateOrEditProva from './pages/admin/createProva/createOrEditProva';
+import PublicBottomNavigation from './components/public/BottomNavBar/publicBottomNavigation';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <PublicHeader />
       {children}
+      <PublicBottomNavigation />
     </>
   );
 }

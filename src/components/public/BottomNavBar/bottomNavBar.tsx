@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-const PILL_VISIBLE_MS = 3000;
+const PILL_VISIBLE_MS = 1500;
 
 export interface BottomNavItem {
   label: string;
@@ -36,8 +36,7 @@ export default function BottomNavBar({ items, activeIndex, onChange, className }
     <nav
       aria-label="Navegació principal"
       className={cn(
-        "fixed inset-x-4 z-40 bottom-[calc(1rem+env(safe-area-inset-bottom))]",
-        "rounded-full border border-border/50",
+        "relative rounded-full border border-border/50",
         "bg-background/70 dark:bg-background/60",
         "backdrop-blur-xl backdrop-saturate-150",
         "shadow-lg shadow-black/10",
@@ -84,7 +83,7 @@ export default function BottomNavBar({ items, activeIndex, onChange, className }
                 </AnimatePresence>
 
                 <Icon
-                  className={cn("relative size-6 transition-colors", isActive ? "text-foreground" : "text-muted-foreground")}
+                  className={cn("relative size-6 transition-colors", isActive ? "text-foreground fill-current" : "text-muted-foreground")}
                   strokeWidth={isActive ? 2.25 : 2}
                 />
               </button>

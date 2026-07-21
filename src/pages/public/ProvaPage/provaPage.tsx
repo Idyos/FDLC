@@ -225,7 +225,7 @@ export default function ProvaPage() {
   }, [selectedYear, admin, provaId]);
 
     return (
-        <div className="p-2">
+        <div className="p-2 pb-16 md:pb-2">
         <AlertDialog open={noProvaAlert} onOpenChange={setNoProbaAlert}>
             <AlertDialogContent>
                 <AlertDialogHeader>

@@ -4,6 +4,7 @@ import { PenyaInfo, PenyaProvaSummary} from "@/interfaces/interfaces";
 import { getProvesRealTime, getRankingRealTime } from "@/services/database/publicDbService";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import ProvaSummaryCard from "@/components/public/provaSummary";
 import DynamicList from "@/components/shared/dynamicList";
@@ -11,8 +12,7 @@ import PenyaSummaryGrid from "@/components/public/penyaSummaryGrid";
 import LoadingAnimation from "@/components/shared/loadingAnim";
 import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
 import { Separator } from "@/components/ui/separator";
-import { Trophy, Flag, Megaphone } from "lucide-react";
-import BottomNavBar from "@/components/public/BottomNavBar/bottomNavBar";
+import { publicNavItems } from "@/components/public/BottomNavBar/publicNavItems";
 
 export default function MainPage() {
   const previousRankingsRef = useRef<PenyaInfo[]>([]);
@@ -20,7 +20,7 @@ export default function MainPage() {
   const [proves, setProves] = useState<PenyaProvaSummary[]>([]);
   const { selectedYear: year } = useYear();
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedTab, setSelectedTab] = useState<number>(0);
+  const [searchParams, setSearchParams] = useSearchParams();
   const { favoritePenyes } = useFavoritePenyes();
 
   const unsubscribeRef = useRef<null | (() => void)>(null);
@@ -31,8 +31,8 @@ export default function MainPage() {
 
   const steps = [
     {
-      title: "Ranking",
-      icon: Trophy,
+      title: publicNavItems[0].label,
+      icon: publicNavItems[0].icon,
       content: (
         <>
           <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
@@ -81,8 +81,8 @@ export default function MainPage() {
       ),
     },
     {
-      title: "Proves",
-      icon: Flag,
+      title: publicNavItems[1].label,
+      icon: publicNavItems[1].icon,
       content: (
         <>
           <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
@@ -103,8 +103,8 @@ export default function MainPage() {
       ),
     },
     {
-      title: "Comunicats",
-      icon: Megaphone,
+      title: publicNavItems[2].label,
+      icon: publicNavItems[2].icon,
       content: (
         <>
           <p>Pàgina de comunicats</p>
@@ -112,6 +112,10 @@ export default function MainPage() {
       ),
     },
   ];
+
+  const rawTab = Number(searchParams.get("tab") ?? 0);
+  const selectedTab = Number.isNaN(rawTab) ? 0 : Math.min(Math.max(rawTab, 0), steps.length - 1);
+  const setSelectedTab = (index: number) => setSearchParams({ tab: String(index) }, { replace: true });
 
   useEffect(() => {
     unsubscribeRef.current?.();
@@ -182,13 +186,6 @@ export default function MainPage() {
           {steps[selectedTab].content}
         </motion.div>
       </AnimatePresence>
-
-      <BottomNavBar
-        items={steps.map(({ title, icon }) => ({ label: title, icon }))}
-        activeIndex={selectedTab}
-        onChange={setSelectedTab}
-        className="md:hidden"
-      />
     </div>
   );
 }

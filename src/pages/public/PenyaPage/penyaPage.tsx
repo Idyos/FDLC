@@ -16,6 +16,7 @@ import {
 import ProvaSummaryCard from "@/components/public/provaSummary";
 import LoadingAnimation from "@/components/shared/loadingAnim";
 import PenyaTitle from "@/components/public/penyaTitle";
+import { usePenyaStore } from "@/components/shared/Contexts/PenyaContext";
 
 export default function PenyaPage() {
     const navigate = useNavigate();
@@ -36,6 +37,9 @@ export default function PenyaPage() {
     const penyaId = searchParams.get("penyaId") || "";
     // const year = searchParams.get("year") || "";
 
+    const setPenya = usePenyaStore((state) => state.setPenya);
+    const clearPenya = usePenyaStore((state) => state.clearPenya);
+
     useEffect(() => {
         setIsPenyaLoading(true);
         setIsProvesLoading(true);
@@ -50,6 +54,7 @@ export default function PenyaPage() {
 
                 penyaInfo.current = penyaInfoResult;
                 document.title = `${penyaInfo.current.name} ${selectedYear}`;
+                setPenya(penyaInfoResult);
 
                 getPenyaProvesRealTime(selectedYear, penyaId, (data) => {
                     setPenyaProves(data);
@@ -57,6 +62,7 @@ export default function PenyaPage() {
                 });
             }
             else {
+                clearPenya();
                 setNoPenyaAlert(true);
             }
             setIsPenyaLoading(false);
@@ -79,8 +85,8 @@ export default function PenyaPage() {
         return acc;
     }, {} as Record<string, PenyaProvaSummary[]>);
 
-    return ( 
-        <div className="p-2">
+    return (
+        <div className="p-2 pb-16 md:pb-2">
         <AlertDialog open={noPenyaAlert} onOpenChange={setNoPenyaAlert}>
             <AlertDialogContent>
                 <AlertDialogHeader>
