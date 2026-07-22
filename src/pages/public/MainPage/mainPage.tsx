@@ -19,7 +19,7 @@ export default function MainPage() {
   const [proves, setProves] = useState<PenyaProvaSummary[]>([]);
   const { selectedYear: year } = useYear();
   const [isLoading, setIsLoading] = useState(true);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const { favoritePenyes } = useFavoritePenyes();
 
   const unsubscribeRef = useRef<null | (() => void)>(null);
