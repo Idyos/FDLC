@@ -18,12 +18,16 @@ import PublicHeader from './components/public/PublicHeader/publicHeader';
 import AdminSidebar from './components/admin/AdminSiderbar';
 import CreateOrEditProva from './pages/admin/createProva/createOrEditProva';
 import PublicBottomNavigation from './components/public/BottomNavBar/publicBottomNavigation';
+import PublicSideNavigation from './components/public/SideNavBar/publicSideNavigation';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <PublicHeader />
-      {children}
+      <PublicSideNavigation />
+      <div className="md:pl-24">
+        <PublicHeader />
+        {children}
+      </div>
       <PublicBottomNavigation />
     </>
   );

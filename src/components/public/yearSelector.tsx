@@ -25,10 +25,18 @@ import { createYear } from "@/services/database/Admin/adminDbServices";
 import { useYear } from "../shared/Contexts/YearContext";
 import { isAdmin } from "@/services/authService";
 
-export default function YearSelector() {
+interface YearSelectorProps {
+  /** When true, renders a plain read-only year label instead of the interactive dropdown. */
+  compact?: boolean;
+  /** Notified whenever the dropdown or the "add year" dialog opens/closes. */
+  onOpenChange?: (open: boolean) => void;
+}
+
+export default function YearSelector({ compact = false, onOpenChange }: YearSelectorProps) {
   const [years, setYears] = useState<number[]>([]);
   const { selectedYear, setSelectedYear } = useYear();
 
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newYear, setNewYear] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,6 +49,14 @@ export default function YearSelector() {
       (error) => console.error("Error fetching years:", error)
     );
   }, []);
+
+  if (compact) {
+    return (
+      <div className="flex w-full items-center justify-center text-sm font-semibold text-foreground">
+        {selectedYear}
+      </div>
+    );
+  }
 
   const handleCreateYear = async () => {
     const yearValue = parseInt(newYear, 10);
@@ -77,7 +93,12 @@ export default function YearSelector() {
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu
+        onOpenChange={(open) => {
+          setIsMenuOpen(open);
+          onOpenChange?.(open || isDialogOpen);
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <Button className="w-full" variant="outline" size="sm">
             {selectedYear}
@@ -107,7 +128,14 @@ export default function YearSelector() {
       </DropdownMenu>
 
       {isAdmin() && (
-        <Dialog open={isDialogOpen} onOpenChange={(open) => !isSubmitting && setIsDialogOpen(open)}>
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            if (isSubmitting) return;
+            setIsDialogOpen(open);
+            onOpenChange?.(isMenuOpen || open);
+          }}
+        >
           <DialogContent className="sm:max-w-[400px]">
             <DialogHeader>
               <DialogTitle>Afegir any anterior</DialogTitle>

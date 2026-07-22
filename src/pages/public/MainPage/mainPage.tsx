@@ -2,7 +2,6 @@ import PenyaSummary from "@/components/public/penyaSummary";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { PenyaInfo, PenyaProvaSummary} from "@/interfaces/interfaces";
 import { getProvesRealTime, getRankingRealTime } from "@/services/database/publicDbService";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -115,7 +114,7 @@ export default function MainPage() {
 
   const rawTab = Number(searchParams.get("tab") ?? 0);
   const selectedTab = Number.isNaN(rawTab) ? 0 : Math.min(Math.max(rawTab, 0), steps.length - 1);
-  const setSelectedTab = (index: number) => setSearchParams({ tab: String(index) }, { replace: true });
+  
 
   useEffect(() => {
     unsubscribeRef.current?.();
@@ -155,25 +154,6 @@ export default function MainPage() {
 
   return (
     <div className="p-2 pb-16 md:pb-2">
-      <Tabs
-        defaultValue={steps[0].title}
-        value={steps[selectedTab].title}
-        className="w-full mt-4 hidden md:block"
-      >
-        <TabsList className="rounded-3xl w-full mb-4 pl-1 pr-1">
-          {steps.map((step, index) => (
-            <TabsTrigger
-              className="rounded-2xl"
-              key={index}
-              value={step.title}
-              onClick={() => setSelectedTab(index)}
-            >
-              {step.title}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           className="space-y-4"

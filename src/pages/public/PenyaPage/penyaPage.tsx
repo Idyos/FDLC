@@ -13,10 +13,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import ProvaSummaryCard from "@/components/public/provaSummary";
 import LoadingAnimation from "@/components/shared/loadingAnim";
 import PenyaTitle from "@/components/public/penyaTitle";
 import { usePenyaStore } from "@/components/shared/Contexts/PenyaContext";
+import ProvaPenyaSummary from "@/components/public/provaPenyaSummary";
 
 export default function PenyaPage() {
     const navigate = useNavigate();
@@ -123,7 +123,7 @@ export default function PenyaPage() {
                     {/* Proves de ese día */}
                     {proves.map((provaSummary) => (
                         <div className="pl-2 pr-2">
-                            <ProvaSummaryCard
+                            <ProvaPenyaSummary
                             key={provaSummary.id}
                             provaSummary={provaSummary}
                             />
