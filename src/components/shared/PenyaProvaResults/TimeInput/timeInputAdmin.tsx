@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { secondsToParts, partsToSeconds, formatHMS, TimeInputProps } from "./timeInput";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 const MAX_DIGITS = 9; // marge ampli per a hores (fins a 5 xifres, més que suficient)
-const NAV_KEYS = ["Tab", "ArrowLeft", "ArrowRight", "Home", "End", "Enter"];
 
 /** Interpreta una seqüència de dígits escrits d'esquerra a dreta com HH...MMSS (min/seg sempre als últims 4 dígits) */
 function digitsToSeconds(raw: string): number {
@@ -21,6 +20,12 @@ function secondsToDigits(totalSeconds: number): string {
   const pad = (n: number, len: number) => String(n).padStart(len, "0");
   const full = `${hours}${pad(minutes, 2)}${pad(seconds, 2)}`;
   return String(Number(full));
+}
+
+/** Dígits que apareixen realment al text formatat "H:MM:SS" per a un buffer de dígits donat. */
+function digitsInDisplay(raw: string): string {
+  if (raw === "") return "";
+  return formatHMS(digitsToSeconds(raw)).replace(/\D/g, "");
 }
 
 /**
@@ -40,11 +45,21 @@ export const TimeInputAdmin: React.FC<TimeInputProps> = ({
   const totalSeconds = isControlled ? parsedProp : internalSeconds;
 
   const [rawDigits, setRawDigits] = useState<string>(totalSeconds >= 0 ? secondsToDigits(totalSeconds) : "");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Resincronitza si el valor ve de fora (canvi de penya, valor guardat, etc.)
   useEffect(() => {
     setRawDigits(totalSeconds >= 0 ? secondsToDigits(totalSeconds) : "");
   }, [totalSeconds]);
+
+  const display = rawDigits === "" ? "" : formatHMS(digitsToSeconds(rawDigits));
+
+  // El cursor sempre va al final: així, tapis on tapis, cada dígit nou (o
+  // Backspace) actua sobre l'últim dígit, igual que un cronòmetre.
+  useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (el) el.setSelectionRange(display.length, display.length);
+  }, [display]);
 
   function emit(next: number) {
     const str = next <= -1 ? "" : String(next);
@@ -59,57 +74,55 @@ export const TimeInputAdmin: React.FC<TimeInputProps> = ({
     onBlur?.(raw === "" ? "" : String(digitsToSeconds(raw)));
   }
 
-  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key >= "0" && e.key <= "9") {
-      e.preventDefault();
-      if (rawDigits.length >= MAX_DIGITS) return;
-      const next = rawDigits + e.key;
-      setRawDigits(next);
-      emit(digitsToSeconds(next));
-    } else if (e.key === "Backspace" || e.key === "Delete") {
-      e.preventDefault();
-      const next = rawDigits.slice(0, -1);
-      setRawDigits(next);
-      emit(next === "" ? -1 : digitsToSeconds(next));
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      setRawDigits("");
-      emit(-1);
-    } else if (!NAV_KEYS.includes(e.key)) {
-      e.preventDefault();
+  function applyDigits(next: string) {
+    const trimmed = next.slice(0, MAX_DIGITS);
+    setRawDigits(trimmed);
+    emit(trimmed === "" ? -1 : digitsToSeconds(trimmed));
+  }
+
+  // El valor mostrat sempre és el format "H:MM:SS". En lloc d'interceptar `keydown`
+  // (que als teclats virtuals mòbils sovint arriba com key="Unidentified" i mai es
+  // dispara si l'input és readOnly, deixant el teclat sense aparèixer), comparem els
+  // dígits abans/després de cada canvi: si n'hi ha més, s'afegeixen al final; si n'hi
+  // ha menys, s'esborra l'últim. Funciona igual amb teclat físic, virtual o retallar/enganxar.
+  function onValueChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const newDigits = e.target.value.replace(/\D/g, "");
+    const prevDigits = digitsInDisplay(rawDigits);
+
+    if (newDigits.length > prevDigits.length) {
+      applyDigits(rawDigits + newDigits.slice(prevDigits.length));
+    } else if (newDigits.length < prevDigits.length) {
+      applyDigits(rawDigits.slice(0, -1));
     }
   }
 
-  function onPaste(e: React.ClipboardEvent<HTMLInputElement>) {
-    e.preventDefault();
-    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, MAX_DIGITS);
-    if (digits === "") return;
-    setRawDigits(digits);
-    emit(digitsToSeconds(digits));
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      applyDigits("");
+    }
   }
-
-  const display = rawDigits === "" ? "" : formatHMS(digitsToSeconds(rawDigits));
 
   return (
     <div className="flex items-center gap-2">
       <Input
+        ref={inputRef}
         type="text"
         inputMode="numeric"
-        readOnly
+        pattern="[0-9]*"
         aria-label={ariaLabel}
         className="w-28 text-center font-mono tabular-nums cursor-text"
         placeholder="-:--:--"
         value={display}
+        onChange={onValueChange}
         onKeyDown={onKeyDown}
-        onPaste={onPaste}
         onBlur={() => commit(rawDigits)}
       />
 
       {rawDigits !== "" && (
         <Button
           onClick={() => {
-            setRawDigits("");
-            emit(-1);
+            applyDigits("");
             onBlur?.("");
           }}
         >
