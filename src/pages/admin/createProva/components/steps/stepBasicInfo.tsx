@@ -5,17 +5,22 @@ import { LocationSelector } from "@/components/admin/locationSelector";
 import { TooltipProvider } from "@radix-ui/react-tooltip";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Ubication } from "@/interfaces/interfaces";
+import { FileText, X } from "lucide-react";
 
 type Props = {
   provaImageUrl: string | null;
   onImageAdded: (f: File) => void;
+  provaRulesName: string | null;
+  provaRulesUrl: string | null;
+  onRulesAdded: (f: File) => void;
+  onRulesRemoved: () => void;
   watchedStart: Date | null | undefined;
   watchedEnd: Date | null | undefined;
   onLocationChange: (location: Ubication) => void;
 
 };
 
-export default function StepBasicInfo({ provaImageUrl, onImageAdded, watchedStart, watchedEnd, onLocationChange }: Props) {
+export default function StepBasicInfo({ provaImageUrl, onImageAdded, provaRulesName, provaRulesUrl, onRulesAdded, onRulesRemoved, watchedStart, watchedEnd, onLocationChange }: Props) {
   return (
     <>
       <FormField name="image" render={() => (
@@ -75,6 +80,54 @@ export default function StepBasicInfo({ provaImageUrl, onImageAdded, watchedStar
           <FormLabel>Enllaç d'imatges:</FormLabel>
           <FormControl>
             <Input type="url" placeholder="https://... (p. ex. galeria de fotos)" {...field} />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )} />
+
+      <FormField name="rules" render={() => (
+        <FormItem>
+          <FormLabel>Normes (PDF):</FormLabel>
+          <FormControl>
+            <div className="h-16 w-full relative flex items-center gap-3 border-2 border-dashed rounded-lg px-4">
+              <FileText className="shrink-0 text-gray-500" />
+              <span className="text-sm text-gray-500 truncate">
+                {provaRulesName ?? (provaRulesUrl ? "PDF de normes carregat" : "Arrossega un PDF de normes o fes clic")}
+              </span>
+              {provaRulesUrl && (
+                <a
+                  href={provaRulesUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative z-10 ml-auto text-sm underline shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Veure
+                </a>
+              )}
+              {provaRulesUrl && (
+                <button
+                  type="button"
+                  aria-label="Eliminar PDF"
+                  className="relative z-10 shrink-0 rounded-full p-1 text-gray-500 hover:bg-muted hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRulesRemoved();
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+              <Input
+                type="file"
+                accept="application/pdf"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onRulesAdded(file);
+                }}
+              />
+            </div>
           </FormControl>
           <FormMessage />
         </FormItem>

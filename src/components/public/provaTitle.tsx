@@ -1,10 +1,11 @@
 import { motion, useAnimation } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import ProvaInfoCard from "../shared/Prova/provaInfoCard";
+import PdfViewer from "../shared/pdfViewer";
 import { Badge } from "../ui/badge";
 import { useProvaStore } from "../shared/Contexts/ProvaContext";
-import { Navigation, Camera } from "lucide-react";
+import { Navigation, Camera, ScrollText } from "lucide-react";
 import { Link } from "react-router-dom";
 const COLLAPSED_H = 250;
 const LONG_PRESS_MS = 200;
@@ -18,6 +19,7 @@ export default function ProvaTitle() {
   
   const prova = useProvaStore((state) => state.prova);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isRulesDialogOpen, setIsRulesDialogOpen] = useState(false);
   const [expandedH, setExpandedH] = useState(COLLAPSED_H);
   const [isExpanded, setIsExpanded] = useState(false);
   const [imgRatio, setImgRatio] = useState<number | null>(null);
@@ -246,6 +248,7 @@ const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
   };
 
   return (
+    <>
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild onClick={handleTriggerClick}>
         <motion.div
@@ -263,7 +266,7 @@ const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
           onKeyUp={onKeyUp}
           className="min-h-[250px] relative border-gray-900 dark:border-gray-100 border-4 rounded-4xl flex flex-col items-center justify-center space-y-4 mb-4 p-12 overflow-hidden select-none cursor-pointer"
         >
-          {((prova.location?.lat && prova.location?.lng) || prova.imagesLink) && (
+          {((prova.location?.lat && prova.location?.lng) || prova.imagesLink || prova.rulesUrl) && (
             <div className="absolute z-10 top-2 left-5 mt-2 flex flex-col gap-2">
               {prova.location?.lat && prova.location?.lng && (
                 <Badge
@@ -298,6 +301,25 @@ const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
                   >
                     <Camera />
                   </Link>
+                </Badge>
+              )}
+
+              {prova.rulesUrl && (
+                <Badge
+                  asChild
+                  className="w-10 h-10 flex items-center justify-center rounded-full"
+                >
+                  <button
+                    type="button"
+                    aria-label="Normes de la prova"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsRulesDialogOpen(true);
+                    }}
+                  >
+                    <ScrollText />
+                  </button>
                 </Badge>
               )}
             </div>
@@ -340,5 +362,22 @@ const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
           <ProvaInfoCard prova={prova} />
         </DialogContent>
     </Dialog>
+
+    {prova.rulesUrl && (
+      <Dialog open={isRulesDialogOpen} onOpenChange={setIsRulesDialogOpen}>
+        <DialogContent className="p-0 max-w-3xl w-[calc(100%-2rem)] h-[85svh] flex flex-col gap-0">
+          <DialogHeader className="p-4 pb-2 border-b">
+            <DialogTitle>Normes de la prova</DialogTitle>
+          </DialogHeader>
+          <PdfViewer url={prova.rulesUrl} />
+          <div className="p-2 text-center text-sm border-t">
+            <a href={prova.rulesUrl} target="_blank" rel="noopener noreferrer" className="underline">
+              Obrir en una pestanya nova
+            </a>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   );
 }

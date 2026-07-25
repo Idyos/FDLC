@@ -3,7 +3,7 @@ import { db, functions } from "../../../firebase/firebase";
 import { httpsCallable } from "firebase/functions";
 import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, setDoc } from "firebase/firestore";
 import { toast } from "sonner";
-import { addImageToChallenges, addImageToPenyes } from "../../storageService";
+import { addImageToChallenges, addImageToPenyes, addPdfToChallenges } from "../../storageService";
 import { deleteUsersWithProva } from "../../usersService";
 
 /** Converteix un result de Firestore (number antic o string nou) a string de display. */
@@ -61,6 +61,7 @@ export const getProves = async (
       prova.winDirection = d.winDirection || "NONE";
       prova.location = d.location || undefined;
       prova.imagesLink = d.imagesLink || undefined;
+      prova.rulesUrl = d.rulesUrl || undefined;
       prova.pointsRange = d.pointsRange || [];
       prova.penyes = Array.isArray(d.penyes) ? d.penyes : [];
       prova.intervalMinutes = d.intervalMinutes ?? undefined;
@@ -79,6 +80,7 @@ export const createProva = async (
   year: number,
   data: Prova,
   image: File | null,
+  pdf: File | null,
   onSuccess: (data: number[]) => void,
   onError?: (error: unknown) => void
 ) => {
@@ -87,9 +89,10 @@ export const createProva = async (
 
       try {
         const url = await addImageToChallenges(image, year, data.name)
-        console.log(url);
+        const rulesUrl = await addPdfToChallenges(pdf, year, data.name)
         batch.set(provaRef, {
           imageUrl: url ?? null,
+          rulesUrl: rulesUrl ?? null,
           name: data.name ?? "",
           description: data.description ?? "",
           startDate: data.startDate ?? null,
@@ -205,6 +208,7 @@ export async function getProvaInfo(
   prova.winDirection = d.winDirection || "NONE";
   prova.location = d.location || undefined;
   prova.imagesLink = d.imagesLink || undefined;
+  prova.rulesUrl = d.rulesUrl || undefined;
   prova.pointsRange = Array.isArray(d.pointsRange) ? d.pointsRange : [];
   prova.intervalMinutes = d.intervalMinutes ?? undefined;
   prova.maxPenyesPerSlot = d.maxPenyesPerSlot ?? undefined;
@@ -441,7 +445,8 @@ export const updateProva = async (
   year: number,
   provaId: string,
   data: Prova,
-  image: File | null
+  image: File | null,
+  pdf: File | null
 ): Promise<void> => {
   const provaRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
   const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
@@ -452,6 +457,13 @@ export const updateProva = async (
     if (image !== null) {
       const uploaded = await addImageToChallenges(image, year, provaId);
       imageUrl = uploaded || null;
+    }
+
+    // Upload new pdf only if provided; otherwise keep existing rulesUrl
+    let rulesUrl: string | null = data.rulesUrl ?? null;
+    if (pdf !== null) {
+      const uploaded = await addPdfToChallenges(pdf, year, provaId);
+      rulesUrl = uploaded || null;
     }
 
     await updateDoc(provaRef, {
@@ -466,6 +478,7 @@ export const updateProva = async (
       intervalMinutes: data.intervalMinutes ?? null,
       maxPenyesPerSlot: data.maxPenyesPerSlot ?? null,
       imageUrl,
+      rulesUrl,
     });
 
     // Diff participants

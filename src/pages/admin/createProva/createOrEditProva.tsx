@@ -75,6 +75,7 @@ export default function CreateOrEditProva() {
     };
 
     const [existingImageUrl, setExistingImageUrl] = useState<string | undefined>(undefined);
+    const [existingRulesUrl, setExistingRulesUrl] = useState<string | undefined>(undefined);
 
     const [location, setLocation] = useState<Ubication>({ lat: undefined, lng: undefined, name: undefined });
     const [penyes, setPenyes] = useState<ParticipatingPenya[]>([]);
@@ -85,6 +86,10 @@ export default function CreateOrEditProva() {
     const provaImageState = useState<File | null>(null);
     const [provaImage] = provaImageState;
     const provaImageUrl = useMemo(() => provaImage ? URL.createObjectURL(provaImage) : null, [provaImage]);
+
+    const provaRulesState = useState<File | null>(null);
+    const [provaRules] = provaRulesState;
+    const provaRulesUrl = useMemo(() => provaRules ? URL.createObjectURL(provaRules) : null, [provaRules]);
 
     useProvaPreviewSync(form, provaImage, provaInfo, setProvaInfo);
 
@@ -104,6 +109,7 @@ export default function CreateOrEditProva() {
 
                 setIsFinished(prova.isFinished);
                 setExistingImageUrl(prova.imageUrl);
+                setExistingRulesUrl(prova.rulesUrl);
 
                 const participatingSet = new Set(prova.penyes.map((p) => p.penyaId));
 
@@ -186,26 +192,38 @@ export default function CreateOrEditProva() {
         provaImageState[1](file);
     };
 
+    const onRulesAdded = async (file: File) => {
+        if (file.type !== "application/pdf") { toast.error("Només s'accepta .pdf"); return; }
+        if (form.getValues("name") === "") { toast.error("Primer omple el nom de la prova"); return; }
+        provaRulesState[1](file);
+    };
+
+    const onRulesRemoved = () => {
+        provaRulesState[1](null);
+        setExistingRulesUrl(undefined);
+    };
+
     // Submit
     const onSubmit = (data: CreateChallenge) => {
         setSettingProva(1);
         const challenge = buildChallenge(data);
 
         if(isCreating){
-          createProva(selectedYear, challenge, provaImage, () => {
+          createProva(selectedYear, challenge, provaImage, provaRules, () => {
             toast.success("Prova creada correctament");
             setSettingProva(2);
-            setTimeout(() => navigateWithQuery(navigate, `/admin/prova`, { provaId: form.getValues("name"), year: selectedYear }), 2000); 
+            setTimeout(() => navigateWithQuery(navigate, `/admin/prova`, { provaId: form.getValues("name"), year: selectedYear }), 2000);
           }, (error) => {
             setSettingProva(0);
             console.error(error);
             toast.error("Error al crear la prova. Mira la consola per mes detalls");
           });
         } else if(provaId) {
-        // Preserve existing imageUrl if no new image
+        // Preserve existing imageUrl/rulesUrl if no new file was provided
           challenge.imageUrl = provaImage ? undefined : existingImageUrl;
-      
-          updateProva(selectedYear, provaId, challenge, provaImage)
+          challenge.rulesUrl = provaRules ? undefined : existingRulesUrl;
+
+          updateProva(selectedYear, provaId, challenge, provaImage, provaRules)
             .then(() => {
               toast.success("Prova actualitzada correctament");
               setSettingProva(2);
@@ -261,6 +279,10 @@ export default function CreateOrEditProva() {
       <StepBasicInfo
         provaImageUrl={provaImageUrl}
         onImageAdded={onImageAdded}
+        provaRulesName={provaRules?.name ?? null}
+        provaRulesUrl={provaRulesUrl ?? existingRulesUrl ?? null}
+        onRulesAdded={onRulesAdded}
+        onRulesRemoved={onRulesRemoved}
         watchedStart={watchedStart}
         watchedEnd={watchedEnd}
         onLocationChange={setLocation}

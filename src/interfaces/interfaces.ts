@@ -212,6 +212,7 @@ export abstract class Prova extends ProvaSummary {
   pointsRange: PointsRange[];
   penyes: ParticipatingPenya[];
   imagesLink?: string;
+  rulesUrl?: string;
 
   constructor(
     reference: string = "",
