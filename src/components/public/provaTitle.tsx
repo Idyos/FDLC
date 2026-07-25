@@ -261,7 +261,7 @@ const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
           onPointerLeave={onPressEnd}
           onKeyDown={onKeyDown}
           onKeyUp={onKeyUp}
-          className="min-h-[250px] relative border-gray-900 dark:border-gray-100 border-4 rounded-4xl flex flex-col justify-center space-y-4 mb-4 p-12 overflow-hidden select-none cursor-pointer"
+          className="min-h-[250px] relative border-gray-900 dark:border-gray-100 border-4 rounded-4xl flex flex-col items-center justify-center space-y-4 mb-4 p-12 overflow-hidden select-none cursor-pointer"
         >
           {((prova.location?.lat && prova.location?.lng) || prova.imagesLink) && (
             <div className="absolute z-10 top-2 left-5 mt-2 flex flex-col gap-2">
@@ -305,17 +305,17 @@ const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
 
           <Badge
             variant="secondary"
-            className="absolute z-10 top-2 right-5 mt-2 text-sm font-medium rounded-4xl"
+            className="absolute z-10 top-5 right-5 max-w-[45%] whitespace-normal text-right"
           >
             {prova.challengeType}
           </Badge>
             <Badge
               variant="secondary"
-              className="absolute z-10 bottom-2 right-5 mt-2 text-sm font-medium rounded-4xl"
+              className="absolute z-10 bottom-2 right-5 max-w-[80%] whitespace-normal text-right "
             >
               {isProvaBeingPlayed(prova.startDate, prova.finishDate)}{buildTimeInfo(prova.startDate, prova.finishDate)}
             </Badge>
-            <h1 className="text-5xl font-extrabold z-10 mb-0">{prova.name}</h1>
+            <h1 className="text-5xl font-extrabold z-10 mb-0 max-w-[80%] break-words">{prova.name}</h1>
 
             {prova.description?.length ? (
               <h3 className="z-10 italic mb-0">"{prova.description}"</h3>
