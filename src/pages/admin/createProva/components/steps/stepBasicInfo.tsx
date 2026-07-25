@@ -70,6 +70,16 @@ export default function StepBasicInfo({ provaImageUrl, onImageAdded, watchedStar
         </FormItem>
       )} />
 
+      <FormField name="imagesLink" render={({ field }) => (
+        <FormItem>
+          <FormLabel>Enllaç d'imatges:</FormLabel>
+          <FormControl>
+            <Input type="url" placeholder="https://... (p. ex. galeria de fotos)" {...field} />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )} />
+
       {/* Fechas */}
       <div className="flex flex-row space-x-8">
         <FormField name="startDate" render={({ field }) => (

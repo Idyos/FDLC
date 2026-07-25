@@ -34,6 +34,7 @@ export function useProvaPreviewSync(
           : undefined,
         pointsRange: safePointsRange,
         winDirection: values.winDirection ?? "NONE",
+        imagesLink: values.imagesLink || undefined,
         imageUrl: provaImage ? URL.createObjectURL(provaImage) : provaInfo.imageUrl,
         isFinished: false,
         penyes: provaInfo.penyes ?? [],

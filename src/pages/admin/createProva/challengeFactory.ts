@@ -53,6 +53,7 @@ export function buildChallenge(data: CreateChallenge): Prova {
   challenge.name = data.name;
   challenge.description = data.description;
   challenge.location = normalizeLocation(data.location);
+  challenge.imagesLink = data.imagesLink || undefined;
   challenge.startDate = data.startDate;
   challenge.finishDate = data.endDate;
   challenge.challengeType = data.challengeType;

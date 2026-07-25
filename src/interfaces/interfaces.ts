@@ -211,6 +211,7 @@ export abstract class Prova extends ProvaSummary {
   winDirection: WinDirection;
   pointsRange: PointsRange[];
   penyes: ParticipatingPenya[];
+  imagesLink?: string;
 
   constructor(
     reference: string = "",

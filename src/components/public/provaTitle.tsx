@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import ProvaInfoCard from "../shared/Prova/provaInfoCard";
 import { Badge } from "../ui/badge";
 import { useProvaStore } from "../shared/Contexts/ProvaContext";
-import { Navigation } from "lucide-react";
+import { Navigation, Camera } from "lucide-react";
 import { Link } from "react-router-dom";
 const COLLAPSED_H = 250;
 const LONG_PRESS_MS = 200;
@@ -14,6 +14,7 @@ export default function ProvaTitle() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const pressTimer = useRef<number | null>(null);
+  const suppressNextClickRef = useRef(false);
   
   const prova = useProvaStore((state) => state.prova);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -185,6 +186,7 @@ const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
   const expand = () => {
     if (!isExpanded) {
       setIsExpanded(true);
+      suppressNextClickRef.current = true;
       controls.start({
         height: expandedH * 0.9,
         transition: { duration: 1, ease: "backInOut" },
@@ -234,9 +236,18 @@ const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
     }
   };
 
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false;
+      e.preventDefault();
+      return;
+    }
+    setIsDialogOpen(true);
+  };
+
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      <DialogTrigger asChild onClick={() => setIsDialogOpen(true)}>
+      <DialogTrigger asChild onClick={handleTriggerClick}>
         <motion.div
           ref={containerRef}
           role="button"
@@ -252,16 +263,44 @@ const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
           onKeyUp={onKeyUp}
           className="min-h-[250px] relative border-gray-900 dark:border-gray-100 border-4 rounded-4xl flex flex-col justify-center space-y-4 mb-4 p-12 overflow-hidden select-none cursor-pointer"
         >
-          {prova.location?.lat && prova.location?.lng && (
-            <Badge
-              asChild
-              variant="secondary"
-              className="bg-blue-500 absolute z-10 top-2 left-5 mt-2 w-10 h-10 flex items-center justify-center rounded-full"
-            >
-              <Link to={`https://www.google.com/maps/dir/?api=1&destination=${prova.location.lat},${prova.location.lng}`} target="_blank" rel="noopener noreferrer">
-                <Navigation scale={500} />
-              </Link>
-            </Badge>
+          {((prova.location?.lat && prova.location?.lng) || prova.imagesLink) && (
+            <div className="absolute z-10 top-2 left-5 mt-2 flex flex-col gap-2">
+              {prova.location?.lat && prova.location?.lng && (
+                <Badge
+                  asChild
+                  variant="secondary"
+                  className="bg-blue-500 w-10 h-10 flex items-center justify-center rounded-full"
+                >
+                  <Link
+                    to={`https://www.google.com/maps/dir/?api=1&destination=${prova.location.lat},${prova.location.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Navigation scale={500} />
+                  </Link>
+                </Badge>
+              )}
+
+              {prova.imagesLink && (
+                <Badge
+                  asChild
+                  className="w-10 h-10 flex items-center justify-center rounded-full"
+                >
+                  <Link
+                    to={prova.imagesLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Enllaç extern"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Camera />
+                  </Link>
+                </Badge>
+              )}
+            </div>
           )}
 
           <Badge

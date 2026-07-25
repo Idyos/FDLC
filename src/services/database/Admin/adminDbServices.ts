@@ -60,6 +60,7 @@ export const getProves = async (
       prova.challengeType = d.challengeType || "null";
       prova.winDirection = d.winDirection || "NONE";
       prova.location = d.location || undefined;
+      prova.imagesLink = d.imagesLink || undefined;
       prova.pointsRange = d.pointsRange || [];
       prova.penyes = Array.isArray(d.penyes) ? d.penyes : [];
       prova.intervalMinutes = d.intervalMinutes ?? undefined;
@@ -95,6 +96,7 @@ export const createProva = async (
           finishDate: data.finishDate ?? null,
           challengeType: data.challengeType,
           location: data.location ?? null,
+          imagesLink: data.imagesLink ?? null,
           pointsRange: data.pointsRange,
           winDirection: data.winDirection ?? null,
           isFinished: false,
@@ -202,6 +204,7 @@ export async function getProvaInfo(
   prova.challengeType = d.challengeType || "null";
   prova.winDirection = d.winDirection || "NONE";
   prova.location = d.location || undefined;
+  prova.imagesLink = d.imagesLink || undefined;
   prova.pointsRange = Array.isArray(d.pointsRange) ? d.pointsRange : [];
   prova.intervalMinutes = d.intervalMinutes ?? undefined;
   prova.maxPenyesPerSlot = d.maxPenyesPerSlot ?? undefined;
@@ -457,6 +460,7 @@ export const updateProva = async (
       startDate: data.startDate ?? null,
       finishDate: data.finishDate ?? null,
       location: data.location ?? null,
+      imagesLink: data.imagesLink ?? null,
       pointsRange: data.pointsRange,
       winDirection: data.winDirection ?? null,
       intervalMinutes: data.intervalMinutes ?? null,

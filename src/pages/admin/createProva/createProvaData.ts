@@ -14,6 +14,7 @@ export const fieldStepMap: Record<keyof CreateChallenge, number> = {
   location: 0,
   startDate: 0,
   endDate: 0,
+  imagesLink: 0,
   intervalMinutes: 1,
   maxPenyesPerSlot: 1,
   challengeType: 1,
@@ -45,6 +46,12 @@ export const createChallengeSchema = z.object({
     })
     .optional(),
 
+  imagesLink: z
+    .string()
+    .trim()
+    .url("L'enllaç ha de ser una URL vàlida (ha de començar per http:// o https://)")
+    .optional()
+    .or(z.literal("")),
 
   startDate: z.date({
       required_error: "La data d'inici és obligatòria",

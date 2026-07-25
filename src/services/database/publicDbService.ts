@@ -159,6 +159,7 @@ export const getProvaInfoRealTime = (
     prova.challengeType = d.challengeType || "null";
     prova.winDirection = d.winDirection || null;
     prova.location = d.location || undefined;
+    prova.imagesLink = d.imagesLink || undefined;
     prova.pointsRange = d.pointsRange || [];
     prova.intervalMinutes = d.intervalMinutes ?? undefined;
     prova.maxPenyesPerSlot = d.maxPenyesPerSlot ?? undefined;
