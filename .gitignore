@@ -25,3 +25,9 @@ dist-ssr
 *.sln
 *.sw?
 emulator-data/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
