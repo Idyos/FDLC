@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, Flag, Home, LogOut, Plus, Users, Trophy } from "lucide-react";
+import { ChevronDown, Flag, Home, LogOut, Plus, Settings, Users, Trophy } from "lucide-react";
 
 import {
   Collapsible,
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { useAuth } from "@/routes/admin/AuthContext";
@@ -38,6 +39,7 @@ import { getUsers } from "@/services/usersService";
 import AdminProvaContextMenu from "@/components/admin/Proves/SidebarItem/adminProvaContextMenu";
 import AdminPenyaContextMenu from "@/components/admin/Penyes/SidebarItem/adminPenyaContextMenu";
 import AdminUserContextMenu from "@/components/admin/Users/SidebarItem/AdminUserContextMenu";
+import AdminProfileDialog from "@/components/admin/Profile/AdminProfileDialog";
 import { ModeToggle } from "../Theme/mode-toggle";
 
 function hasPerm(list: string[], ...perms: string[]): boolean {
@@ -54,8 +56,30 @@ export default function AdminSidebar() {
   const [penyes, setPenyes] = useState<PenyaInfo[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [penyaFilter, setPenyaFilter] = useState("");
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const isInitialYearMount = useRef(true);
+
+  useEffect(() => {
+    if (loading || !userData || userData.isTemporary || userData.hasResetPassword) return;
+    if (userData.permissions.proves.includes("editResults")) return;
+
+    const storageKey = `fdlc:passwordReminderShown:${userData.uid}`;
+    if (localStorage.getItem(storageKey) === "true") return;
+
+    localStorage.setItem(storageKey, "true");
+    toast.warning("Encara no has canviat la teva contrasenya per una de pròpia.", {
+      duration: 10000,
+      action: {
+        label: "Canviar ara",
+        onClick: () => setProfileOpen(true),
+      },
+      cancel: {
+        label: "No m'ho recordis més",
+        onClick: () => localStorage.setItem(storageKey, "true"),
+      },
+    });
+  }, [loading, userData]);
 
   // While loading: show nothing. Once resolved: use permissions or full access if no doc.
   const provesPerms = loading ? [] : (userData?.permissions.proves ?? ["*"]);
@@ -79,6 +103,9 @@ export default function AdminSidebar() {
   const canCreateUser = hasPerm(usersPerms, "create");
   const canEditUser = hasPerm(usersPerms, "edit");
   const canDeleteUser = hasPerm(usersPerms, "delete");
+
+  // Explicit (non-wildcard) check: an "editResults" helper account has no profile of its own to manage.
+  const isResultsOnlyUser = provesPerms.includes("editResults");
 
   useEffect(() => {
     if (isInitialYearMount.current) {
@@ -297,10 +324,18 @@ export default function AdminSidebar() {
                     {user?.displayName}
                   </span>
                 ) : null}
-                <span className="text-xs text-muted-foreground">
-                  {user?.email}
-                </span>
               </div>
+              {!isResultsOnlyUser && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0"
+                  title="Configuració"
+                  onClick={() => setProfileOpen(true)}
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -322,6 +357,8 @@ export default function AdminSidebar() {
           <Outlet />
         </SidebarInset>
       </SidebarProvider>
+
+      <AdminProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
     </TooltipProvider>
   );
 }

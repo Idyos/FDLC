@@ -1,6 +1,12 @@
 import { db, auth, functions } from "@/firebase/firebase";
 import { User } from "@/interfaces/userInterface";
-import { updateProfile } from "firebase/auth";
+import {
+  updateProfile,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
+  verifyBeforeUpdateEmail,
+} from "firebase/auth";
 import { doc, getDocs, collection, updateDoc, deleteField } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 
@@ -79,6 +85,68 @@ export const deleteUsersWithProva = async (provaId: string): Promise<void> => {
 export const deleteUser = async (uid: string): Promise<void> => {
   const fn = httpsCallable(functions, "deleteUser");
   await fn({ uid });
+};
+
+const TEMPORARY_PROFILE_ERROR = "Els comptes temporals no poden modificar el seu perfil.";
+
+export const changeOwnPassword = async (
+  currentPassword: string,
+  newPassword: string,
+  isTemporary: boolean
+): Promise<void> => {
+  if (isTemporary) {
+    throw new Error(TEMPORARY_PROFILE_ERROR);
+  }
+
+  const currentUser = auth.currentUser;
+  if (!currentUser || !currentUser.email) {
+    throw new Error("No hi ha cap usuari autenticat.");
+  }
+
+  const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+  await reauthenticateWithCredential(currentUser, credential);
+  await updatePassword(currentUser, newPassword);
+
+  await updateDoc(doc(db, `Users/${currentUser.uid}`), {
+    hasResetPassword: true,
+    passwordLength: newPassword.length,
+  });
+};
+
+export const changeOwnEmail = async (
+  currentPassword: string,
+  newEmail: string,
+  isTemporary: boolean
+): Promise<void> => {
+  if (isTemporary) {
+    throw new Error(TEMPORARY_PROFILE_ERROR);
+  }
+
+  const currentUser = auth.currentUser;
+  if (!currentUser || !currentUser.email) {
+    throw new Error("No hi ha cap usuari autenticat.");
+  }
+
+  const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+  await reauthenticateWithCredential(currentUser, credential);
+  await verifyBeforeUpdateEmail(currentUser, newEmail);
+};
+
+export const updateOwnDisplayName = async (
+  displayName: string,
+  isTemporary: boolean
+): Promise<void> => {
+  if (isTemporary) {
+    throw new Error(TEMPORARY_PROFILE_ERROR);
+  }
+
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error("No hi ha cap usuari autenticat.");
+  }
+
+  await updateProfile(currentUser, { displayName });
+  await updateDoc(doc(db, `Users/${currentUser.uid}`), { displayName });
 };
 
 export const updateUser = async (user: User): Promise<void> => {

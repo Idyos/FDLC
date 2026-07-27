@@ -7,6 +7,15 @@ export const createUserFn = onCall({ cors: true, region: "europe-west1" }, async
     throw new HttpsError("unauthenticated", "Cal estar autenticat per crear usuaris.");
   }
 
+  const callerDoc = await admin.firestore().doc(`Users/${request.auth.uid}`).get();
+  if (!callerDoc.exists) {
+    throw new HttpsError("permission-denied", "Usuari no trobat.");
+  }
+  const callerUsersPerms: string[] = callerDoc.data()?.permissions?.users ?? [];
+  if (!callerUsersPerms.includes("create") && !callerUsersPerms.includes("*")) {
+    throw new HttpsError("permission-denied", "No tens permís per crear usuaris.");
+  }
+
   const { user, password } = request.data as { user: User; password: string };
 
   if (!user?.displayName) {
@@ -39,6 +48,7 @@ export const createUserFn = onCall({ cors: true, region: "europe-west1" }, async
     photoURL: user.photoURL ?? "",
     isTemporary: user.isTemporary ?? false,
     hasResetPassword: false,
+    passwordLength: password.length,
     permissions: {
       penyes: user.permissions.penyes,
       proves: user.permissions.proves,

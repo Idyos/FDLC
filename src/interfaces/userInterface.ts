@@ -5,6 +5,7 @@ export interface User {
   photoURL: string;
   isTemporary: boolean;
   hasResetPassword?: boolean;
+  passwordLength?: number;
   permissions: {
     penyes: PenyesPermissions[];
     proves: ProvesPermissions[];

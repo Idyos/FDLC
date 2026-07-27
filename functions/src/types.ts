@@ -21,6 +21,8 @@ export interface User {
   displayName: string;
   photoURL: string;
   isTemporary: boolean;
+  hasResetPassword?: boolean;
+  passwordLength?: number;
   permissions: {
     penyes: PenyesPermissions[];
     proves: ProvesPermissions[];

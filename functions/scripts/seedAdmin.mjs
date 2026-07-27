@@ -32,6 +32,7 @@ try {
     photoURL: "",
     isTemporary: false,
     hasResetPassword: false,
+    passwordLength: password.length,
     permissions: {
       penyes: ["*"],
       proves: ["*"],

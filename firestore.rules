@@ -41,9 +41,14 @@ service cloud.firestore {
 
     match /Users/{userId} {
       allow get, list: if true;
-      allow create, delete: if authed();
+      allow create: if canUsers('create');
+      allow delete: if canUsers('delete');
       allow update: if authed() && (
-        request.auth.uid == userId || canUsers('edit')
+        canUsers('edit') || (
+          request.auth.uid == userId &&
+          resource.data.get('isTemporary', false) == false &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['permissions', 'isTemporary'])
+        )
       );
     }
 

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { getAuth, onAuthStateChanged, signOut as firebaseSignOut, User as FirebaseUser } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { User } from "@/interfaces/userInterface";
 
@@ -39,13 +39,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       unsubscribeDoc = onSnapshot(doc(db, `Users/${firebaseUser.uid}`), (snap) => {
         if (snap.exists()) {
           const d = snap.data();
+
+          // L'email d'Auth és la font de veritat (pot canviar via verifyBeforeUpdateEmail
+          // sense que Firestore s'assabenti). Si han divergit, corregim la còpia de Firestore.
+          if (firebaseUser.email && d.email !== firebaseUser.email) {
+            updateDoc(doc(db, `Users/${firebaseUser.uid}`), { email: firebaseUser.email }).catch(() => {});
+          }
+
           setUserData({
             uid: d.uid,
-            email: d.email ?? "",
+            email: firebaseUser.email ?? d.email ?? "",
             displayName: d.displayName ?? "",
             photoURL: d.photoURL ?? "",
             isTemporary: d.isTemporary ?? false,
             hasResetPassword: d.hasResetPassword ?? false,
+            passwordLength: d.passwordLength ?? undefined,
             permissions: {
               penyes: d.permissions?.penyes ?? [],
               proves: d.permissions?.proves ?? [],

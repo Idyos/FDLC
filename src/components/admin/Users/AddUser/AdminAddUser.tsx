@@ -388,6 +388,12 @@ export default function AdminAddUser({
               onChange={setSelectedProves}
               onExtra={(perm) => {
                 if (perm === "*") setSpecificProvaId("");
+                if (perm === "editResults" && !selectedProves.includes("editResults")) {
+                  // Editar resultats és un permís exclusiu (compte d'ajudant puntual): desactiva la resta.
+                  setSelectedProves(["editResults"]);
+                  setSelectedPenyes([]);
+                  setSelectedUsers([]);
+                }
               }}
             />
 
