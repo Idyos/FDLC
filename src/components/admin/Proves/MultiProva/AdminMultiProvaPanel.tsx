@@ -152,7 +152,7 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
                   <>
                     <div className="mb-4">
                       <h3 className="text-lg font-bold">{sp.name}</h3>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-s text-muted-foreground">
                         {sp.challengeType}
                         {sp.winDirection !== "NONE" && (
                           <> · {sp.winDirection === "ASC" ? "menys és millor" : "més és millor"}</>
