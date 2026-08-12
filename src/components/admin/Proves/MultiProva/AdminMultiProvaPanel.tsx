@@ -191,59 +191,55 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
                       </p>
                     </div>
 
-                    {sp.intervalMinutes ? (
-                      <Tabs defaultValue="resultats">
-                        <TabsList className="mb-3">
-                          <TabsTrigger value="resultats">Resultats</TabsTrigger>
-                          <TabsTrigger value="horaris">Horaris</TabsTrigger>
-                        </TabsList>
+                    <Tabs defaultValue="resultats">
+                      <TabsList className="mb-3">
+                        <TabsTrigger value="resultats">Resultats</TabsTrigger>
+                        <TabsTrigger value="horaris">Horaris</TabsTrigger>
+                      </TabsList>
 
-                        <TabsContent value="resultats">{renderResultsGrid(sp)}</TabsContent>
+                      <TabsContent value="resultats">{renderResultsGrid(sp)}</TabsContent>
 
-                        <TabsContent value="horaris">
-                          <div className="flex justify-end mb-3">
-                            <ScheduleSortSelector
-                              sortMode={sortMode}
-                              setSortMode={setSortMode}
-                              showResultSort={sp.challengeType !== "Participació"}
-                            />
-                          </div>
-                          <AdminHoraris
-                            resourceKey={sp.id}
-                            penyes={participants.filter((p) => p.participates)}
-                            startDate={prova.startDate}
-                            intervalMinutes={sp.intervalMinutes}
-                            maxPenyesPerSlot={sp.maxPenyesPerSlot ?? 1}
+                      <TabsContent value="horaris">
+                        <div className="flex justify-end mb-3">
+                          <ScheduleSortSelector
                             sortMode={sortMode}
-                            updateParticipationTime={(penyaId, t) =>
-                              updateSubProvaParticipationTime(year, prova.id, sp.id, penyaId, t)
-                            }
-                            updateScheduleConfig={(i, m) =>
-                              updateSubProvaScheduleConfig(year, prova.id, sp.id, i, m)
-                            }
-                            clearAllParticipationTimes={(ids) =>
-                              clearAllSubProvaParticipationTimes(year, prova.id, sp.id, ids)
-                            }
-                            batchUpdateParticipationTimes={(a) =>
-                              batchUpdateSubProvaParticipationTimes(year, prova.id, sp.id, a)
-                            }
-                            onConfigUpdated={(i, m) => {
-                              setSubProves((prev) =>
-                                prev.map((s) =>
-                                  s.id === sp.id ? { ...s, intervalMinutes: i, maxPenyesPerSlot: m } : s
-                                )
-                              );
-                              setParticipants((prev) => prev.map((p) => ({ ...p, participationTime: null })));
-                            }}
-                            fetchExternalBusyIntervals={() =>
-                              getSiblingBusyIntervals(year, prova.id, sp.id, prova.startDate)
-                            }
+                            setSortMode={setSortMode}
+                            showResultSort={sp.challengeType !== "Participació"}
                           />
-                        </TabsContent>
-                      </Tabs>
-                    ) : (
-                      renderResultsGrid(sp)
-                    )}
+                        </div>
+                        <AdminHoraris
+                          resourceKey={sp.id}
+                          penyes={participants.filter((p) => p.participates)}
+                          startDate={prova.startDate}
+                          intervalMinutes={sp.intervalMinutes ?? 0}
+                          maxPenyesPerSlot={sp.maxPenyesPerSlot ?? 1}
+                          sortMode={sortMode}
+                          updateParticipationTime={(penyaId, t) =>
+                            updateSubProvaParticipationTime(year, prova.id, sp.id, penyaId, t)
+                          }
+                          updateScheduleConfig={(i, m) =>
+                            updateSubProvaScheduleConfig(year, prova.id, sp.id, i, m)
+                          }
+                          clearAllParticipationTimes={(ids) =>
+                            clearAllSubProvaParticipationTimes(year, prova.id, sp.id, ids)
+                          }
+                          batchUpdateParticipationTimes={(a) =>
+                            batchUpdateSubProvaParticipationTimes(year, prova.id, sp.id, a)
+                          }
+                          onConfigUpdated={(i, m) => {
+                            setSubProves((prev) =>
+                              prev.map((s) =>
+                                s.id === sp.id ? { ...s, intervalMinutes: i, maxPenyesPerSlot: m } : s
+                              )
+                            );
+                            setParticipants((prev) => prev.map((p) => ({ ...p, participationTime: null })));
+                          }}
+                          fetchExternalBusyIntervals={() =>
+                            getSiblingBusyIntervals(year, prova.id, sp.id, prova.startDate)
+                          }
+                        />
+                      </TabsContent>
+                    </Tabs>
                   </>
                 )}
               </div>

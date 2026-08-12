@@ -10,11 +10,13 @@ import PublicBracketPanel from "@/components/admin/Proves/Bracket/PublicBracketP
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Trophy } from "lucide-react";
 import SingleProvaResult from "@/components/shared/PenyaProvaResults/singleProvaResult";
+import PublicHoraris from "@/components/public/Horaris/publicHoraris";
+import ScheduleSortSelector from "@/components/shared/ScheduleSortSelector";
 import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
 import { ScrollBar } from "@/components/ui/scroll-area";
 
 const RESULTATS_TAB = "resultats";
-import { rankParticipants } from "@/utils/sorting";
+import { rankParticipants, sortPenyes, SortMode } from "@/utils/sorting";
 import { Separator } from "@/components/ui/separator";
 
 interface Props {
@@ -74,6 +76,7 @@ export default function PublicMultiProvaPanel({ year, provaId }: Props) {
     MultiProvaFinalResult[] | null | undefined
   >(undefined);
   const [loading, setLoading] = useState(true);
+  const [sortMode, setSortMode] = useState<SortMode>("time-asc");
 
   useEffect(() => {
     setLoading(true);
@@ -124,6 +127,18 @@ export default function PublicMultiProvaPanel({ year, provaId }: Props) {
         Aquesta multiprova encara no té subpruebas.
       </p>
     );
+
+  const renderResultsList = (sp: SubProvaConfig) => (
+    <>
+      {(participantsMap[sp.id] ?? []).map((p) => (
+        <SingleProvaResult
+          key={p.penyaId}
+          provaResultSummary={p}
+          challengeTypeOverride={sp.challengeType}
+        />
+      ))}
+    </>
+  );
 
   return (
     <Tabs
@@ -182,13 +197,34 @@ export default function PublicMultiProvaPanel({ year, provaId }: Props) {
                   </>
                 )}
               </p>
-              {(participantsMap[sp.id] ?? []).map((p) => (
-                <SingleProvaResult
-                  key={p.penyaId}
-                  provaResultSummary={p}
-                  challengeTypeOverride={sp.challengeType}
-                />
-              ))}
+              {sp.intervalMinutes ? (
+                <Tabs defaultValue="resultats">
+                  <TabsList className="mb-3">
+                    <TabsTrigger value="resultats">Resultats</TabsTrigger>
+                    <TabsTrigger value="horaris">Horaris</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="resultats">{renderResultsList(sp)}</TabsContent>
+
+                  <TabsContent value="horaris">
+                    <div className="flex justify-end mb-3">
+                      <ScheduleSortSelector
+                        sortMode={sortMode}
+                        setSortMode={setSortMode}
+                        showResultSort={sp.challengeType !== "Participació"}
+                      />
+                    </div>
+                    <PublicHoraris
+                      penyes={sortPenyes(
+                        (participantsMap[sp.id] ?? []).filter((p) => p.participates),
+                        sortMode
+                      )}
+                    />
+                  </TabsContent>
+                </Tabs>
+              ) : (
+                renderResultsList(sp)
+              )}
             </>
           )}
         </TabsContent>
