@@ -25,12 +25,14 @@ interface Props {
   onAdd: (config: Omit<SubProvaConfig, "id">) => Promise<void>;
 }
 
-type SubProvaType = "Participació" | "Temps" | "Punts" | "Rondes";
+type SubProvaType = "Temps" | "Punts" | "Rondes";
 
 export default function AdminAddSubProvaDialog({ open, nextOrder, onClose, onAdd }: Props) {
   const [name, setName] = useState("");
   const [challengeType, setChallengeType] = useState<SubProvaType>("Temps");
   const [winDirection, setWinDirection] = useState<WinDirection>("ASC");
+  const [intervalMinutes, setIntervalMinutes] = useState<number>(0);
+  const [maxPenyesPerSlot, setMaxPenyesPerSlot] = useState<number>(0);
   const [loading, setLoading] = useState(false);
 
   const handleAdd = async () => {
@@ -40,12 +42,16 @@ export default function AdminAddSubProvaDialog({ open, nextOrder, onClose, onAdd
       await onAdd({
         name: name.trim(),
         challengeType,
-        winDirection: challengeType === "Participació" ? "NONE" : challengeType === "Rondes" ? "ASC" : winDirection,
+        winDirection: challengeType === "Rondes" ? "ASC" : winDirection,
         order: nextOrder,
+        intervalMinutes: challengeType === "Rondes" ? undefined : intervalMinutes || undefined,
+        maxPenyesPerSlot: challengeType === "Rondes" ? undefined : maxPenyesPerSlot || undefined,
       });
       setName("");
       setChallengeType("Temps");
       setWinDirection("ASC");
+      setIntervalMinutes(0);
+      setMaxPenyesPerSlot(0);
       onClose();
     } finally {
       setLoading(false);
@@ -77,9 +83,7 @@ export default function AdminAddSubProvaDialog({ open, nextOrder, onClose, onAdd
               value={challengeType}
               onValueChange={(v) => {
                 setChallengeType(v as SubProvaType);
-                if (v === "Participació") setWinDirection("NONE");
-                else if (v === "Temps" || v === "Rondes") setWinDirection("ASC");
-                else setWinDirection("DESC");
+                setWinDirection(v === "Punts" ? "DESC" : "ASC");
               }}
             >
               <SelectTrigger id="subprova-type">
@@ -88,7 +92,6 @@ export default function AdminAddSubProvaDialog({ open, nextOrder, onClose, onAdd
               <SelectContent>
                 <SelectItem value="Temps">Temps</SelectItem>
                 <SelectItem value="Punts">Punts</SelectItem>
-                <SelectItem value="Participació">Participació</SelectItem>
                 <SelectItem value="Rondes">Rondes</SelectItem>
               </SelectContent>
             </Select>
@@ -113,6 +116,33 @@ export default function AdminAddSubProvaDialog({ open, nextOrder, onClose, onAdd
                   </SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {challengeType !== "Rondes" && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="subprova-interval">Interval entre torns (min)</Label>
+                <Input
+                  id="subprova-interval"
+                  type="number"
+                  min={1}
+                  placeholder="p. ex. 20"
+                  value={intervalMinutes || ""}
+                  onChange={(e) => setIntervalMinutes(e.target.value ? Number(e.target.value) : 0)}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="subprova-maxslot">Penyes simultànies màximes</Label>
+                <Input
+                  id="subprova-maxslot"
+                  type="number"
+                  min={1}
+                  placeholder="p. ex. 4"
+                  value={maxPenyesPerSlot || ""}
+                  onChange={(e) => setMaxPenyesPerSlot(e.target.value ? Number(e.target.value) : 0)}
+                />
+              </div>
             </div>
           )}
         </div>

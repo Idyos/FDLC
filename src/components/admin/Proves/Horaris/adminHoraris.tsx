@@ -1,13 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { Prova, ParticipatingPenya } from "@/interfaces/interfaces";
+import { ParticipatingPenya } from "@/interfaces/interfaces";
 import { SortMode } from "@/utils/sorting";
-import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
-import {
-  updateParticipationTime,
-  updateProvaScheduleConfig,
-  clearAllParticipationTimes,
-  batchUpdateParticipationTimes,
-} from "@/services/database/Admin/adminDbServices";
+import { formatTime, computeSlotStatuses } from "@/utils/scheduleFormatting";
+import { scheduleItemsAvoidingBusy, BusyInterval, ScheduleItem } from "@/utils/multiProvaScheduler";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,50 +17,43 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
-type SlotStatus = "under" | "ok" | "overflow";
-
-function computeSlotStatusesFromTimes(
-  penyaTimes: Record<string, string>,
-  intervalMinutes: number,
-  maxPenyesPerSlot: number,
-  startDate: Date
-): Record<string, SlotStatus> {
-  const groups: Record<number, string[]> = {};
-  Object.entries(penyaTimes).forEach(([penyaId, timeStr]) => {
-    if (!timeStr) return;
-    const [h, m] = timeStr.split(":").map(Number);
-    const d = new Date(startDate);
-    d.setHours(h, m, 0, 0);
-    const diffMins = (d.getTime() - startDate.getTime()) / 60000;
-    const slot = Math.floor(diffMins / intervalMinutes);
-    (groups[slot] ??= []).push(penyaId);
-  });
-  const out: Record<string, SlotStatus> = {};
-  Object.values(groups).forEach((group) => {
-    const status: SlotStatus =
-      group.length > maxPenyesPerSlot ? "overflow" :
-      group.length < maxPenyesPerSlot ? "under" : "ok";
-    group.forEach((id) => (out[id] = status));
-  });
-  return out;
-}
-
-function formatTime(date: Date | null | undefined): string {
-  if (!date) return "";
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-}
-
 interface Props {
-  prova: Prova;
+  /** Identity of the underlying Prova/subprova, used to resync local editable
+   *  state if the caller switches to a different resource without remounting. */
+  resourceKey: string;
+  penyes: ParticipatingPenya[];
+  startDate: Date;
+  intervalMinutes: number;
+  maxPenyesPerSlot: number;
   sortMode: SortMode;
-  onProvaConfigUpdated: (intervalMinutes: number, maxPenyesPerSlot: number) => void;
+  updateParticipationTime: (penyaId: string, time: Date | null) => Promise<void>;
+  updateScheduleConfig: (intervalMinutes: number, maxPenyesPerSlot: number) => Promise<void>;
+  clearAllParticipationTimes: (penyaIds: string[]) => Promise<void>;
+  batchUpdateParticipationTimes: (
+    assignments: { penyaId: string; time: Date | null }[]
+  ) => Promise<void>;
+  onConfigUpdated: (intervalMinutes: number, maxPenyesPerSlot: number) => void;
+  /** When provided (only inside a MultiProva), used by "Generar horaris" to try
+   *  to avoid overlapping with times already assigned to sibling sub-proves. */
+  fetchExternalBusyIntervals?: () => Promise<Map<string, BusyInterval[]>>;
 }
 
-export default function AdminHoraris({ prova, sortMode, onProvaConfigUpdated }: Props) {
-  const setProva = useProvaStore((state) => state.setProva);
-
-  const [localInterval, setLocalInterval] = useState(prova.intervalMinutes ?? 0);
-  const [localMaxSlot, setLocalMaxSlot] = useState(prova.maxPenyesPerSlot ?? 1);
+export default function AdminHoraris({
+  resourceKey,
+  penyes,
+  startDate,
+  intervalMinutes,
+  maxPenyesPerSlot,
+  sortMode,
+  updateParticipationTime,
+  updateScheduleConfig,
+  clearAllParticipationTimes,
+  batchUpdateParticipationTimes,
+  onConfigUpdated,
+  fetchExternalBusyIntervals,
+}: Props) {
+  const [localInterval, setLocalInterval] = useState(intervalMinutes ?? 0);
+  const [localMaxSlot, setLocalMaxSlot] = useState(maxPenyesPerSlot ?? 1);
 
   const pendingInterval = useRef<number>(localInterval);
   const pendingMaxSlot = useRef<number>(localMaxSlot);
@@ -77,22 +65,17 @@ export default function AdminHoraris({ prova, sortMode, onProvaConfigUpdated }: 
   const [committedTimes, setCommittedTimes] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    setLocalInterval(prova.intervalMinutes ?? 0);
-    setLocalMaxSlot(prova.maxPenyesPerSlot ?? 1);
+    setLocalInterval(intervalMinutes ?? 0);
+    setLocalMaxSlot(maxPenyesPerSlot ?? 1);
     const times: Record<string, string> = {};
-    prova.penyes.forEach((p) => { times[p.penyaId] = formatTime(p.participationTime); });
+    penyes.forEach((p) => { times[p.penyaId] = formatTime(p.participationTime); });
     setPenyaTimes(times);
     setCommittedTimes(times);
-  }, [prova.id]);
+  }, [resourceKey]);
 
   const hasAnyTime = Object.values(committedTimes).some((t) => !!t);
 
-  const slotStatuses = computeSlotStatusesFromTimes(
-    committedTimes,
-    localInterval,
-    localMaxSlot,
-    prova.startDate
-  );
+  const slotStatuses = computeSlotStatuses(committedTimes, localInterval, localMaxSlot, startDate);
 
   const handleConfigBlur = () => {
     if (pendingInterval.current === localInterval && pendingMaxSlot.current === localMaxSlot) return;
@@ -106,22 +89,16 @@ export default function AdminHoraris({ prova, sortMode, onProvaConfigUpdated }: 
   const applyConfigUpdate = async (interval: number, maxSlot: number) => {
     try {
       if (hasAnyTime) {
-        await clearAllParticipationTimes(prova.reference, prova.penyes.map((p) => p.penyaId));
+        await clearAllParticipationTimes(penyes.map((p) => p.penyaId));
         const cleared: Record<string, string> = {};
-        prova.penyes.forEach((p) => { cleared[p.penyaId] = ""; });
+        penyes.forEach((p) => { cleared[p.penyaId] = ""; });
         setPenyaTimes(cleared);
         setCommittedTimes(cleared);
       }
-      await updateProvaScheduleConfig(prova.reference, interval, maxSlot);
+      await updateScheduleConfig(interval, maxSlot);
       pendingInterval.current = interval;
       pendingMaxSlot.current = maxSlot;
-      onProvaConfigUpdated(interval, maxSlot);
-      const updatedProva = Object.assign(Object.create(Object.getPrototypeOf(prova)), prova, {
-        intervalMinutes: interval,
-        maxPenyesPerSlot: maxSlot,
-        penyes: prova.penyes.map((p) => ({ ...p, participationTime: null })),
-      });
-      setProva(updatedProva);
+      onConfigUpdated(interval, maxSlot);
       toast.success("Configuració actualitzada");
     } catch (error) {
       console.error("Error updating schedule config:", error);
@@ -141,19 +118,37 @@ export default function AdminHoraris({ prova, sortMode, onProvaConfigUpdated }: 
   };
 
   const doGenerate = async () => {
-    const shuffled = [...prova.penyes].sort(() => Math.random() - 0.5);
-    const assignments = shuffled.map((p, i) => {
-      const d = new Date(prova.startDate);
-      d.setMinutes(d.getMinutes() + Math.floor(i / localMaxSlot) * localInterval);
+    const externalBusy = fetchExternalBusyIntervals
+      ? await fetchExternalBusyIntervals()
+      : new Map<string, BusyInterval[]>();
+
+    const items: ScheduleItem[] = penyes.map((p) => ({ itemId: p.penyaId, teamIds: [p.penyaId] }));
+    const { assignments, relaxed } = scheduleItemsAvoidingBusy(
+      items,
+      localInterval,
+      localMaxSlot,
+      externalBusy
+    );
+
+    const newAssignments = penyes.map((p) => {
+      const offset = assignments.get(p.penyaId) ?? 0;
+      const d = new Date(startDate);
+      d.setMinutes(d.getMinutes() + offset);
       d.setSeconds(0, 0);
       return { penyaId: p.penyaId, time: d };
     });
+
     try {
-      await batchUpdateParticipationTimes(prova.reference, assignments);
+      await batchUpdateParticipationTimes(newAssignments);
       const newTimes: Record<string, string> = {};
-      assignments.forEach(({ penyaId, time }) => { newTimes[penyaId] = formatTime(time); });
+      newAssignments.forEach(({ penyaId, time }) => { newTimes[penyaId] = formatTime(time); });
       setPenyaTimes(newTimes);
       setCommittedTimes(newTimes);
+      if (relaxed.length > 0) {
+        toast.warning(
+          `No s'ha pogut evitar el solapament amb altres subproves per a ${relaxed.length} penya(es).`
+        );
+      }
       toast.success("Horaris generats correctament");
     } catch {
       toast.error("Error generant els horaris");
@@ -174,13 +169,13 @@ export default function AdminHoraris({ prova, sortMode, onProvaConfigUpdated }: 
     let newDate: Date | null = null;
     if (timeStr) {
       const [h, m] = timeStr.split(":").map(Number);
-      newDate = new Date(prova.startDate);
+      newDate = new Date(startDate);
       newDate.setHours(h, m, 0, 0);
     }
-    await updateParticipationTime(prova.reference, penya.penyaId, newDate);
+    await updateParticipationTime(penya.penyaId, newDate);
   };
 
-  const sortedPenyes = [...prova.penyes].sort((a, b) => {
+  const sortedPenyes = [...penyes].sort((a, b) => {
     switch (sortMode) {
       case "name-asc":    return a.name.localeCompare(b.name);
       case "name-desc":   return b.name.localeCompare(a.name);

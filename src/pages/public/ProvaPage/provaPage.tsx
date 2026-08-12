@@ -16,7 +16,13 @@ import DynamicList from "@/components/shared/dynamicList";
 import LoadingAnimation from "@/components/shared/loadingAnim";
 import SingleProvaResult from "@/components/shared/PenyaProvaResults/singleProvaResult";
 import AdminSingleProvaResult from "@/components/admin/Proves/ProvaPenyaSummary/adminSingleProvaResult";
-import { getProvaInfo } from "@/services/database/Admin/adminDbServices";
+import {
+  getProvaInfo,
+  updateParticipationTime,
+  updateProvaScheduleConfig,
+  clearAllParticipationTimes,
+  batchUpdateParticipationTimes,
+} from "@/services/database/Admin/adminDbServices";
 import ProvaTitle from "@/components/public/provaTitle";
 import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
 import AdminFooter from "@/components/admin/Proves/Footer/adminFooter";
@@ -25,9 +31,9 @@ import { isAdmin } from "@/services/authService";
 import SingleProvaResultGrid from "@/components/shared/PenyaProvaResults/singleProvaResultGrid";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import AdminHoraris from "@/components/admin/Proves/Horaris/adminHoraris";
 import PublicHoraris from "@/components/public/Horaris/publicHoraris";
+import ScheduleSortSelector from "@/components/shared/ScheduleSortSelector";
 import { SortMode, sortPenyes } from "@/utils/sorting";
 import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
 import { Separator } from "@/components/ui/separator";
@@ -51,32 +57,6 @@ function computeSlotStatuses(
     group.forEach((id) => (out[id] = status));
   });
   return out;
-}
-
-function SortSelector({ provaInfo, sortMode, setSortMode }: {
-  provaInfo: Prova;
-  sortMode: SortMode;
-  setSortMode: (m: SortMode) => void;
-}) {
-  return (
-    <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
-      <SelectTrigger className="w-44">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="time-asc">Ordre de joc ↑</SelectItem>
-        <SelectItem value="time-desc">Ordre de joc ↓</SelectItem>
-        <SelectItem value="name-asc">Nom A→Z</SelectItem>
-        <SelectItem value="name-desc">Nom Z→A</SelectItem>
-        {provaInfo.challengeType !== "Participació" && (
-          <>
-            <SelectItem value="result-asc">Resultat ↑</SelectItem>
-            <SelectItem value="result-desc">Resultat ↓</SelectItem>
-          </>
-        )}
-      </SelectContent>
-    </Select>
-  );
 }
 
 function PublicResultsList({ penyes }: { penyes: ParticipatingPenya[] }) {
@@ -279,20 +259,42 @@ export default function ProvaPage() {
 
                   <TabsContent value="horaris">
                     <div className="flex justify-end mb-3">
-                      <SortSelector provaInfo={provaInfo} sortMode={sortMode} setSortMode={setSortMode} />
+                      <ScheduleSortSelector
+                        sortMode={sortMode}
+                        setSortMode={setSortMode}
+                        showResultSort={provaInfo.challengeType !== "Participació"}
+                      />
                     </div>
                     {admin ? (
                       <AdminHoraris
-                        prova={provaInfo}
+                        resourceKey={provaInfo.id}
+                        penyes={provaInfo.penyes}
+                        startDate={provaInfo.startDate}
+                        intervalMinutes={provaInfo.intervalMinutes ?? 0}
+                        maxPenyesPerSlot={provaInfo.maxPenyesPerSlot ?? 1}
                         sortMode={sortMode}
-                        onProvaConfigUpdated={(intervalMinutes, maxPenyesPerSlot) => {
-                          setProvaInfo((prev) =>
-                            Object.assign(Object.create(Object.getPrototypeOf(prev)), prev, {
+                        updateParticipationTime={(penyaId, time) =>
+                          updateParticipationTime(provaInfo.reference, penyaId, time)
+                        }
+                        updateScheduleConfig={(interval, maxSlot) =>
+                          updateProvaScheduleConfig(provaInfo.reference, interval, maxSlot)
+                        }
+                        clearAllParticipationTimes={(penyaIds) =>
+                          clearAllParticipationTimes(provaInfo.reference, penyaIds)
+                        }
+                        batchUpdateParticipationTimes={(assignments) =>
+                          batchUpdateParticipationTimes(provaInfo.reference, assignments)
+                        }
+                        onConfigUpdated={(intervalMinutes, maxPenyesPerSlot) => {
+                          setProvaInfo((prev) => {
+                            const updated = Object.assign(Object.create(Object.getPrototypeOf(prev)), prev, {
                               intervalMinutes,
                               maxPenyesPerSlot,
                               penyes: prev.penyes.map((p) => ({ ...p, participationTime: null })),
-                            })
-                          );
+                            });
+                            setProva(updated);
+                            return updated;
+                          });
                         }}
                       />
                     ) : (

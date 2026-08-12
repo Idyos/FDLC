@@ -22,9 +22,17 @@ import {
   getSubProvaParticipants,
   getSubProvas,
   updateSubProvaResult,
+  updateSubProvaScheduleConfig,
+  updateSubProvaParticipationTime,
+  clearAllSubProvaParticipationTimes,
+  batchUpdateSubProvaParticipationTimes,
+  getSiblingBusyIntervals,
 } from "@/services/database/Admin/adminMultiProvaDbServices";
 import AdminAddSubProvaDialog from "./AdminAddSubProvaDialog";
 import AdminBracketPanel from "@/components/admin/Proves/Bracket/adminBracketPanel";
+import AdminHoraris from "@/components/admin/Proves/Horaris/adminHoraris";
+import ScheduleSortSelector from "@/components/shared/ScheduleSortSelector";
+import { SortMode } from "@/utils/sorting";
 import AdminSingleProvaResult from "@/components/admin/Proves/ProvaPenyaSummary/adminSingleProvaResult";
 import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
 import { ScrollBar } from "@/components/ui/scroll-area";
@@ -46,6 +54,7 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SubProvaConfig | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>("time-asc");
   
   // Load sub-provas on mount
   useEffect(() => {
@@ -92,6 +101,25 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
       toast.error("Error al eliminar la subprova: " + err.message);
     }
   };
+
+  const renderResultsGrid = (sp: SubProvaConfig) => (
+    loadingParticipants ? (
+      <p className="text-sm text-muted-foreground">Carregant participants...</p>
+    ) : participants.length === 0 ? (
+      <p className="text-sm text-muted-foreground">No hi ha participants en aquesta subprova.</p>
+    ) : (
+      <div className="grid grid-cols-[repeat(auto-fit,_minmax(280px,_1fr))] gap-3">
+        {participants.map((p) => (
+          <AdminSingleProvaResult
+            key={p.penyaId}
+            provaResultSummary={p}
+            challengeTypeOverride={sp.challengeType}
+            onSave={(val) => updateSubProvaResult(year, prova.id, sp.id, p.penyaId, val)}
+          />
+        ))}
+      </div>
+    )
+  );
 
   return (
     <div>
@@ -147,6 +175,9 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
                     prova={prova}
                     subProvaId={sp.id}
                     readOnly={prova.isFinished}
+                    fetchExternalBusyIntervals={() =>
+                      getSiblingBusyIntervals(year, prova.id, sp.id, prova.startDate)
+                    }
                   />
                 ) : (
                   <>
@@ -160,21 +191,58 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
                       </p>
                     </div>
 
-                    {loadingParticipants ? (
-                      <p className="text-sm text-muted-foreground">Carregant participants...</p>
-                    ) : participants.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No hi ha participants en aquesta subprova.</p>
-                    ) : (
-                      <div className="grid grid-cols-[repeat(auto-fit,_minmax(280px,_1fr))] gap-3">
-                        {participants.map((p) => (
-                          <AdminSingleProvaResult
-                            key={p.penyaId}
-                            provaResultSummary={p}
-                            challengeTypeOverride={sp.challengeType}
-                            onSave={(val) => updateSubProvaResult(year, prova.id, sp.id, p.penyaId, val)}
+                    {sp.intervalMinutes ? (
+                      <Tabs defaultValue="resultats">
+                        <TabsList className="mb-3">
+                          <TabsTrigger value="resultats">Resultats</TabsTrigger>
+                          <TabsTrigger value="horaris">Horaris</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="resultats">{renderResultsGrid(sp)}</TabsContent>
+
+                        <TabsContent value="horaris">
+                          <div className="flex justify-end mb-3">
+                            <ScheduleSortSelector
+                              sortMode={sortMode}
+                              setSortMode={setSortMode}
+                              showResultSort={sp.challengeType !== "Participació"}
+                            />
+                          </div>
+                          <AdminHoraris
+                            resourceKey={sp.id}
+                            penyes={participants.filter((p) => p.participates)}
+                            startDate={prova.startDate}
+                            intervalMinutes={sp.intervalMinutes}
+                            maxPenyesPerSlot={sp.maxPenyesPerSlot ?? 1}
+                            sortMode={sortMode}
+                            updateParticipationTime={(penyaId, t) =>
+                              updateSubProvaParticipationTime(year, prova.id, sp.id, penyaId, t)
+                            }
+                            updateScheduleConfig={(i, m) =>
+                              updateSubProvaScheduleConfig(year, prova.id, sp.id, i, m)
+                            }
+                            clearAllParticipationTimes={(ids) =>
+                              clearAllSubProvaParticipationTimes(year, prova.id, sp.id, ids)
+                            }
+                            batchUpdateParticipationTimes={(a) =>
+                              batchUpdateSubProvaParticipationTimes(year, prova.id, sp.id, a)
+                            }
+                            onConfigUpdated={(i, m) => {
+                              setSubProves((prev) =>
+                                prev.map((s) =>
+                                  s.id === sp.id ? { ...s, intervalMinutes: i, maxPenyesPerSlot: m } : s
+                                )
+                              );
+                              setParticipants((prev) => prev.map((p) => ({ ...p, participationTime: null })));
+                            }}
+                            fetchExternalBusyIntervals={() =>
+                              getSiblingBusyIntervals(year, prova.id, sp.id, prova.startDate)
+                            }
                           />
-                        ))}
-                      </div>
+                        </TabsContent>
+                      </Tabs>
+                    ) : (
+                      renderResultsGrid(sp)
                     )}
                   </>
                 )}

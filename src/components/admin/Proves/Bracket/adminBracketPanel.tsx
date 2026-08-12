@@ -49,45 +49,20 @@ import {
   getProvaBracket,
   saveProvaBracket,
 } from "@/services/database/Admin/adminBracketsDbServices";
+import { formatTime, computeSlotStatuses } from "@/utils/scheduleFormatting";
+import { scheduleItemsAvoidingBusy, BusyInterval, ScheduleItem } from "@/utils/multiProvaScheduler";
+import { fillRoundsSequentially } from "@/utils/bracketRoundScheduler";
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
-type SlotStatus = "under" | "ok" | "overflow";
-
-function formatTime(d: Date): string {
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-function computeSlotStatuses(
-  matchSchedules: Record<string, string>,
-  durationMinutes: number,
-  simultaneous: number,
-  startDate: Date,
-): Record<string, SlotStatus> {
-  if (!durationMinutes || !simultaneous) return {};
-  const groups: Record<number, string[]> = {};
-  Object.entries(matchSchedules).forEach(([matchId, timeStr]) => {
-    if (!timeStr) return;
-    const [h, m] = timeStr.split(":").map(Number);
-    const d = new Date(startDate);
-    d.setHours(h, m, 0, 0);
-    const diffMins = (d.getTime() - startDate.getTime()) / 60000;
-    const slot = Math.floor(diffMins / durationMinutes);
-    (groups[slot] ??= []).push(matchId);
-  });
-  const out: Record<string, SlotStatus> = {};
-  Object.values(groups).forEach((group) => {
-    const status: SlotStatus =
-      group.length > simultaneous ? "overflow" : group.length < simultaneous ? "under" : "ok";
-    group.forEach((id) => (out[id] = status));
-  });
-  return out;
-}
 
 interface AdminBracketPanelProps {
   year: number;
   prova: Prova;
   readOnly?: boolean;
   subProvaId?: string;
+  /** When provided (only inside a MultiProva), used by "Generar horaris" to try
+   *  to avoid overlapping Round 1 with times already assigned to sibling sub-proves. */
+  fetchExternalBusyIntervals?: () => Promise<Map<string, BusyInterval[]>>;
 }
 
 function buildTeamSnapshot(prova: Prova): BracketTeamSnapshot[] {
@@ -115,7 +90,7 @@ const SCHEDULE_LEGEND = [
   { color: "border-red-500", label: "Excés" },
 ] as const;
 
-export default function AdminBracketPanel({ year, prova, readOnly = false, subProvaId }: AdminBracketPanelProps) {
+export default function AdminBracketPanel({ year, prova, readOnly = false, subProvaId, fetchExternalBusyIntervals }: AdminBracketPanelProps) {
   const { user } = useAuth();
   const teams = useMemo(() => buildTeamSnapshot(prova), [prova]);
   const teamById = useMemo(() => {
@@ -312,6 +287,13 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
     }
   };
 
+  const offsetToTime = (offsetMinutes: number): string => {
+    const d = new Date(prova.startDate);
+    d.setMinutes(d.getMinutes() + offsetMinutes);
+    d.setSeconds(0, 0);
+    return formatTime(d);
+  };
+
   const doGenerateSchedule = async () => {
     if (!localDuration || !localSimultaneous || !finalStageRef.current) {
       toast.error("Cal configurar la durada i el nombre de partits simultanis");
@@ -321,26 +303,46 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
       .filter((m) => m.status !== "bye")
       .sort((a, b) => a.roundNumber - b.roundNumber || a.position - b.position);
 
-    // Group by round to respect dependencies: round N+1 cannot start before round N ends
-    const byRound = new Map<number, typeof schedulableMatches>();
-    schedulableMatches.forEach((m) => {
-      if (!byRound.has(m.roundNumber)) byRound.set(m.roundNumber, []);
-      byRound.get(m.roundNumber)!.push(m);
-    });
+    // Only Round 1 has known team identities ahead of time, so only Round 1 is
+    // checked against sibling sub-proves; later rounds just follow sequentially.
+    const round1Matches = schedulableMatches.filter((m) => m.roundNumber === 1);
+    const laterMatches = schedulableMatches.filter((m) => m.roundNumber > 1);
+
+    const externalBusy = fetchExternalBusyIntervals
+      ? await fetchExternalBusyIntervals()
+      : new Map<string, BusyInterval[]>();
+
+    const round1Items: ScheduleItem[] = round1Matches.map((m) => ({
+      itemId: m.id,
+      teamIds: m.teams.map((t) => t.teamId).filter((id): id is string => !!id),
+    }));
+
+    const { assignments: round1Assignments, relaxed } = scheduleItemsAvoidingBusy(
+      round1Items,
+      localDuration,
+      localSimultaneous,
+      externalBusy,
+      { shuffle: false }
+    );
 
     const newSchedules: Record<string, string> = {};
-    let roundStartMins = 0;
+    let round1EndMins = 0;
+    round1Matches.forEach((m) => {
+      const offset = round1Assignments.get(m.id) ?? 0;
+      newSchedules[m.id] = offsetToTime(offset);
+      round1EndMins = Math.max(round1EndMins, offset + localDuration);
+    });
 
-    for (const roundNum of [...byRound.keys()].sort((a, b) => a - b)) {
-      const roundMatches = byRound.get(roundNum)!;
-      roundMatches.forEach((match, idx) => {
-        const slotIdx = Math.floor(idx / localSimultaneous);
-        const d = new Date(prova.startDate);
-        d.setMinutes(d.getMinutes() + roundStartMins + slotIdx * localDuration);
-        d.setSeconds(0, 0);
-        newSchedules[match.id] = formatTime(d);
+    if (laterMatches.length > 0) {
+      const { schedules: laterSchedules } = fillRoundsSequentially(
+        laterMatches,
+        localDuration,
+        localSimultaneous,
+        round1EndMins
+      );
+      Object.entries(laterSchedules).forEach(([matchId, offset]) => {
+        newSchedules[matchId] = offsetToTime(offset);
       });
-      roundStartMins += Math.ceil(roundMatches.length / localSimultaneous) * localDuration;
     }
 
     setMatchSchedules(newSchedules); matchSchedulesRef.current = newSchedules;
@@ -351,6 +353,11 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
 
     if (finalStageRef.current) {
       await doSave(finalStageRef.current, thirdPlaceMatchRef.current, groupStageRef.current);
+    }
+    if (relaxed.length > 0) {
+      toast.warning(
+        `No s'ha pogut evitar el solapament amb altres subproves per a ${relaxed.length} partit(s) de Ronda 1.`
+      );
     }
     toast.success("Horaris generats correctament");
   };

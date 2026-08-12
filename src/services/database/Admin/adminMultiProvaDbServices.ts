@@ -11,6 +11,7 @@ import {
 import { db } from "@/firebase/firebase";
 import { SubProvaConfig, PointsRange, ParticipatingPenya } from "@/interfaces/interfaces";
 import { generateProvaResults, deriveBracketPositions } from "./adminProvesDbServices";
+import type { BusyInterval } from "@/utils/multiProvaScheduler";
 
 /** Converteix un result de Firestore (number antic o string nou) a string. */
 function toResultString(raw: unknown): string {
@@ -120,6 +121,120 @@ export async function updateSubProvaResult(
     `Circuit/${year}/Proves/${provaId}/SubProves/${subProvaId}/Participants/${penyaId}`
   );
   await updateDoc(ref, { result });
+}
+
+// ─── Schedule (horaris per subprova) ──────────────────────────────────────────
+
+export const updateSubProvaScheduleConfig = async (
+  year: number,
+  provaId: string,
+  subProvaId: string,
+  intervalMinutes: number,
+  maxPenyesPerSlot: number
+): Promise<void> => {
+  const ref = doc(db, `Circuit/${year}/Proves/${provaId}/SubProves/${subProvaId}`);
+  await updateDoc(ref, { intervalMinutes, maxPenyesPerSlot });
+};
+
+export const updateSubProvaParticipationTime = async (
+  year: number,
+  provaId: string,
+  subProvaId: string,
+  penyaId: string,
+  time: Date | null
+): Promise<void> => {
+  const ref = doc(
+    db,
+    `Circuit/${year}/Proves/${provaId}/SubProves/${subProvaId}/Participants/${penyaId}`
+  );
+  await updateDoc(ref, { participationTime: time ?? null });
+};
+
+export const clearAllSubProvaParticipationTimes = async (
+  year: number,
+  provaId: string,
+  subProvaId: string,
+  penyaIds: string[]
+): Promise<void> => {
+  const batch = writeBatch(db);
+  penyaIds.forEach((id) => {
+    const ref = doc(
+      db,
+      `Circuit/${year}/Proves/${provaId}/SubProves/${subProvaId}/Participants/${id}`
+    );
+    batch.update(ref, { participationTime: null });
+  });
+  await batch.commit();
+};
+
+export const batchUpdateSubProvaParticipationTimes = async (
+  year: number,
+  provaId: string,
+  subProvaId: string,
+  assignments: { penyaId: string; time: Date | null }[]
+): Promise<void> => {
+  const batch = writeBatch(db);
+  assignments.forEach(({ penyaId, time }) => {
+    const ref = doc(
+      db,
+      `Circuit/${year}/Proves/${provaId}/SubProves/${subProvaId}/Participants/${penyaId}`
+    );
+    batch.update(ref, { participationTime: time ?? null });
+  });
+  await batch.commit();
+};
+
+function minutesFromOrigin(date: Date, origin: Date): number {
+  return (date.getTime() - origin.getTime()) / 60000;
+}
+
+function pushBusy(map: Map<string, BusyInterval[]>, teamId: string, interval: BusyInterval) {
+  const list = map.get(teamId);
+  if (list) list.push(interval);
+  else map.set(teamId, [interval]);
+}
+
+/** Busy time intervals (per penyaId, in minutes offset from `dayOrigin`) already
+ *  occupied by every OTHER sub-prova of this MultiProva. Used so that generating
+ *  the schedule for one sub-prova can try to avoid clashing with its siblings. */
+export async function getSiblingBusyIntervals(
+  year: number,
+  provaId: string,
+  excludeSubProvaId: string,
+  dayOrigin: Date
+): Promise<Map<string, BusyInterval[]>> {
+  const siblings = (await getSubProvas(year, provaId)).filter((s) => s.id !== excludeSubProvaId);
+  const busy = new Map<string, BusyInterval[]>();
+
+  for (const sibling of siblings) {
+    if (sibling.challengeType === "Rondes") {
+      const bracket = await getProvaBracket(year, provaId, sibling.id);
+      if (!bracket?.matchSchedules || !bracket.matchDurationMinutes) continue;
+      const duration = bracket.matchDurationMinutes;
+      bracket.finalStage.bracket.matches.forEach((match) => {
+        const timeStr = bracket.matchSchedules?.[match.id];
+        if (!timeStr) return;
+        const [h, m] = timeStr.split(":").map(Number);
+        const d = new Date(dayOrigin);
+        d.setHours(h, m, 0, 0);
+        const start = minutesFromOrigin(d, dayOrigin);
+        const interval: BusyInterval = { start, end: start + duration };
+        match.teams.forEach((t) => {
+          if (t.teamId) pushBusy(busy, t.teamId, interval);
+        });
+      });
+    } else {
+      if (!sibling.intervalMinutes) continue;
+      const participants = await getSubProvaParticipants(year, provaId, sibling.id);
+      participants.forEach((p) => {
+        if (!p.participates || !p.participationTime) return;
+        const start = minutesFromOrigin(p.participationTime, dayOrigin);
+        pushBusy(busy, p.penyaId, { start, end: start + sibling.intervalMinutes! });
+      });
+    }
+  }
+
+  return busy;
 }
 
 // ─── Delete ──────────────────────────────────────────────────────────────────
