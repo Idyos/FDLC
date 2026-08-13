@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { overflow: hidden; }
+  .banner {
+    width: 100%;
+    background: linear-gradient(135deg, #1a0a2e 0%, #2d1657 40%, #4c2a85 75%, #6b3fa0 100%);
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'Inter', sans-serif; color: #fff;
+    position: relative; overflow: hidden; cursor: pointer;
+    padding: 28px 28px;
+    border-radius: 16px;
+    gap: 16px;
+  }
+  .banner::before {
+    content: ''; position: absolute; top: -60%; right: 5%;
+    width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(227,0,141,0.1) 0%, transparent 70%);
+  }
+  .banner::after {
+    content: ''; position: absolute; bottom: -60%; left: 10%;
+    width: 150px; height: 150px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%);
+  }
+  .logo { position: relative; z-index: 1; flex-shrink: 0; }
+  .logo svg { height: 28px; width: auto; }
+  .logo svg .cls-1 { fill: #fff; }
+  .sep { width: 1px; height: 44px; background: rgba(255,255,255,0.12); flex-shrink: 0; }
+  .content { flex: 1; position: relative; z-index: 1; min-width: 0; }
+  .headline { font-size: 17px; font-weight: 800; line-height: 1.3; }
+  .headline .price { color: #a5f3fc; }
+  .details { display: flex; gap: 16px; margin-top: 6px; flex-wrap: wrap; }
+  .detail { font-size: 11px; color: rgba(255,255,255,0.5); display: flex; align-items: center; gap: 4px; }
+  .detail .dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(227,0,141,0.5); flex-shrink: 0; }
+  .cta {
+    background: rgba(255,255,255,0.1); color: #fff; border: 1.5px solid rgba(255,255,255,0.2);
+    border-radius: 22px; padding: 11px 24px; font-size: 13px; font-weight: 700;
+    cursor: pointer; white-space: nowrap; transition: all 0.3s;
+    position: relative; z-index: 1; flex-shrink: 0;
+  }
+  .cta:hover { background: #e3008d; border-color: #e3008d; }
+  @media (max-width: 480px) {
+    .banner { padding: 20px 16px; flex-wrap: wrap; gap: 12px; }
+    .sep { display: none; }
+    .headline { font-size: 14px; }
+    .logo svg { height: 22px; }
+    .cta { width: 100%; text-align: center; padding: 12px; }
+    .details { gap: 10px; }
+  }
+</style>
+</head>
+<body>
+<a href="https://eportsinternet.com/lp/ranking2026" target="_blank" style="text-decoration:none; color:inherit; display:block;">
+<div class="banner">
+  <div class="logo"><svg id="Capa_2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 427.1 117.15"><defs><style>.cls-1{fill:#fff;}</style></defs><g id="Capa_1-2"><path class="cls-1" d="M149.07,31.02C140.35,11.98,119.35-5.62,88.92,1.69c-26.26,6.31-41.48,29.03-41.01,54.31-8.03-1.05-15.76-2.99-22.63-6.09-1.85-.83-3.68-1.75-5.42-2.8-6.19-3.74-14.25-1.75-17.98,4.45-3.74,6.2-1.75,14.25,4.45,17.98,2.63,1.59,5.36,3.03,8.16,4.29,11.98,5.4,25.81,8.17,39.81,9.02,11.54,23.95,36.79,35.37,64.2,28.77,15.47-3.72,26.37-11.59,33.79-21.76,1.7-2.51,2.77-5.91,1.82-9.88-1.62-6.74-7.82-10.71-14.56-9.09-3.17.76-4.97,2.04-6.77,4.14-5.05,6.04-11.37,10.29-19.7,12.29-7.12,1.71-13.62,1.17-19.08-1.64-2-1.03-3.86-2.49-5.54-4.29,1.23-.17,2.46-.36,3.67-.56,12.22-2,24.86-5.48,36.06-10.83,5.96-2.85,10.96-5.7,14.84-8.78,9.53-7.57,12.31-16.53,6.04-30.22M78.48,41.27c2.4-7.78,7.85-13.36,16.26-15.38,6.5-1.56,12.33-.5,17.05,2.84,6.42,4.55,14.53,14.4,2.1,19.48-11.12,4.42-24.2,6.98-36.17,8.12-.73-5.53-.53-10.86.76-15.05Z"/><path class="cls-1" d="M282.74,39.84v-2.19c0-3.83-3.1-6.92-6.93-6.92s-6.92,3.1-6.92,6.92v36.08c0,3.83,3.1,6.92,6.92,6.92s6.93-3.1,6.93-6.92v-12.94c0-9.84,3.92-15.22,10.93-16.86,2.82-.64,5.19-2.82,5.19-6.47,0-3.92-2.46-6.74-6.74-6.74s-7.38,4.37-9.39,9.11ZM171.1,55.78v-.18c0-8.11,5.38-13.49,11.84-13.49s11.94,5.38,11.94,13.49v.18c0,8.2-5.47,13.49-11.94,13.49s-11.84-5.38-11.84-13.49ZM157.43,88.31c0,3.83,3.1,6.93,6.92,6.93s6.93-3.1,6.93-6.93v-14.58c3.28,3.92,7.84,7.29,15.22,7.29,11.57,0,22.23-8.93,22.23-25.24v-.18c0-16.31-10.84-25.24-22.23-25.24-7.2,0-11.85,3.37-15.22,7.93v-.64c0-3.83-3.1-6.92-6.93-6.92s-6.92,3.1-6.92,6.92v31.54ZM225.53,55.78v-.18c0-7.2,4.74-13.3,12.67-13.3s12.85,6.29,12.85,13.49v.18c0,7.2-4.74,13.3-12.66,13.3s-12.85-6.29-12.85-13.49ZM211.86,55.78v.18c0,14.03,11.21,25.24,26.33,25.24s26.51-11.39,26.51-25.42v-.18c0-14.03-11.21-25.24-26.33-25.24s-26.52,11.39-26.52,25.42ZM308.81,25.16v6.1h-.46c-3.28,0-5.92,2.64-5.92,5.92s2.64,5.92,5.92,5.92h.46v23.14c0,11.3,5.74,14.67,14.21,14.67,3.01,0,5.38-.36,7.93-1.37,1.91-.73,3.55-2.73,3.55-5.19,0-3.19-2.64-5.74-5.74-5.74-.27,0-1.18.09-1.64.09-3.1,0-4.47-1.55-4.47-4.74v-20.87h6.1c3.28,0,5.92-2.64,5.92-5.92s-2.64-5.92-5.92-5.92h-6.1v-6.1c0-3.83-3.1-6.92-6.92-6.92s-6.92,3.1-6.92,6.92ZM378.12,65.26v-.18c0-8.93-7.93-12.21-14.76-14.49-5.28-1.82-9.93-3.1-9.93-5.83v-.18c0-1.91,1.73-3.37,5.1-3.37,2.92,0,6.65,1.18,10.57,3.1.91.46,1.55.64,2.55.64,3.1,0,5.56-2.37,5.56-5.47,0-2.37-1.28-4.19-3.28-5.19-4.74-2.37-10.02-3.74-15.13-3.74-9.84,0-17.86,5.56-17.86,15.49v.18c0,9.48,7.75,12.67,14.58,14.67,5.38,1.64,10.11,2.64,10.11,5.65v.18c0,2.19-1.82,3.64-5.83,3.64s-8.57-1.46-13.21-4.37c-.73-.46-1.73-.73-2.73-.73-3.1,0-5.47,2.37-5.47,5.47,0,2.19,1.18,3.83,2.64,4.74,5.92,3.83,12.39,5.56,18.41,5.56,10.57,0,18.68-4.92,18.68-15.76Z"/></g></svg></div>
+  <div class="sep"></div>
+  <div class="content">
+    <div class="headline">Fibra 1000Mb + Mòbil 100GB · <span class="price">des de 32,90€/mes</span></div>
+    <div class="details">
+      <span class="detail"><span class="dot"></span>Preu per sempre</span>
+      <span class="detail"><span class="dot"></span>Instal·lació gratuïta</span>
+      <span class="detail"><span class="dot"></span>Router última generació</span>
+    </div>
+  </div>
+  <button class="cta">Veure ofertes</button>
+</div>
+</a>
+<script>
+  (function () {
+    var banner = document.querySelector('.banner');
+    function reportHeight() {
+      window.parent.postMessage({ type: 'eports-banner-height', height: banner.offsetHeight }, '*');
+    }
+    window.addEventListener('load', reportHeight);
+    new ResizeObserver(reportHeight).observe(banner);
+  })();
+</script>
+</body>
+</html>

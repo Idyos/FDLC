@@ -12,6 +12,7 @@ import LoadingAnimation from "@/components/shared/loadingAnim";
 import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
 import { Separator } from "@/components/ui/separator";
 import { publicNavItems } from "@/components/public/BottomNavBar/publicNavItems";
+import SponsorBanner from "@/components/public/sponsorBanner";
 
 export default function MainPage() {
   const previousRankingsRef = useRef<PenyaInfo[]>([]);
@@ -20,13 +21,20 @@ export default function MainPage() {
   const { selectedYear: year } = useYear();
   const [isLoading, setIsLoading] = useState(true);
   const [searchParams] = useSearchParams();
-  const { favoritePenyes } = useFavoritePenyes();
+  const { favoritePenyes, removeFavoritePenya } = useFavoritePenyes();
 
   const unsubscribeRef = useRef<null | (() => void)>(null);
 
   const favoriteRankings = rankings.filter((r) => favoritePenyes.some((f) => f.id === r.id));
-  const missingFavorites = favoritePenyes.filter((f) => !rankings.some((r) => r.id === f.id));
-  const hasFavoritesSection = favoritePenyes.length > 0 && !isLoading;
+  const hasFavoritesSection = favoriteRankings.length > 0 && !isLoading;
+
+  // Drop favorites that no longer appear in this year's ranking (e.g. the penya was removed).
+  useEffect(() => {
+    if (isLoading) return;
+    favoritePenyes
+      .filter((f) => !rankings.some((r) => r.id === f.id))
+      .forEach((f) => removeFavoritePenya(f.id));
+  }, [rankings, isLoading, favoritePenyes, removeFavoritePenya]);
 
   const steps = [
     {
@@ -34,6 +42,7 @@ export default function MainPage() {
       icon: publicNavItems[0].icon,
       content: (
         <>
+          <SponsorBanner variant="tall" className="mt-4" />
           <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
             <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isLoading ? (
@@ -50,11 +59,6 @@ export default function MainPage() {
                           {favoriteRankings.map((item) => (
                             <PenyaSummary key={item.id} rankingInfo={item} />
                           ))}
-                          {missingFavorites.map((f) => (
-                            <p key={f.id} className="text-sm text-muted-foreground italic px-1 py-1">
-                              {f.name} no té dades per a l'any {year}
-                            </p>
-                          ))}
                         </div>
                         <Separator className="my-3" />
                       </>
@@ -69,6 +73,7 @@ export default function MainPage() {
                       )}
                       breakIndex={10}
                     />
+                    <SponsorBanner variant="slim" className="mt-2" />
                   </>
                 ) : (
                   <p className="text-neutral-500 dark:text-neutral-400">{year === new Date().getFullYear() ? "Encara no hi han penyes afegides per aquest any." : `No s'han afegit penyes per a l'any ${year}.`}</p>
@@ -98,15 +103,6 @@ export default function MainPage() {
               ))}
             </div>
           </div>
-        </>
-      ),
-    },
-    {
-      title: publicNavItems[2].label,
-      icon: publicNavItems[2].icon,
-      content: (
-        <>
-          <p>Pàgina de comunicats</p>
         </>
       ),
     },
@@ -140,10 +136,6 @@ export default function MainPage() {
         setIsLoading(false);
       });
       unsubscribeRef.current = unsubscribe;
-    }
-    //Comunicats
-    else if(selectedTab === 2) {
-      document.title = `Comunicats ${year}`;
     }
 
     return () => {
