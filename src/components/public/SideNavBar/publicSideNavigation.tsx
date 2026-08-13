@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
 import { usePenyaStore } from "@/components/shared/Contexts/PenyaContext";
+import { ModeToggle } from "@/components/Theme/mode-toggle";
 import YearSelector from "@/components/public/yearSelector";
 import SideNavBar from "./sideNavBar";
 import SideFavoritePenyes from "./sideFavoritePenyes";
@@ -22,7 +23,8 @@ export default function PublicSideNavigation() {
   const [expanded, setExpanded] = useState(false);
   const [yearMenuOpen, setYearMenuOpen] = useState(false);
   const [favMenuOpen, setFavMenuOpen] = useState(false);
-  const isExpanded = expanded || yearMenuOpen || favMenuOpen;
+  const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  const isExpanded = expanded || yearMenuOpen || favMenuOpen || modeMenuOpen;
 
   const isMainPage = location.pathname === "/";
   const activeIndex = isMainPage ? Number(searchParams.get("tab") ?? 0) : -1;
@@ -54,7 +56,12 @@ export default function PublicSideNavigation() {
       )}
     >
       <div className="p-3 pt-4">
-        <YearSelector compact={!isExpanded} onOpenChange={setYearMenuOpen} />
+        <div className={cn("flex gap-2", isExpanded ? "flex-row items-center" : "flex-col items-center")}>
+          <div className={isExpanded ? "min-w-0 flex-1" : "w-full"}>
+            <YearSelector compact={!isExpanded} onOpenChange={setYearMenuOpen} />
+          </div>
+          <ModeToggle onOpenChange={setModeMenuOpen} />
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col items-stretch justify-center">

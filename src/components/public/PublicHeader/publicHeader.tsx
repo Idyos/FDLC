@@ -12,7 +12,9 @@ export default function PublicHeader() {
         <div className="md:hidden">
           <FavoritePenyesButton />
         </div>
-        <ModeToggle />
+        <div className="md:hidden">
+          <ModeToggle />
+        </div>
       </div>
     </header>
   );
