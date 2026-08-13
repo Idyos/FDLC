@@ -462,7 +462,7 @@ export default function Dashboard() {
   }, [ranking, proves, results]);
 
   const handleProva = (id: string) =>
-    navigateWithQuery(navigate, "/admin/prova", { provaId: id });
+    navigateWithQuery(navigate, "/admin/prova", { provaId: id, year: selectedYear });
 
   return (
     <div className="space-y-6 p-4">

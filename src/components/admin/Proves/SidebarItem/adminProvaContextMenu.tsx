@@ -49,11 +49,11 @@ export default function AdminProvaContextMenu({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const navigateToProva = () => {
-    navigateWithQuery(navigate, "/admin/prova", { provaId: prova.id });
+    navigateWithQuery(navigate, "/admin/prova", { provaId: prova.id, year });
   };
 
   const navigateToEditProva = () => {
-    navigateWithQuery(navigate, "/admin/editProva", { provaId: prova.id });
+    navigateWithQuery(navigate, "/admin/editProva", { provaId: prova.id, year });
   };
 
   const handleDelete = async () => {

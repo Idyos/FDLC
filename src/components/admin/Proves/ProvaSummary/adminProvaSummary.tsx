@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { ProvaSummary } from "@/interfaces/interfaces";
 import { useNavigate } from "react-router-dom";
 import { navigateWithQuery } from "@/utils/url";
+import { useYear } from "@/components/shared/Contexts/YearContext";
 
 interface ProvaSummaryProps {
   provaSummary: ProvaSummary | null;
@@ -9,9 +10,10 @@ interface ProvaSummaryProps {
 
 export default function AdminProvaSummary({ provaSummary }: ProvaSummaryProps) {
   const navigate = useNavigate();
+  const { selectedYear } = useYear();
 
   const handleClick = () => {
-    navigateWithQuery(navigate, "/admin/prova", { provaId: provaSummary?.id || "" });
+    navigateWithQuery(navigate, "/admin/prova", { provaId: provaSummary?.id || "", year: selectedYear });
   };
 
   return provaSummary != null && (

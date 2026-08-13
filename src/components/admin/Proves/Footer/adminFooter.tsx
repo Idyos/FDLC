@@ -80,7 +80,7 @@ export default function AdminFooter() {
         setIsLoading(false);
         if (prova.id) {
           setTimeout(() => {
-            navigateWithQuery(navigate, "/prova", { provaId: prova.id });
+            navigateWithQuery(navigate, "/prova", { provaId: prova.id, year: selectedYear });
           }, 2000);
         }
       } catch (error: any) {
@@ -109,7 +109,7 @@ export default function AdminFooter() {
       setIsLoading(false);
       if (prova.id) {
         setTimeout(() => {
-          navigateWithQuery(navigate, "/prova", { provaId: prova.id });
+          navigateWithQuery(navigate, "/prova", { provaId: prova.id, year: selectedYear });
         }, 2000);
       }
     } catch (error: any) {
@@ -128,7 +128,7 @@ export default function AdminFooter() {
       setProva({ ...prova, isFinished: true });
       if (prova.id) {
         setTimeout(() => {
-          navigateWithQuery(navigate, "/prova", { provaId: prova.id });
+          navigateWithQuery(navigate, "/prova", { provaId: prova.id, year: selectedYear });
         }, 2000);
       }
     } catch (error: any) {

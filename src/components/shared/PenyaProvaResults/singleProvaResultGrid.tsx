@@ -6,6 +6,7 @@ import { useProvaStore } from "../Contexts/ProvaContext";
 import { useNavigate } from "react-router-dom";
 import { PointsInput } from "./PointsInput/pointsInput";
 import { navigateWithQuery } from "@/utils/url";
+import { useYear } from "../Contexts/YearContext";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: ParticipatingPenya;
@@ -13,6 +14,7 @@ interface SingleProvaSummaryProp {
 
 export default function SingleProvaResultGrid({ provaResultSummary }: SingleProvaSummaryProp) {
   const navigate = useNavigate();
+  const { selectedYear } = useYear();
 
   const prova = useProvaStore((state) => state.prova);
 
@@ -25,7 +27,7 @@ export default function SingleProvaResultGrid({ provaResultSummary }: SingleProv
   }, [provaResultSummary.penyaId, provaResultSummary.result]);
 
   const handleClick = () => {
-      navigateWithQuery(navigate, "/penya", { penyaId: provaResultSummary.penyaId });  
+      navigateWithQuery(navigate, "/penya", { penyaId: provaResultSummary.penyaId, year: selectedYear });
   }
 
   const renderInput = () => {

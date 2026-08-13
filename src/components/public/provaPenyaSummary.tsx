@@ -8,6 +8,7 @@ import { Clock, Trophy } from "lucide-react";
 import { Card } from "../ui/card";
 import { Separator } from "@/components/ui/separator"
 import { navigateWithQuery } from "@/utils/url";
+import { useYear } from "@/components/shared/Contexts/YearContext";
 
 interface ProvaSummaryProps {
   provaSummary: PenyaProvaSummary;
@@ -16,6 +17,7 @@ interface ProvaSummaryProps {
 export default function ProvaPenyaSummary({ provaSummary }: ProvaSummaryProps) {
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const { selectedYear } = useYear();
 
   // Color de fondo en función de position (si existe)
   let bgColor = theme === "dark" ? "rgba(66, 66, 66, 1)" : "rgba(255, 255, 255, 1)";
@@ -26,7 +28,7 @@ export default function ProvaPenyaSummary({ provaSummary }: ProvaSummaryProps) {
   const gradient = `linear-gradient(90deg, rgba(0, 0, 0, 0), ${bgColor} 26%)`;
 
   const handleClick = () => {
-    navigateWithQuery(navigate, "/prova", { provaId: provaSummary.id }); 
+    navigateWithQuery(navigate, "/prova", { provaId: provaSummary.id, year: selectedYear });
   };
 
 

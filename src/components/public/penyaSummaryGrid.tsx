@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "../Theme/theme-provider";
 import { Badge } from "@/components/ui/badge"
 import { navigateWithQuery } from "@/utils/url";
+import { useYear } from "@/components/shared/Contexts/YearContext";
 
 interface PenyaSummaryProps {
     rankingInfo: PenyaInfo;
@@ -19,9 +20,10 @@ export default function PenyaSummaryGrid({ rankingInfo }: PenyaSummaryProps) {
 
 
     const navigate = useNavigate();
+    const { selectedYear } = useYear();
 
     const handleClick = () => {
-      navigateWithQuery(navigate, "/penya", { penyaId: rankingInfo.id }); 
+      navigateWithQuery(navigate, "/penya", { penyaId: rankingInfo.id, year: selectedYear });
     };
 
     return (

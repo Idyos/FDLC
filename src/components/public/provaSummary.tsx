@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "../Theme/theme-provider";
 import { Badge } from "@/components/ui/badge";
 import { navigateWithQuery } from "@/utils/url";
+import { useYear } from "@/components/shared/Contexts/YearContext";
 
 interface ProvaSummaryProps {
   provaSummary: ProvaSummary;
@@ -12,11 +13,12 @@ interface ProvaSummaryProps {
 export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const { selectedYear } = useYear();
 
   let bgColor = theme === "dark" ? "rgba(66, 66, 66, 1)" : "rgba(255, 255, 255, 1)";
 
   const handleClick = () => {
-    navigateWithQuery(navigate, "/prova", { provaId: provaSummary.id }); 
+    navigateWithQuery(navigate, "/prova", { provaId: provaSummary.id, year: selectedYear });
   };
 
   return (
