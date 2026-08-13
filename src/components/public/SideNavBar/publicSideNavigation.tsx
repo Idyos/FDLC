@@ -60,7 +60,7 @@ export default function PublicSideNavigation() {
           <div className={isExpanded ? "min-w-0 flex-1" : "w-full"}>
             <YearSelector compact={!isExpanded} onOpenChange={setYearMenuOpen} />
           </div>
-          <ModeToggle onOpenChange={setModeMenuOpen} />
+          <ModeToggle show={isExpanded} onOpenChange={setModeMenuOpen} />
         </div>
       </div>
 

@@ -43,8 +43,8 @@ export default function MainPage() {
       content: (
         <>
           <SponsorBanner variant="tall" className="mt-4" />
-          <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
-            <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
+          <div className="flex-1 flex flex-col bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
+            <div className="flex-1 p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isLoading ? (
                 <LoadingAnimation />
               ) : (
@@ -73,7 +73,6 @@ export default function MainPage() {
                       )}
                       breakIndex={10}
                     />
-                    <SponsorBanner variant="slim" className="mt-2" />
                   </>
                 ) : (
                   <p className="text-neutral-500 dark:text-neutral-400">{year === new Date().getFullYear() ? "Encara no hi han penyes afegides per aquest any." : `No s'han afegit penyes per a l'any ${year}.`}</p>
@@ -89,8 +88,8 @@ export default function MainPage() {
       icon: publicNavItems[1].icon,
       content: (
         <>
-          <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
-            <div className="p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
+          <div className="flex-1 flex flex-col bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
+            <div className="flex-1 p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isLoading ? (
                 <LoadingAnimation />
               ) : (
@@ -145,10 +144,10 @@ export default function MainPage() {
   }, [selectedTab, year]);
 
   return (
-    <div className="p-2 pb-16 md:pb-2">
+    <div className="p-2 flex-1 flex flex-col min-h-screen">
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
-          className="space-y-4"
+          className="space-y-4 flex-1 flex flex-col"
           key={selectedTab}
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}

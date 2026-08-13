@@ -10,11 +10,14 @@ import {
 import { useTheme } from "@/components/Theme/theme-provider"
 
 interface ModeToggleProps {
+  show?: boolean;
   onOpenChange?: (open: boolean) => void
 }
 
-export function ModeToggle({ onOpenChange }: ModeToggleProps = {}) {
+export function ModeToggle({ show = true, onOpenChange }: ModeToggleProps = {}) {
   const { setTheme } = useTheme()
+
+  if (!show) return null;
 
   return (
     <DropdownMenu onOpenChange={onOpenChange}>

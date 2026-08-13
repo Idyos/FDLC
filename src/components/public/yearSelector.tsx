@@ -100,7 +100,7 @@ export default function YearSelector({ compact = false, onOpenChange }: YearSele
         }}
       >
         <DropdownMenuTrigger asChild>
-          <Button className="w-full" variant="outline" size="sm">
+          <Button className="w-full" variant="outline">
             {selectedYear}
           </Button>
         </DropdownMenuTrigger>

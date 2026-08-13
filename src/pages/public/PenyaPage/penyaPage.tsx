@@ -86,7 +86,7 @@ export default function PenyaPage() {
     }, {} as Record<string, PenyaProvaSummary[]>);
 
     return (
-        <div className="p-2 pb-16 md:pb-2">
+        <div className="p-2 flex-1 flex flex-col min-h-screen">
         <AlertDialog open={noPenyaAlert} onOpenChange={setNoPenyaAlert}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -101,9 +101,9 @@ export default function PenyaPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-            <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
+            <div className="flex-1 flex flex-col bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
                 {isPenyaLoading ? <LoadingAnimation /> : <PenyaTitle {...penyaInfo.current} />}
-              <div className="flex m-1 p-2 flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
+              <div className="flex-1 flex m-1 p-2 flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
               {isProvesLoading ? (
                 <LoadingAnimation />
               ) : (

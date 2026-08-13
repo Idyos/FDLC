@@ -19,14 +19,16 @@ import AdminSidebar from './components/admin/AdminSiderbar';
 import CreateOrEditProva from './pages/admin/createProva/createOrEditProva';
 import PublicBottomNavigation from './components/public/BottomNavBar/publicBottomNavigation';
 import PublicSideNavigation from './components/public/SideNavBar/publicSideNavigation';
+import PublicFooter from './components/public/Footer/publicFooter';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <PublicSideNavigation />
-      <div className="md:pl-24">
+      <div className="md:pl-24 min-h-screen flex flex-col">
         <PublicHeader />
         {children}
+        <PublicFooter />
       </div>
       <PublicBottomNavigation />
     </>
