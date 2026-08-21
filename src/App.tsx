@@ -20,6 +20,7 @@ import CreateOrEditProva from './pages/admin/createProva/createOrEditProva';
 import PublicBottomNavigation from './components/public/BottomNavBar/publicBottomNavigation';
 import PublicSideNavigation from './components/public/SideNavBar/publicSideNavigation';
 import PublicFooter from './components/public/Footer/publicFooter';
+import DonationButton from './components/public/donationButton';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -28,6 +29,9 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
       <div className="md:pl-24 min-h-screen flex flex-col">
         <PublicHeader />
         {children}
+        <div className="px-4 mt-6">
+          <DonationButton />
+        </div>
         <PublicFooter />
       </div>
       <PublicBottomNavigation />
