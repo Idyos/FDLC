@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
 import { useYear } from "@/components/shared/Contexts/YearContext";
-import { getRankingRealTime } from "@/services/database/publicDbService";
+import { getPenyesNames } from "@/services/database/publicDbService";
 import { PenyaInfo } from "@/interfaces/interfaces";
 
 interface SideFavoritePenyesProps {
@@ -30,11 +30,11 @@ export default function SideFavoritePenyes({ expanded, onOpenChange }: SideFavor
 
   useEffect(() => {
     if (!open) return;
-    const unsub = getRankingRealTime(selectedYear, (data) => {
-      setAllPenyes(data);
-      unsub();
+    let cancelled = false;
+    getPenyesNames(selectedYear).then((data) => {
+      if (!cancelled) setAllPenyes(data);
     });
-    return () => unsub();
+    return () => { cancelled = true; };
   }, [open, selectedYear]);
 
   useEffect(() => {

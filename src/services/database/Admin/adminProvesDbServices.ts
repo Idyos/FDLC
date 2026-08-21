@@ -5,7 +5,8 @@ import {
   collection,
   getDocs,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  deleteField,
 } from "firebase/firestore";
 import { Prova, PenyaProvaFinalResultData, PenyaProvaResultData } from "@/interfaces/interfaces";
 import { db } from "@/firebase/firebase";
@@ -36,6 +37,23 @@ export function deriveBracketPositions(saved: StoredProvaBracketDoc): Map<string
   }
 
   return positionMap;
+}
+
+/** Denormalizes the per-penya position/points onto the Participants docs, so
+ *  the public penya page can read them from a doc it already fetches instead
+ *  of scanning the whole Results collection. This is a plain overwrite of the
+ *  value just computed for this close — not a running counter — so re-closing
+ *  a prova can never drift it out of sync. Mutates the given batch. */
+function applyResultsToBatch(
+  batch: ReturnType<typeof writeBatch>,
+  year: number,
+  provaId: string,
+  results: PenyaProvaFinalResultData[]
+) {
+  results.forEach((r) => {
+    const participantRef = doc(db, `Circuit/${year}/Proves/${provaId}/Participants/${r.penyaId}`);
+    batch.update(participantRef, { pointsAwarded: r.pointsAwarded, position: r.position });
+  });
 }
 
 export async function generateProvaResults(year: number, provaId: string) {
@@ -127,6 +145,8 @@ export async function generateProvaResults(year: number, provaId: string) {
 
   batch.update(provaRef, { isFinished: true, finishDate: serverTimestamp() });
 
+  applyResultsToBatch(batch, year, provaId, results);
+
   await batch.commit();
 
   // Delete temporary users whose access was limited to this prova
@@ -139,7 +159,17 @@ export async function openProva(year: number, provaId: string){
     const provaRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
     const resultsRef = doc(db, `Circuit/${year}/Results/${provaId}`);
 
+    const resultsSnap = await getDoc(resultsRef);
+    const previousResults: PenyaProvaFinalResultData[] = resultsSnap.exists()
+      ? (resultsSnap.data().results ?? [])
+      : [];
+
     const batch = writeBatch(db);
+
+    previousResults.forEach((r) => {
+      const participantRef = doc(db, `Circuit/${year}/Proves/${provaId}/Participants/${r.penyaId}`);
+      batch.update(participantRef, { pointsAwarded: deleteField(), position: deleteField() });
+    });
 
     batch.delete(resultsRef);
     batch.update(provaRef, { isFinished: false });
@@ -222,6 +252,7 @@ export async function generateBracketResults(year: number, provaId: string) {
     results,
   });
   batch.update(provaRef, { isFinished: true, finishDate: serverTimestamp() });
+  applyResultsToBatch(batch, year, provaId, results);
   await batch.commit();
 
   await deleteUsersWithProva(provaId);

@@ -1,7 +1,7 @@
 import PenyaSummary from "@/components/public/penyaSummary";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { PenyaInfo, PenyaProvaSummary} from "@/interfaces/interfaces";
-import { getProvesRealTime, getRankingRealTime } from "@/services/database/publicDbService";
+import { getProves, getRankingRealTime } from "@/services/database/publicDbService";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -115,7 +115,8 @@ export default function MainPage() {
     unsubscribeRef.current = null;
     setIsLoading(true);
 
-    //Ranking
+    //Ranking — kept real-time: cheap (bounded by nº de penyes) and it's the
+    // one public screen where seeing the standings move live has real value.
     if (selectedTab === 0) {
       document.title = `Ranking ${year}`;
 
@@ -126,14 +127,16 @@ export default function MainPage() {
       });
       unsubscribeRef.current = unsubscribe;
     }
-    //Proves
+    //Proves — just a schedule/list, the live detail lives in ProvaPage.
     else if (selectedTab === 1) {
       document.title = `Proves ${year}`;
-      const unsubscribe = getProvesRealTime(year, (data) => {
+      let cancelled = false;
+      getProves(year).then((data) => {
+        if (cancelled) return;
         setProves(data);
         setIsLoading(false);
       });
-      unsubscribeRef.current = unsubscribe;
+      unsubscribeRef.current = () => { cancelled = true; };
     }
 
     return () => {

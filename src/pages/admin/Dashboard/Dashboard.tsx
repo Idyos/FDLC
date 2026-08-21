@@ -28,9 +28,10 @@ import { navigateWithQuery } from "@/utils/url";
 import { cn } from "@/lib/utils";
 import { PenyaInfo, PenyaProvaSummary, ChallengeResult } from "@/interfaces/interfaces";
 import {
-  getRankingRealTime,
+  getPenyesRealTime,
   getProvesRealTime,
   getResultsInfoRealTime,
+  computeRanking,
 } from "@/services/database/publicDbService";
 
 // ─── Colors per tipus de prova (hex per compatibilitat SVG) ───────────────────
@@ -347,11 +348,15 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { selectedYear } = useYear();
 
-  const [ranking, setRanking] = useState<PenyaInfo[]>([]);
+  const [penyes, setPenyes] = useState<PenyaInfo[]>([]);
   const [proves, setProves] = useState<PenyaProvaSummary[]>([]);
   const [results, setResults] = useState<ChallengeResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Penyes + Results are each subscribed exactly once and combined locally
+  // (computeRanking) — this screen also needs the raw per-prova results for
+  // its own stats below, so it can't just call the ranking helper as a black
+  // box without ending up with two listeners on Results.
   useEffect(() => {
     setIsLoading(true);
     let loaded = 0;
@@ -359,8 +364,8 @@ export default function Dashboard() {
       if (++loaded >= 3) setIsLoading(false);
     };
 
-    const unsubRanking = getRankingRealTime(selectedYear, (d) => {
-      setRanking(d);
+    const unsubPenyes = getPenyesRealTime(selectedYear, (d) => {
+      setPenyes(d);
       tryFinish();
     });
     const unsubProves = getProvesRealTime(selectedYear, (d) => {
@@ -373,11 +378,13 @@ export default function Dashboard() {
     });
 
     return () => {
-      unsubRanking();
+      unsubPenyes();
       unsubProves();
       unsubResults();
     };
   }, [selectedYear]);
+
+  const ranking = useMemo(() => computeRanking(penyes, results), [penyes, results]);
 
   const stats = useMemo(() => {
     const finished = proves.filter((p) => p.isFinished);

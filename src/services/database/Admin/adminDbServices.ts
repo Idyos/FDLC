@@ -302,7 +302,6 @@ export const getPenyes = async (year: number, callback: (data: PenyaInfo[]) => v
     const dataConstructed = data.docs.map((doc) => ({
       id: doc.id,
       name: doc.data().name || doc.id,
-      totalPoints: doc.data().totalPoints || 0,
       description: doc.data().description || "",
       imageUrl: doc.data().imageUrl || undefined,
       position: 0,
@@ -347,7 +346,6 @@ export const addPenyes = async (
       batch.set(newDocRef, {
         name,
         description: description || "",
-        totalPoints: 0,
         isSecret: false,
       });
       results.push(true);

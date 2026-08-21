@@ -1,7 +1,7 @@
 // src/services/dbService.js
 import { PenyaInfo, PenyaProvaSummary, ChallengeResult, Prova, EmptyProva, ParticipatingPenya, SubProvaConfig } from "@/interfaces/interfaces";
 import { db } from "../../firebase/firebase";
-import { collection, getDocs, query, onSnapshot, orderBy, doc, Unsubscribe } from "firebase/firestore";
+import { collection, getDocs, getDoc, query, onSnapshot, orderBy, doc, Unsubscribe, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import { toast } from "sonner";
 
 export const getYears = async (
@@ -27,67 +27,79 @@ export const getYears = async (
     });
 }
 
-export const getRankingRealTime = (
+/** One-shot list of penya id/name/isSecret, for UI that only needs to search
+ *  by name (e.g. the favorites picker) — no need for the ranking's totalPoints
+ *  or a live listener just to populate a search box. */
+export const getPenyesNames = async (year: number): Promise<PenyaInfo[]> => {
+  const penyesRef = collection(db, `Circuit/${year}/Penyes`);
+  const snapshot = await getDocs(penyesRef);
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    name: doc.data().name || doc.id,
+    position: 0,
+    isSecret: doc.data().isSecret || false,
+    imageUrl: doc.data().imageUrl || undefined,
+  }));
+};
+
+/** Real-time list of penyes (name/image/secret) without points — the
+ *  building block getRankingRealTime and the Dashboard both combine with
+ *  Results, so a Results listener is never opened twice for the same screen. */
+export const getPenyesRealTime = (
   year: number,
   callback: (data: PenyaInfo[]) => void
 ) => {
   const penyesRef = collection(db, `Circuit/${year}/Penyes`);
 
-  let penyes: PenyaInfo[] = [];
-  let resultsDocs: ChallengeResult[] = [];
+  return onSnapshot(penyesRef, (penyesSnap) => {
+    callback(
+      penyesSnap.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data().name || doc.id,
+        imageUrl: doc.data().imageUrl || undefined,
+        position: 0,
+        directionChange: null,
+        isSecret: doc.data().isSecret || false,
+      }))
+    );
+  });
+};
 
-  // 🔁 Función que recalcula el ranking combinando penyes + results
-  const recomputeRanking = () => {
-    if (penyes.length === 0) 
-    {
-      callback([]);
-      return;
-    }
+/** Totals are always derived from Results rather than stored/incremented
+ *  anywhere — that way a manual edit to a Results doc (or a bug in a write
+ *  path) can never leave a stale total lying around: there is no running
+ *  counter to fall out of sync, only a sum recomputed from the source data. */
+export function computeRanking(penyes: PenyaInfo[], results: ChallengeResult[]): PenyaInfo[] {
+  if (penyes.length === 0) return [];
 
-    const penyaPoints = new Map<string, ChallengeResult[]>();
-    resultsDocs.forEach((resultPenya) => {
-      if(!penyaPoints.has(resultPenya.penyaId)){
-        penyaPoints.set(resultPenya.penyaId, []);
-      }
-      penyaPoints.get(resultPenya.penyaId)?.push(resultPenya);
-    });
-
-    const combined = penyes.map((p) => ({
-      ...p,
-      totalPoints: penyaPoints.get(p.id)?.reduce((acc, curr) => acc + (curr.pointsAwarded || 0), 0) || 0,
-    }));
-
-    // 3️⃣ Ordenar y asignar posiciones
-    const sorted = combined
-      .sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0))
-      .map((item, index) => ({
-        ...item,
-        position: index + 1,
-      }));
-
-    callback(sorted);
-  };
-
-  // 1️⃣ Escucha de penyes
-  const unsubPenyes = onSnapshot(penyesRef, (penyesSnap) => {
-    penyes = penyesSnap.docs.map((doc) => ({
-      id: doc.id,
-      name: doc.data().name || doc.id,
-      totalPoints: 0,
-      imageUrl: doc.data().imageUrl || undefined,
-      position: 0,
-      directionChange: null,
-      isSecret: doc.data().isSecret || false,
-    }));
-    recomputeRanking(); // 🔁 recalcula cuando cambian penyes
+  const penyaPoints = new Map<string, number>();
+  results.forEach((r) => {
+    penyaPoints.set(r.penyaId, (penyaPoints.get(r.penyaId) ?? 0) + (r.pointsAwarded || 0));
   });
 
-  
+  return penyes
+    .map((p) => ({ ...p, totalPoints: penyaPoints.get(p.id) ?? 0 }))
+    .sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0))
+    .map((item, index) => ({ ...item, position: index + 1 }));
+}
 
-  // 2️⃣ Escucha de resultados
-  const unsubResults = getResultsInfoRealTime(year, (results) => {
-    resultsDocs = results;
-    recomputeRanking(); // 🔁 recalcula cuando cambian resultados
+export const getRankingRealTime = (
+  year: number,
+  callback: (data: PenyaInfo[]) => void
+) => {
+  let penyes: PenyaInfo[] = [];
+  let results: ChallengeResult[] = [];
+
+  const emit = () => callback(computeRanking(penyes, results));
+
+  const unsubPenyes = getPenyesRealTime(year, (data) => {
+    penyes = data;
+    emit();
+  });
+  const unsubResults = getResultsInfoRealTime(year, (data) => {
+    results = data;
+    emit();
   });
 
   return () => {
@@ -96,33 +108,42 @@ export const getRankingRealTime = (
   };
 };
 
+function mapProvaSummary(provesRefPath: string, docSnap: QueryDocumentSnapshot<DocumentData>): PenyaProvaSummary {
+  const d = docSnap.data();
+  const prova = new PenyaProvaSummary();
+
+  prova.id = docSnap.id;
+  prova.reference = provesRefPath;
+  prova.name = d.name || docSnap.id;
+  prova.description = d.description || "";
+  prova.imageUrl = d.imageUrl || undefined;
+  prova.isSecret = d.isSecret || false;
+  prova.isFinished = d.isFinished || false;
+  prova.startDate = d.startDate?.toDate?.() ?? new Date(0);
+  prova.finishDate = d.finishDate?.toDate?.() ?? undefined;
+  prova.challengeType = d.challengeType || "null";
+  prova.participates = d.participates || true;
+
+  return prova;
+}
+
 export const getProvesRealTime = (year: number, callback: (data: PenyaProvaSummary[]) => void) => {
   const provesRef = collection(db, `Circuit/${year}/Proves`);
   const q = query(provesRef, orderBy("startDate", "desc"));
 
   return onSnapshot(q, (snapshot) => {
-    const proves: PenyaProvaSummary[] = snapshot.docs.map((docSnap) => {
-      const d = docSnap.data();
-
-      let prova = new PenyaProvaSummary();
-
-      prova.id = docSnap.id;
-      prova.reference = provesRef.path;
-      prova.name = d.name || docSnap.id;
-      prova.description = d.description || "";
-      prova.imageUrl = d.imageUrl || undefined;
-      prova.isSecret = d.isSecret || false;
-      prova.isFinished = d.isFinished || false;
-      prova.startDate = d.startDate?.toDate?.() ?? new Date(0);
-      prova.finishDate = d.finishDate?.toDate?.() ?? undefined;
-      prova.challengeType = d.challengeType || "null";
-      prova.participates = d.participates || true;
-
-      return prova;
-    });
-
-    callback(proves);
+    callback(snapshot.docs.map((docSnap) => mapProvaSummary(provesRef.path, docSnap)));
   });
+};
+
+/** One-shot equivalent of getProvesRealTime, for screens that don't need push
+ *  updates (the schedule/list view — the live detail lives in ProvaPage). */
+export const getProves = async (year: number): Promise<PenyaProvaSummary[]> => {
+  const provesRef = collection(db, `Circuit/${year}/Proves`);
+  const q = query(provesRef, orderBy("startDate", "desc"));
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((docSnap) => mapProvaSummary(provesRef.path, docSnap));
 };
 
 export const getProvaInfoRealTime = (
@@ -233,42 +254,6 @@ export const getProvaInfoRealTime = (
   };
 };
 
-export const getPenyaResultsInfoRealTime = (
-  year: number,
-  penyaId: string,
-  callback: (data: ChallengeResult[]) => void
-) => {
-  const resultsRef = collection(db, `Circuit/${year}/Results`);
-
-  return onSnapshot(resultsRef, (proves) => {
-    
-    const resultsData: ChallengeResult[] = proves.docs
-      .map((prova) => {
-        const d = prova.data();
-        const provaRef = `Circuit/${year}/Proves/${d.provaId}`;
-        const results: any[] = d.results || [];
-        const penyaResult = results.find((r) => r.penyaId === penyaId);
-
-        if (!penyaResult) return undefined;
-
-        return new ChallengeResult(
-          provaRef,
-          d.challengeType || "null",
-          penyaResult.penyaId || "",
-          penyaResult.name || "NO_NAME",
-          typeof penyaResult.result === "string" ? penyaResult.result : "",
-          penyaResult.position > 0,
-          penyaResult.position > 0 ? penyaResult.position : -1,
-          penyaResult.pointsAwarded || 0
-        );
-      })
-      .filter((r): r is ChallengeResult => r !== undefined);
-
-    callback(resultsData);
-  });
-};
-
-
 export const getResultsInfoRealTime = (
   year: number,
   callback: (data: ChallengeResult[]) => void
@@ -299,128 +284,73 @@ export const getResultsInfoRealTime = (
 };
 
 
-export const getPenyaInfoRealTime = (year: number, penyaId: string, callback: (data: PenyaInfo | null) => void) => {
+export const getPenyaInfo = async (year: number, penyaId: string): Promise<PenyaInfo | null> => {
   const penyaRef = doc(db, `Circuit/${year}/Penyes`, penyaId);
+  const snapshot = await getDoc(penyaRef);
 
-  return onSnapshot(penyaRef, (snapshot) => {
-    if (!snapshot.exists()) {
-      console.warn("No data found for penya:", penyaId);
-      callback(null);
-      return;
-    }
+  if (!snapshot.exists()) {
+    console.warn("No data found for penya:", penyaId);
+    return null;
+  }
 
-    const data : PenyaInfo = {
-      id: snapshot.id,
-      name: snapshot.data().name || snapshot.id,
-      position: 0,
-      isSecret: snapshot.data().isSecret || false,
-      imageUrl: snapshot.data().imageUrl || undefined,
-      description: snapshot.data().description || undefined,
-    };
-
-    callback(data);
-  });
+  return {
+    id: snapshot.id,
+    name: snapshot.data().name || snapshot.id,
+    position: 0,
+    isSecret: snapshot.data().isSecret || false,
+    imageUrl: snapshot.data().imageUrl || undefined,
+    description: snapshot.data().description || undefined,
+  };
 };
 
-export const getPenyaProvesRealTime = (
+/** One-shot read of a penya's history across every prova of the year.
+ *  Not real-time on purpose: this is a personal-history page, and pointsAwarded/
+ *  position are now denormalized onto each Participants doc at prova-close time
+ *  (see generateProvaResults/generateBracketResults), so a single pass over
+ *  Proves + one get per Participants doc is all that's needed — no more scanning
+ *  the whole Results collection, and no more one-listener-per-prova. */
+export const getPenyaProves = async (
   year: number,
-  penyaId: string,
-  callback: (data: PenyaProvaSummary[]) => void
-) => {
+  penyaId: string
+): Promise<PenyaProvaSummary[]> => {
   const provesRef = collection(db, `Circuit/${year}/Proves`);
+  const provesSnap = await getDocs(provesRef);
 
-  const unsubscribes: (() => void)[] = [];
-  const provisionalResults: Record<string, PenyaProvaSummary> = {};
-
-  // 🔹 1️⃣ Escuchar todas las proves
-  const unsubscribeProves = onSnapshot(provesRef, (snapshot) => {
-    console.log("Received snapshot for proves:", snapshot.docs);
-    if(snapshot.docs.length === 0){
-      callback([]);
-      return;
-    }
-
-    snapshot.docs.forEach((provaDoc) => {
+  const summaries = await Promise.all(
+    provesSnap.docs.map(async (provaDoc) => {
       const provaId = provaDoc.id;
       const provaData = provaDoc.data();
 
-      // 🔹 Crear la instancia base del resumen
-      const provaSummary = new PenyaProvaSummary();
-      provaSummary.id = provaId;
-      provaSummary.reference = provaDoc.ref.path;
-      provaSummary.name = provaData.name || provaId;
-      provaSummary.imageUrl = provaData.imageUrl;
-      provaSummary.startDate = provaData.startDate?.toDate?.() ?? new Date(0);
-      provaSummary.finishDate = provaData.finishDate?.toDate?.() ?? undefined;
-      provaSummary.challengeType = provaData.challengeType || "null";
-      provaSummary.isFinished = provaData.isFinished || false;
-      provaSummary.isSecret = provaData.isSecret || false;
-      provaSummary.participates = false;
-      provaSummary.position = undefined;
-      provaSummary.result = undefined;
-      provaSummary.points = undefined;
+      const summary = new PenyaProvaSummary();
+      summary.id = provaId;
+      summary.reference = provaDoc.ref.path;
+      summary.name = provaData.name || provaId;
+      summary.imageUrl = provaData.imageUrl;
+      summary.startDate = provaData.startDate?.toDate?.() ?? new Date(0);
+      summary.finishDate = provaData.finishDate?.toDate?.() ?? undefined;
+      summary.challengeType = provaData.challengeType || "null";
+      summary.isFinished = provaData.isFinished || false;
+      summary.isSecret = provaData.isSecret || false;
 
-      // Guardar provisionalmente (en caso de que no haya resultados aún)
-      provisionalResults[provaId] = provaSummary;
-
-      // 🔹 2️⃣ Escuchar la participación de esta penya
       const participantRef = doc(db, `Circuit/${year}/Proves/${provaId}/Participants/${penyaId}`);
-      const unsubscribeParticipant = onSnapshot(participantRef, (participantSnap) => {
-        if (!participantSnap.exists()) return;
+      const participantSnap = await getDoc(participantRef);
 
+      if (participantSnap.exists()) {
         const p = participantSnap.data();
-        const summary = provisionalResults[provaId] ?? new PenyaProvaSummary();
-
         summary.participates = p.participates ?? false;
-        summary.position = p.participates ? p.index || undefined : undefined;
+        summary.position = p.participates ? p.position ?? undefined : undefined;
         summary.result = p.result && p.result !== "" ? p.result : undefined;
+        summary.points = p.pointsAwarded ?? undefined;
         summary.participationTime = p.participationTime?.toDate?.() ?? null;
+      } else {
+        summary.participates = false;
+      }
 
-        console.log(summary);
+      return summary;
+    })
+  );
 
-        // 🔹 3️⃣ Si la prova está finalizada, obtener puntos desde los Results
-        if (provaData.isFinished) {
-          const unsubResult = getPenyaResultsInfoRealTime(year, penyaId, (results) => {
-            const match = results.find((r) => r.provaReference === provaDoc.ref.path);
-            if (match) {
-              summary.points = match.pointsAwarded ?? 0;
-              summary.position = match.index ?? summary.position;
-              summary.result = match.result ?? summary.result;
-            }
-
-            provisionalResults[provaId] = summary;
-
-            const sorted = Object.values(provisionalResults).sort((a, b) => {
-              const da = a.startDate?.getTime() ?? 0;
-              const db = b.startDate?.getTime() ?? 0;
-              return db - da;
-            });
-
-            callback(sorted);
-          });
-
-          unsubscribes.push(unsubResult);
-        } else {
-          provisionalResults[provaId] = summary;
-          
-          const sorted = Object.values(provisionalResults).sort((a, b) => {
-            const da = a.startDate?.getTime() ?? 0;
-            const db = b.startDate?.getTime() ?? 0;
-            return db - da;
-          });
-          
-          callback(sorted);
-        }
-      });
-
-      unsubscribes.push(unsubscribeParticipant);
-    });
-  });
-
-  return () => {
-    unsubscribeProves();
-    unsubscribes.forEach((u) => u());
-  };
+  return summaries.sort((a, b) => (b.startDate?.getTime() ?? 0) - (a.startDate?.getTime() ?? 0));
 };
 
 export type MultiProvaFinalResult = {
