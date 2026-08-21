@@ -3,7 +3,7 @@ import { db, functions } from "../../../firebase/firebase";
 import { httpsCallable } from "firebase/functions";
 import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, setDoc } from "firebase/firestore";
 import { toast } from "sonner";
-import { addImageToChallenges, addImageToPenyes, addPdfToChallenges } from "../../storageService";
+import { addImageToChallenges, addImageToPenyes, addPdfToChallenges, deleteImageFromPenyes } from "../../storageService";
 import { deleteUsersWithProva } from "../../usersService";
 
 /** Converteix un result de Firestore (number antic o string nou) a string de display. */
@@ -388,20 +388,39 @@ export const addPenyes = async (
   onComplete(results);
 };
 
-export const updatePenyaInfo = async (year: number, penyaId: string, name: string, isSecret: boolean, description: string, image: File | null) => {
+export const updatePenyaInfo = async (
+  year: number,
+  penyaId: string,
+  name: string,
+  isSecret: boolean,
+  description: string,
+  image: File | null,
+  removeImage: boolean = false
+): Promise<string | undefined> => {
   const penyaRef = doc(db, `Circuit/${year}/Penyes`, penyaId);
 
   try {
-    const url = await addImageToPenyes(image, year, penyaId);
-    await updateDoc(penyaRef, {
+    const updateData: { name: string; isSecret: boolean; description: string; imageUrl?: string | null } = {
       name: name,
       isSecret: isSecret,
       description: description,
-      imageUrl: url,
-    });
-    console.log("Penya updated successfully:", penyaId);
+    };
+
+    let imageUrl: string | undefined;
+
+    if (image) {
+      imageUrl = (await addImageToPenyes(image, year, penyaId)) || undefined;
+      updateData.imageUrl = imageUrl ?? null;
+    } else if (removeImage) {
+      await deleteImageFromPenyes(year, penyaId);
+      updateData.imageUrl = null;
+    }
+
+    await updateDoc(penyaRef, updateData);
+    return imageUrl;
   } catch (error) {
     console.error("Error updating penya:", error);
+    throw error;
   }
 }
 

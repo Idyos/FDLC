@@ -1,5 +1,5 @@
 import { storage } from "@/firebase/firebase";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { deleteObject, getDownloadURL, ref, uploadBytes, StorageError } from "firebase/storage";
 
 /**
  * A bare `%`, `#`, `?`, `[` or `]` in a Storage object name breaks the emulator's
@@ -47,6 +47,19 @@ export const addImageToPenyes = async (file: File | null, year: number, penyaId:
         return downloadURL;
     } catch (error) {
         console.error("Error uploading image:", error);
+        throw error;
+    }
+}
+
+export const deleteImageFromPenyes = async (year: number, penyaId: string): Promise<void> => {
+    const path = `Circuit/${year}/Penyes/${sanitizeStoragePathSegment(penyaId)}`;
+    const storageRef = ref(storage, path);
+
+    try {
+        await deleteObject(storageRef);
+    } catch (error) {
+        if ((error as StorageError)?.code === "storage/object-not-found") return;
+        console.error("Error deleting image:", error);
         throw error;
     }
 }

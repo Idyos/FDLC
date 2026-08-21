@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { updatePenyaInfo } from "@/services/database/Admin/adminDbServices";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { Textarea } from "@/components/ui/textarea";
+import { LoaderCircle, X } from "lucide-react";
 
 interface PenyaSummaryProps {
   rankingInfo: PenyaInfo | null;
@@ -32,9 +33,12 @@ export default function AdminPenyaSummary({ rankingInfo, triggerElement, open, o
   const [isSaving, setIsSaving] = useState(false);
 
   const [provaImage, setProvaImage] = useState<File | null>(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
   const provaImageUrl = useMemo(() => {
-    return provaImage ? URL.createObjectURL(provaImage) : rankingInfo?.imageUrl ? rankingInfo.imageUrl : null;
-  }, [provaImage]);
+    if (provaImage) return URL.createObjectURL(provaImage);
+    if (imageRemoved) return null;
+    return rankingInfo?.imageUrl ?? null;
+  }, [provaImage, imageRemoved, rankingInfo?.imageUrl]);
 
   const [penyaName, setPenyaName] = useState(rankingInfo?.name || "");
   const [penyaSecret, setPenyaSecret] = useState(rankingInfo?.isSecret || false);
@@ -43,27 +47,33 @@ export default function AdminPenyaSummary({ rankingInfo, triggerElement, open, o
 
     const onImageAdded = async (file: File) => {
       const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-  
+
         if (!allowedTypes.includes(file.type)) {
           toast.error("Només es permeten fitxers d'Imatge (.jpg, .png o .webp)");
           return;
         }
-  
-        console.log(file);
 
         setProvaImage(file);
+        setImageRemoved(false);
+    };
+
+    const handleRemoveImage = (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setProvaImage(null);
+      setImageRemoved(true);
     };
 
   const handleClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-  
+
     if (!penyaName.trim()) {
       toast.warning("El nom de la penya no pot estar buit.");
       return;
     }
 
     if(penyaName == rankingInfo?.name && penyaSecret == rankingInfo?.isSecret
-      && penyaDescription == rankingInfo?.description && rankingInfo?.imageUrl == provaImageUrl
+      && penyaDescription == rankingInfo?.description && !provaImage && !imageRemoved
     ) {
         toast.warning("No s'han detectat canvis.");
         return;
@@ -77,28 +87,37 @@ export default function AdminPenyaSummary({ rankingInfo, triggerElement, open, o
     setIsSaving(true);
 
     try {
-      updatePenyaInfo(selectedYear, rankingInfo.id, penyaName, penyaSecret, penyaDescription, provaImage)
-      .then(() => {
-        toast.success("Penya actualitzada!");
-        rankingInfo.name = penyaName;
-        rankingInfo.isSecret = penyaSecret;
-        rankingInfo.description = penyaDescription;
-        closeDialog(); 
-      })
-      .catch((error) => {
-        toast.error("Error al guardar: "+error);
-      })
-
+      const newImageUrl = await updatePenyaInfo(
+        selectedYear,
+        rankingInfo.id,
+        penyaName,
+        penyaSecret,
+        penyaDescription,
+        provaImage,
+        imageRemoved
+      );
+      toast.success("Penya actualitzada!");
+      rankingInfo.name = penyaName;
+      rankingInfo.isSecret = penyaSecret;
+      rankingInfo.description = penyaDescription;
+      rankingInfo.imageUrl = imageRemoved ? undefined : provaImage ? newImageUrl : rankingInfo.imageUrl;
+      closeDialog();
     } catch (error) {
-      toast.error("Error al guardar");
+      toast.error("Error al guardar: " + error);
     } finally {
       setIsSaving(false);
     }
   }
 
   const closeDialog = () => {
-    setIsDialogOpen(false);
+    if (onOpenChange) {
+      onOpenChange(false);
+    } else {
+      setIsDialogOpen(false);
+    }
     setPenyaName(rankingInfo?.name || "");
+    setProvaImage(null);
+    setImageRemoved(false);
   }
 
   if (rankingInfo != null && triggerElement) {
@@ -119,21 +138,33 @@ export default function AdminPenyaSummary({ rankingInfo, triggerElement, open, o
             <div
               className="h-43 w-full relative flex items-center justify-center border-2 border-dashed rounded-lg bg-center bg-contain bg-no-repeat"
               style={{
-                backgroundImage: provaImageUrl ? `url(${provaImageUrl})` : rankingInfo.imageUrl ? `url(${rankingInfo.imageUrl})` : "none",
+                backgroundImage: provaImageUrl ? `url(${provaImageUrl})` : "none",
               }}
             >
-              {(!rankingInfo.imageUrl && !provaImageUrl) && (
+              {!provaImageUrl && (
                 <span className="text-sm text-gray-500">Arrossega una imatge o fes clic</span>
               )}
               <Input
                 id="image"
                 type="file"
+                disabled={isSaving}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) onImageAdded(file);
                 }}
               />
+              {provaImageUrl && (
+                <button
+                  type="button"
+                  aria-label="Eliminar imatge"
+                  disabled={isSaving}
+                  onClick={handleRemoveImage}
+                  className="absolute top-1.5 right-1.5 z-10 rounded-full bg-black/60 p-1 text-white hover:bg-black/80 disabled:opacity-50"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
             </div>
           </div>
           <div>
@@ -159,6 +190,7 @@ export default function AdminPenyaSummary({ rankingInfo, triggerElement, open, o
           </div>
           <DialogFooter>
             <Button disabled={isSaving || penyaName.length === 0} type="submit" onClick={handleClick}>
+              {isSaving && <LoaderCircle className="animate-spin" />}
               Guardar canvis
             </Button>
           </DialogFooter>
@@ -210,22 +242,34 @@ export default function AdminPenyaSummary({ rankingInfo, triggerElement, open, o
             <div
               className="h-43 w-full relative flex items-center justify-center border-2 border-dashed rounded-lg bg-center bg-contain bg-no-repeat"
               style={{
-                backgroundImage: provaImageUrl ? `url(${provaImageUrl})` : rankingInfo.imageUrl ? `url(${rankingInfo.imageUrl})` : "none",
+                backgroundImage: provaImageUrl ? `url(${provaImageUrl})` : "none",
               }}
             >
-              {(!rankingInfo.imageUrl && !provaImageUrl)  && (
+              {!provaImageUrl && (
                 <span className="text-sm text-gray-500">Arrossega una imatge o fes clic</span>
               )}
 
               <Input
                 id="image"
                 type="file"
+                disabled={isSaving}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) onImageAdded(file);
                 }}
               />
+              {provaImageUrl && (
+                <button
+                  type="button"
+                  aria-label="Eliminar imatge"
+                  disabled={isSaving}
+                  onClick={handleRemoveImage}
+                  className="absolute top-1.5 right-1.5 z-10 rounded-full bg-black/60 p-1 text-white hover:bg-black/80 disabled:opacity-50"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
               </div>
             </div>
           <div>
@@ -261,9 +305,10 @@ export default function AdminPenyaSummary({ rankingInfo, triggerElement, open, o
           </div>
           <DialogFooter>
             <Button
-              disabled={isSaving || penyaName.length == 0} 
-              type="submit" 
+              disabled={isSaving || penyaName.length == 0}
+              type="submit"
               onClick={handleClick}>
+                {isSaving && <LoaderCircle className="animate-spin" />}
                 Guardar canvis
               </Button>
           </DialogFooter>
