@@ -70,9 +70,8 @@ export default function AdminFooter() {
   const onFinishProva = async () => {
     if (!prova || !prova.penyes) return;
 
-    setIsLoading(true);
-
     if (prova.challengeType === "MultiProva") {
+      setIsLoading(true);
       try {
         await generateMultiProvaResults(selectedYear, prova.id);
         toast.success("Resultats generats correctament!");
@@ -100,6 +99,8 @@ export default function AdminFooter() {
       setOpenAlert(true);
       return;
     }
+
+    setIsLoading(true);
 
     try {
       await generateProvaResults(selectedYear, prova.id);
@@ -169,8 +170,9 @@ export default function AdminFooter() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setOpenAlert(false); setIsLoading(false);}}>D'acord</AlertDialogCancel>
-            <AlertDialogAction onClick={(e) => { e.preventDefault(); onFinishProva(); }}>
+            <AlertDialogCancel disabled={isLoading} onClick={() => { setOpenAlert(false); setIsLoading(false);}}>D'acord</AlertDialogCancel>
+            <AlertDialogAction disabled={isLoading} onClick={(e) => { e.preventDefault(); onFinishProva(); }}>
+              {isLoading && <LoaderCircle className="animate-spin" />}
               Continuar de totes formes
             </AlertDialogAction>
           </AlertDialogFooter>
