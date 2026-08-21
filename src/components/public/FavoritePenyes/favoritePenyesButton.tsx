@@ -63,7 +63,7 @@ export default function FavoritePenyesButton() {
       <Button
         ref={buttonRef}
         variant="outline"
-        className="flex items-center gap-1.5 max-w-[200px]"
+        className="flex rounded-full items-center gap-1.5 max-w-[200px]"
         onClick={() => setOpen((v) => !v)}
       >
         <Star className="h-4 w-4 shrink-0" />
