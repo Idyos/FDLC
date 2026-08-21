@@ -42,6 +42,8 @@ export default function PenyaSummary({ rankingInfo }: PenyaSummaryProps) {
       <img
         src={rankingInfo.imageUrl || undefined}
         alt="Imagen Peña"
+        loading="lazy"
+        decoding="async"
         className="absolute inset-0 object-cover w-8/12 h-full"
         style={rankingInfo.isSecret || rankingInfo.imageUrl == null ? {display: "none"} : {}} // Efecto de desenfoque y brillo
       />

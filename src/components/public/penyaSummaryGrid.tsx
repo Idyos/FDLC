@@ -39,6 +39,8 @@ export default function PenyaSummaryGrid({ rankingInfo }: PenyaSummaryProps) {
       <img
         src={rankingInfo.imageUrl || undefined}
         alt="Imagen Peña"
+        loading="lazy"
+        decoding="async"
         className="absolute object-cover"
         style={rankingInfo.isSecret || rankingInfo.imageUrl == null ? {display: "none"} : {}} // Efecto de desenfoque y brillo
       />

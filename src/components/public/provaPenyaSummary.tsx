@@ -57,6 +57,8 @@ export default function ProvaPenyaSummary({ provaSummary }: ProvaSummaryProps) {
           <img
             src={provaSummary.imageUrl}
             alt={`${provaSummary.name}`}
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 object-cover w-8/12 h-full"
           />
           <div className="absolute inset-0 dark:bg-black/50 bg-white/40" />

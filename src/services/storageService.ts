@@ -1,5 +1,10 @@
 import { storage } from "@/firebase/firebase";
 import { deleteObject, getDownloadURL, ref, uploadBytes, StorageError } from "firebase/storage";
+import { resizeImageFile } from "@/utils/imageResize";
+
+// Each upload gets a fresh download token (and therefore a fresh URL), so this
+// is safe as an "immutable" cache: the same URL never points at different bytes.
+const LONG_CACHE_CONTROL = "public, max-age=604800, immutable";
 
 /**
  * A bare `%`, `#`, `?`, `[` or `]` in a Storage object name breaks the emulator's
@@ -13,15 +18,17 @@ const sanitizeStoragePathSegment = (segment: string): string => segment.replace(
 export const addImageToChallenges = async (file: File | null, year: number, challengeName: string): Promise<string> => {
     if (!file) return "";
 
+    const optimized = await resizeImageFile(file);
     const path = `Circuit/${year}/Proves/${sanitizeStoragePathSegment(challengeName)}/image`;
 
     const storageRef = ref(storage, path);
     const metadata = {
-        contentType: file.type,
+        contentType: optimized.type,
+        cacheControl: LONG_CACHE_CONTROL,
     };
-    
+
     try {
-        await uploadBytes(storageRef, file, metadata);
+        await uploadBytes(storageRef, optimized, metadata);
         const downloadURL = await getDownloadURL(storageRef);
         return downloadURL;
     } catch (error) {
@@ -33,16 +40,17 @@ export const addImageToChallenges = async (file: File | null, year: number, chal
 export const addImageToPenyes = async (file: File | null, year: number, penyaId: string): Promise<string> => {
     if (!file) return "";
 
-
+    const optimized = await resizeImageFile(file);
     const path = `Circuit/${year}/Penyes/${sanitizeStoragePathSegment(penyaId)}`;
 
     const storageRef = ref(storage, path);
     const metadata = {
-        contentType: file.type,
+        contentType: optimized.type,
+        cacheControl: LONG_CACHE_CONTROL,
     };
-    
+
     try {
-        await uploadBytes(storageRef, file, metadata);
+        await uploadBytes(storageRef, optimized, metadata);
         const downloadURL = await getDownloadURL(storageRef);
         return downloadURL;
     } catch (error) {
