@@ -41,7 +41,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
       <AuthProvider>
         <YearProvider>
           <FavoritePenyesProvider>

@@ -30,13 +30,10 @@ export function ModeToggle({ show = true, onOpenChange }: ModeToggleProps = {}) 
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => setTheme("light")}>
-          Light
+          Clar
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("dark")}>
-          Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
-          System
+          Fosc
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
