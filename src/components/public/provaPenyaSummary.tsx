@@ -45,6 +45,12 @@ export default function ProvaPenyaSummary({ provaSummary }: ProvaSummaryProps) {
         </div>
       )}
 
+      {provaSummary.participates && provaSummary.isFinished && !provaSummary.result && (
+        <div className="absolute z-20 inset-0 h-full w-full flex items-center justify-center dark:bg-black/60 bg-white/60">
+          <h1 className="font-extrabold text-2xl">NO HA PARTICIPAT</h1>
+        </div>
+      )}
+
       {/* Imagen de fondo */}
       {provaSummary.imageUrl && (
         <>
@@ -92,12 +98,12 @@ export default function ProvaPenyaSummary({ provaSummary }: ProvaSummaryProps) {
             )}
           </div>
           <div>
-            {!provaSummary.isFinished && (!provaSummary.result || provaSummary.result ==-1) && provaSummary.participationTime ? (
+            {!provaSummary.isFinished && !provaSummary.result && provaSummary.participationTime ? (
               <div className="flex items-center gap-1 text-lg font-bold">
                 <Clock className="w-5 h-5" />
                 {provaSummary.participationTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </div>
-            ) : (
+            ) : !provaSummary.participates || (provaSummary.isFinished && !provaSummary.result) ? null : (
               <PenyaProvaResult prova={provaSummary} />
             )}
           </div>

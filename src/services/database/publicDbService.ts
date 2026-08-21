@@ -1,5 +1,5 @@
 // src/services/dbService.js
-import { PenyaInfo, PenyaProvaSummary, ChallengeResult, Prova, EmptyProva, ParticipatingPenya, PenyaProvaResultData, SubProvaConfig } from "@/interfaces/interfaces";
+import { PenyaInfo, PenyaProvaSummary, ChallengeResult, Prova, EmptyProva, ParticipatingPenya, SubProvaConfig } from "@/interfaces/interfaces";
 import { db } from "../../firebase/firebase";
 import { collection, getDocs, query, onSnapshot, orderBy, doc, Unsubscribe } from "firebase/firestore";
 import { toast } from "sonner";
@@ -191,7 +191,7 @@ export const getProvaInfoRealTime = (
             name: typeof d.penyaName === "string" ? d.penyaName : "Sense nom",
             participates: d.participates !== false,
             result: rawResult == null ? undefined
-              : typeof rawResult === "number" ? (rawResult <= 0 ? "" : String(rawResult))
+              : typeof rawResult === "number" ? (rawResult < 0 ? "" : String(rawResult))
               : String(rawResult),
             participationTime: d.participationTime?.toDate?.() ?? null,
           };
@@ -251,17 +251,16 @@ export const getPenyaResultsInfoRealTime = (
 
         if (!penyaResult) return undefined;
 
-        const base = new PenyaProvaResultData(
+        return new ChallengeResult(
           provaRef,
           d.challengeType || "null",
           penyaResult.penyaId || "",
           penyaResult.name || "NO_NAME",
-          penyaResult.result || 0,
+          typeof penyaResult.result === "string" ? penyaResult.result : "",
           penyaResult.position > 0,
-          penyaResult.position ?? -1
+          penyaResult.position > 0 ? penyaResult.position : -1,
+          penyaResult.pointsAwarded || 0
         );
-
-        return new ChallengeResult(base, penyaResult.pointsAwarded || 0);
       })
       .filter((r): r is ChallengeResult => r !== undefined);
 
@@ -284,13 +283,13 @@ export const getResultsInfoRealTime = (
         const results: any[] = d.results || [];
 
         return results.map((provaPenyaResult) => ({
-          index: provaPenyaResult.position ?? -1,
+          index: provaPenyaResult.position > 0 ? provaPenyaResult.position : -1,
           provaReference: provaRef,
-          provaType: d.challengeType || "null", 
+          provaType: d.challengeType || "null",
           participates: provaPenyaResult.position > 0 ? true : false,
           penyaId: provaPenyaResult.penyaId || "",
           penyaName: provaPenyaResult.name || "NO_NAME",
-          result: provaPenyaResult.result || 0,
+          result: typeof provaPenyaResult.result === "string" ? provaPenyaResult.result : "",
           pointsAwarded: provaPenyaResult.pointsAwarded || 0,
         }));
       });
@@ -374,7 +373,7 @@ export const getPenyaProvesRealTime = (
 
         summary.participates = p.participates ?? false;
         summary.position = p.participates ? p.index || undefined : undefined;
-        summary.result = p.result && p.result !== "" ? parseInt(p.result) : undefined;
+        summary.result = p.result && p.result !== "" ? p.result : undefined;
         summary.participationTime = p.participationTime?.toDate?.() ?? null;
 
         console.log(summary);
@@ -429,7 +428,7 @@ export type MultiProvaFinalResult = {
   name: string;
   position: number;
   pointsAwarded: number;
-  result: number;
+  result: string;
 };
 
 export const subscribeProvaFinalResults = (
@@ -475,7 +474,7 @@ export const subscribeSubProvaParticipants = (
         penyaId: r.penyaId ?? d.id,
         name: r.penyaName ?? "",
         participates: r.participates ?? true,
-        result: raw == null ? "" : typeof raw === "number" ? (raw <= 0 ? "" : String(raw)) : String(raw),
+        result: raw == null ? "" : typeof raw === "number" ? (raw < 0 ? "" : String(raw)) : String(raw),
         participationTime: r.participationTime?.toDate?.() ?? null,
       } as ParticipatingPenya;
     });

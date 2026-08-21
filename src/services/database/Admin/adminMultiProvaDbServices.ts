@@ -17,7 +17,7 @@ import type { BusyInterval } from "@/utils/multiProvaScheduler";
 function toResultString(raw: unknown): string {
   if (raw == null) return "";
   if (typeof raw === "string") return raw;
-  if (typeof raw === "number") return raw <= 0 ? "" : String(raw);
+  if (typeof raw === "number") return raw < 0 ? "" : String(raw);
   return "";
 }
 
@@ -25,7 +25,11 @@ function toResultString(raw: unknown): string {
 function toNumResult(raw: unknown): number {
   if (raw == null) return -1;
   if (typeof raw === "number") return raw;
-  if (typeof raw === "string") return raw === "" ? -1 : (parseInt(raw) || -1);
+  if (typeof raw === "string") {
+    if (raw === "") return -1;
+    const parsed = parseInt(raw, 10);
+    return Number.isNaN(parsed) ? -1 : parsed;
+  }
   return -1;
 }
 import { getProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";

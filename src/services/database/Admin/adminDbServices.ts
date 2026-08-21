@@ -10,7 +10,7 @@ import { deleteUsersWithProva } from "../../usersService";
 function toResultString(raw: unknown): string {
   if (raw == null) return "";
   if (typeof raw === "string") return raw;
-  if (typeof raw === "number") return raw <= 0 ? "" : String(raw);
+  if (typeof raw === "number") return raw < 0 ? "" : String(raw);
   return "";
 }
 

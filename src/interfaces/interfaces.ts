@@ -123,7 +123,7 @@ export class ProvaSummary extends BaseEntity {
 
 export class PenyaProvaSummary extends ProvaSummary {
   position?: number;
-  result?: number;
+  result?: string;
   points?: number;
   participates: boolean;
   participationTime?: Date | null;
@@ -171,33 +171,44 @@ export class PenyaProvaFinalResultData {
     name: string;
     position?: number;
     pointsAwarded?: number;
-    result: number;
+    result: string;
 
   constructor() {
     this.penyaId = "";
     this.name = "";
-    this.result = -1;
+    this.result = "";
     this.pointsAwarded = -1;
     this.position = -1;
   }
 }
 
-export class ChallengeResult extends PenyaProvaResultData {
+export class ChallengeResult {
+  provaReference: string;
+  provaType: ProvaType;
+  penyaId: string;
+  penyaName: string;
+  result: string;
+  participates: boolean;
+  index?: number;
   pointsAwarded: number;
 
   constructor(
-    base: PenyaProvaResultData,
+    provaReference: string,
+    provaType: ProvaType,
+    penyaId: string,
+    penyaName: string,
+    result: string,
+    participates: boolean,
+    index: number | undefined,
     pointsAwarded: number
   ) {
-    super(
-      base.provaReference,
-      base.provaType,
-      base.penyaId,
-      base.penyaName,
-      base.result,
-      base.participates,
-      base.index
-    );
+    this.provaReference = provaReference;
+    this.provaType = provaType;
+    this.penyaId = penyaId;
+    this.penyaName = penyaName;
+    this.result = result;
+    this.participates = participates;
+    this.index = index;
     this.pointsAwarded = pointsAwarded;
   }
 }

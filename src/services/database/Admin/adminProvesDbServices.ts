@@ -54,7 +54,13 @@ export async function generateProvaResults(year: number, provaId: string) {
     let numResult: number;
     if (rawResult == null) numResult = -1;
     else if (typeof rawResult === "number") numResult = rawResult;
-    else if (typeof rawResult === "string") numResult = rawResult === "" ? -1 : (parseInt(rawResult) || -1);
+    else if (typeof rawResult === "string") {
+      if (rawResult === "") numResult = -1;
+      else {
+        const parsed = parseInt(rawResult, 10);
+        numResult = Number.isNaN(parsed) ? -1 : parsed;
+      }
+    }
     else numResult = -1;
     return new PenyaProvaResultData(
       `Circuit/${year}/Proves/${provaId}`,
@@ -87,7 +93,7 @@ export async function generateProvaResults(year: number, provaId: string) {
 
   // 6️⃣ Calcular resultados finales
   const results: PenyaProvaFinalResultData[] = sorted.map((p, index) => {
-    let position = 0;
+    let position = -1;
     let pointsAwarded = 0;
 
     if (p.participates && p.result > -1) {
@@ -103,7 +109,7 @@ export async function generateProvaResults(year: number, provaId: string) {
       name: p.penyaName,
       position,
       pointsAwarded,
-      result: p.result,
+      result: p.result > -1 ? String(p.result) : "",
     };
   });
 
@@ -158,7 +164,14 @@ export async function generateBracketResults(year: number, provaId: string) {
   // 3. Load participants
   const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
   const participantsSnap = await getDocs(participantsRef);
-  const participants = participantsSnap.docs.map((d) => d.data() as PenyaProvaResultData);
+  const participants = participantsSnap.docs.map((d) => {
+    const r = d.data();
+    return {
+      penyaId: typeof r.penyaId === "string" ? r.penyaId : d.id,
+      penyaName: typeof r.penyaName === "string" ? r.penyaName : "",
+      result: typeof r.result === "string" ? r.result : "",
+    };
+  });
 
   if (participants.length === 0) throw new Error("No hi ha participants.");
 
@@ -189,13 +202,13 @@ export async function generateBracketResults(year: number, provaId: string) {
 
   // 6. Build result entries
   const results: PenyaProvaFinalResultData[] = participants.map((p) => {
-    const position = positionMap.get(p.penyaId) ?? 0;
+    const position = positionMap.get(p.penyaId) ?? -1;
     let pointsAwarded = 0;
     if (position > 0) {
       const range = provaData.pointsRange?.find((r) => position >= r.from && position <= r.to);
       if (range) pointsAwarded = range.points;
     }
-    return { penyaId: p.penyaId, name: p.penyaName, position, pointsAwarded, result: p.result ?? -1 };
+    return { penyaId: p.penyaId, name: p.penyaName, position, pointsAwarded, result: p.result };
   });
 
   // 7. Batch write results + mark finished

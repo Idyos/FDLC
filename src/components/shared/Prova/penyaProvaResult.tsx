@@ -12,13 +12,13 @@ export default function PenyaProvaResult({ prova }: PenyaProvaResultProps) {
             case "Temps":
             return (
                 <TimeRollingInput
-                    value={prova.result != null ? String(prova.result) : ""}
+                    value={prova.result ?? ""}
                 />
             );
             case "Punts":
               return (
                 <PointsInput
-                    value={prova.result != null ? String(prova.result) : ""}
+                    value={prova.result ?? ""}
                 />
               );
             default:

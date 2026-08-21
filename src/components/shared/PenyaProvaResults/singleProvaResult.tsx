@@ -8,6 +8,7 @@ import { PointsInput } from "./PointsInput/pointsInput";
 import { ParticipatesInput } from "./ParticipatesInput/participatesInput";
 import { navigateWithQuery } from "@/utils/url";
 import { useYear } from "../Contexts/YearContext";
+import { isAdmin } from "@/services/authService";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: ParticipatingPenya;
@@ -79,22 +80,31 @@ export default function SingleProvaResult({ provaResultSummary, showPoints = tru
     return range ? range.points : null;
   };
 
+  const hasResult = provaResultSummary.participates && provaResultSummary.result != null && provaResultSummary.result !== "" && Number(provaResultSummary.result) >= 0;
+  const showNoParticipation = prova.isFinished && !isAdmin() && !hasResult;
+
   return (
     <motion.div
       className="relative w-full h-36 rounded-2xl overflow-hidden shadow-lg mb-6 cursor-pointer"
       whileHover={{ scale: 1.02 }}
       onClick={handleClick}
     >
-      {/* Contenido */} 
+      {/* Contenido */}
       <div className="relative z-10 flex justify-between items-center h-full p-4 dark:text-white text-gray-900">
         <div className="text-left">
-          {prova.challengeType !== "Participació" ? <p className={`${prova.isFinished ? "text-4xl font-extrabold" : "inline text-2xl font-bold opacity-20"}`}>{provaResultSummary.index}. </p> : null}
-          
+          {!showNoParticipation && prova.challengeType !== "Participació" ? <p className={`${prova.isFinished ? "text-4xl font-extrabold" : "inline text-2xl font-bold opacity-20"}`}>{provaResultSummary.index}. </p> : null}
+
           <span className="text-2xl font-bold">{provaResultSummary.name}</span>
         </div>
         <div className="flex flex-row items-center space-x-6">
-          {renderInput()}
-          {showPoints && (provaResultSummary.participates && (provaResultSummary.result != null && Number(provaResultSummary.result) >= 0)) && <span className={`${!prova?.isFinished ? "text-2xl font-bold opacity-40 blur-[3px]" : "text-4xl font-extrabold"}`}>{prova.isFinished ? "+" : null}{getPointsForIndex(provaResultSummary.index ?? -1) ?? ""}</span>}
+          {showNoParticipation ? (
+            <span className="text-sm font-semibold text-muted-foreground">No ha participat</span>
+          ) : (
+            <>
+              {renderInput()}
+              {showPoints && hasResult && <span className={`${!prova?.isFinished ? "text-2xl font-bold opacity-40 blur-[3px]" : "text-4xl font-extrabold"}`}>{prova.isFinished ? "+" : null}{getPointsForIndex(provaResultSummary.index ?? -1) ?? ""}</span>}
+            </>
+          )}
           </div>
       </div>
     </motion.div>

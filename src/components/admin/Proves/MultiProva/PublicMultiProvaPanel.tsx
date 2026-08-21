@@ -41,10 +41,11 @@ function MultiProvaResultsList({
   }
 
   const ranked = [...results].sort((a, b) => {
-    if (a.position === 0 && b.position === 0)
-      return a.name.localeCompare(b.name);
-    if (a.position === 0) return 1;
-    if (b.position === 0) return -1;
+    const aUnranked = a.position <= 0;
+    const bUnranked = b.position <= 0;
+    if (aUnranked && bUnranked) return a.name.localeCompare(b.name);
+    if (aUnranked) return 1;
+    if (bUnranked) return -1;
     return a.position - b.position;
   });
 
@@ -52,7 +53,7 @@ function MultiProvaResultsList({
     penyaId: r.penyaId,
     name: r.name,
     participates: r.position > 0,
-    result: r.result >= 0 ? String(r.result) : "",
+    result: r.result,
     index: r.position,
     participationTime: null,
   }));
