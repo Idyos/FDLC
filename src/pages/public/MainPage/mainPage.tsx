@@ -42,8 +42,8 @@ export default function MainPage() {
       icon: publicNavItems[0].icon,
       content: (
         <>
-          <div className="flex-1 flex flex-col bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
-            <div className="flex-1 p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
+          <div className="flex-1 flex flex-col rounded-4xl mt-4">
+            <div className="flex-1 md:p-6 p-3 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl dark:shadow-[0px_0px_30px_0px_#ffffff50] shadow-[0px_0px_30px_0px_#00000050]">
               {isLoading ? (
                 <LoadingAnimation />
               ) : (
@@ -87,8 +87,8 @@ export default function MainPage() {
       icon: publicNavItems[1].icon,
       content: (
         <>
-          <div className="flex-1 flex flex-col bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
-            <div className="flex-1 p-3.5 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl ">
+          <div className="flex-1 flex flex-col rounded-4xl mt-4">
+            <div className="flex-1 md:p-6 p-3 gap-3 md:gap-6 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl dark:shadow-[0px_0px_30px_0px_#ffffff50] shadow-[0px_0px_30px_0px_#00000050]">
               {isLoading ? (
                 <LoadingAnimation />
               ) : (
@@ -146,8 +146,10 @@ export default function MainPage() {
   }, [selectedTab, year]);
 
   return (
-    <div className="p-2 flex-1 flex flex-col min-h-screen">
-      <SponsorBanner variant="tall" className="mt-4" />
+    <div className="flex-1 flex flex-col min-h-screen">
+      <div className="md:px-0 px-3">
+        <SponsorBanner variant="tall" className="mt-4" />
+      </div>
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           className="space-y-4 flex-1 flex flex-col"

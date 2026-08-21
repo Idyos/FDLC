@@ -32,7 +32,7 @@ export default function PenyaSummaryGrid({ rankingInfo }: PenyaSummaryProps) {
       onClick={rankingInfo.isSecret ? undefined : handleClick}
       key={rankingInfo.id}
       whileHover={{ scale: 1.02 }}
-      className="relative w-full h-36 rounded-2xl overflow-hidden shadow-lg mb-6 cursor-pointer"
+      className="relative w-full h-36 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
       style={{ background: bgColor }}
     >
       {/* Imagen de fondo */}

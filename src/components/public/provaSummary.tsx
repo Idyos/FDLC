@@ -24,7 +24,7 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
   return (
     <motion.div
       onClick={handleClick}
-      className="relative w-full h-40 rounded-2xl overflow-hidden shadow-lg mb-2 cursor-pointer"
+      className="relative w-full h-40 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
       style={{ background: bgColor }}
       whileHover={{ scale: 1.02 }}
     >
@@ -47,7 +47,7 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
       <div className="relative flex-1 z-10 flex flex-col justify-center gap-5 items-center h-full p-4 dark:text-white text-gray-900">
         <div className="w-full flex flex-row justify-between items-center">
           <div className="text-center w-full">
-            <p className="text-5xl font-black">{provaSummary.name}</p>
+            <p className="md:text-5xl text-4xl font-black">{provaSummary.name}</p>
             {provaSummary.startDate && (
               <Badge variant="secondary" className="text-sm font-medium rounded-4xl mt-4">
                 {(() => {

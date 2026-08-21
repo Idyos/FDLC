@@ -263,47 +263,49 @@ export function BracketViewer({
   });
 
   return (
-    <div className="overflow-auto">
-      <div className="relative" style={{ width: totalW, height: HDR + contentH }}>
-        <svg
-          className="absolute top-0 left-0 pointer-events-none"
-          width={totalW}
-          height={HDR + contentH}
-        >
-          <g strokeWidth="1" stroke="currentColor" className="text-muted-foreground/40">
-            {connectorLines.map(({ key, x1, y1, x2, y2 }) => (
-              <line key={key} x1={x1} y1={y1} x2={x2} y2={y2} />
-            ))}
-          </g>
-        </svg>
-
-        {rounds.map(({ roundNum, label, matches: ms }, colIdx) => {
-          const colX = colIdx * (MW + CG);
-          return (
-            <div key={roundNum} className="absolute top-0" style={{ left: colX, width: MW }}>
-              <div
-                className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-                style={{ height: HDR, lineHeight: `${HDR}px` }}
-              >
-                {label}
-              </div>
-              {ms.map((match, i) => (
-                <BracketMatchCard
-                  key={match.id}
-                  match={match}
-                  top={tops[colIdx][i]}
-                  readOnly={readOnly}
-                  onScoreChange={onScoreChange}
-                  scheduledTime={matchSchedules?.[match.internalId]}
-                  onTimeChange={onTimeChange}
-                  slotStatus={slotStatuses?.[match.internalId]}
-                  showTimeRow={showTimeRow}
-                  matchHeight={MH}
-                />
+    <div className="overflow-auto" style={{ transform: "scaleY(-1)" }}>
+      <div style={{ transform: "scaleY(-1)" }}>
+        <div className="relative" style={{ width: totalW, height: HDR + contentH }}>
+          <svg
+            className="absolute top-0 left-0 pointer-events-none"
+            width={totalW}
+            height={HDR + contentH}
+          >
+            <g strokeWidth="1" stroke="currentColor" className="text-muted-foreground/40">
+              {connectorLines.map(({ key, x1, y1, x2, y2 }) => (
+                <line key={key} x1={x1} y1={y1} x2={x2} y2={y2} />
               ))}
-            </div>
-          );
-        })}
+            </g>
+          </svg>
+
+          {rounds.map(({ roundNum, label, matches: ms }, colIdx) => {
+            const colX = colIdx * (MW + CG);
+            return (
+              <div key={roundNum} className="absolute top-0" style={{ left: colX, width: MW }}>
+                <div
+                  className="text-center text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+                  style={{ height: HDR, lineHeight: `${HDR}px` }}
+                >
+                  {label}
+                </div>
+                {ms.map((match, i) => (
+                  <BracketMatchCard
+                    key={match.id}
+                    match={match}
+                    top={tops[colIdx][i]}
+                    readOnly={readOnly}
+                    onScoreChange={onScoreChange}
+                    scheduledTime={matchSchedules?.[match.internalId]}
+                    onTimeChange={onTimeChange}
+                    slotStatus={slotStatuses?.[match.internalId]}
+                    showTimeRow={showTimeRow}
+                    matchHeight={MH}
+                  />
+                ))}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

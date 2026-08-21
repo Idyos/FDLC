@@ -134,7 +134,7 @@ export default function PublicBracketPanel({ year, prova, provaId, subProvaId }:
       <CardHeader>
         <CardTitle>Quadre de Rondes</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 px-0 md:px-6">
         {isLoading && (
           <p className="text-sm text-muted-foreground">Carregant quadre...</p>
         )}

@@ -205,7 +205,7 @@ export default function ProvaPage() {
   }, [selectedYear, admin, provaId]);
 
     return (
-        <div className="p-2 pb-16 md:pb-2">
+        <div className="md:p-2">
         <AlertDialog open={noProvaAlert} onOpenChange={setNoProbaAlert}>
             <AlertDialogContent>
                 <AlertDialogHeader>
@@ -220,7 +220,7 @@ export default function ProvaPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-            <div className="bg-gray-100 dark:bg-neutral-900 rounded-4xl shadow-lg mt-4">
+            <div className="flex-1 flex flex-col bg-white dark:bg-black rounded-4xl mt-4 dark:shadow-[0px_0px_30px_0px_#ffffff25] shadow-[0px_0px_30px_0px_#00000025]">
               <ProvaTitle />
 
               {provaInfo.intervalMinutes ? (
