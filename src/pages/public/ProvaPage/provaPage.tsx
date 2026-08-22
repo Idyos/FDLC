@@ -77,15 +77,19 @@ function PublicResultsList({ penyes }: { penyes: ParticipatingPenya[] }) {
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
             Les teves penyes
           </p>
-          {favoriteItems.map((p) => (
-            <SingleProvaResult key={p.penyaId} provaResultSummary={p} />
-          ))}
-          {missingFavorites.map((f) => (
-            <p key={f.id} className="text-sm text-muted-foreground italic px-1 py-1">
-              {f.name} no participa en aquesta prova
-            </p>
-          ))}
-          <Separator className="my-3" />
+          <div className="flex flex-col gap-3 md:gap-6">
+            {favoriteItems.map((p) => (
+              <SingleProvaResult key={p.penyaId} provaResultSummary={p} />
+            ))}
+            {missingFavorites.map((f) => (
+              <p key={f.id} className="text-sm text-muted-foreground italic px-1 py-1">
+                {f.name} no participa en aquesta prova
+              </p>
+            ))}
+          </div>
+          <Separator className="mt-3" />
+          <Separator />
+          <Separator className="mb-3" />
         </>
       )}
       <DynamicList
