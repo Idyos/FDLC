@@ -111,9 +111,9 @@ export default function PenyaPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-            <div className="flex-1 flex flex-col bg-white dark:bg-black rounded-4xl mt-4 dark:shadow-[0px_0px_30px_0px_#ffffff25] shadow-[0px_0px_30px_0px_#00000025]">
+            <div className="flex-1 flex flex-col bg-background rounded-4xl mt-4 dark:shadow-[0px_0px_30px_0px_#ffffff25] shadow-[0px_0px_30px_0px_#00000025]">
                 {isPenyaLoading ? <LoadingAnimation /> : <PenyaTitle {...penyaInfo.current} />}
-              <div className="flex-1 flex md:p-3 p-1 flex-col items-center justify-start bg-white dark:bg-black rounded-4xl dark:shadow-[0px_0px_30px_0px_#ffffff25] shadow-[0px_0px_30px_0px_#00000025]">
+              <div className="flex-1 flex md:p-3 p-1 flex-col items-center justify-start bg-background rounded-4xl dark:shadow-[0px_0px_30px_0px_#ffffff25] shadow-[0px_0px_30px_0px_#00000025]">
               {isProvesLoading ? (
                 <LoadingAnimation />
               ) : (

@@ -44,7 +44,7 @@ export default function MainPage() {
       content: (
         <>
           <div className="flex-1 flex flex-col rounded-4xl mt-4">
-            <div className="flex-1 md:p-6 p-3 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl dark:shadow-[0px_0px_30px_0px_#ffffff50] shadow-[0px_0px_30px_0px_#00000050]">
+            <div className="flex-1 md:p-6 p-3 flex flex-col items-center justify-start bg-background rounded-4xl dark:shadow-[0px_0px_30px_0px_#ffffff50] shadow-[0px_0px_30px_0px_#00000050]">
               {isLoading ? (
                 <LoadingAnimation />
               ) : (
@@ -93,7 +93,7 @@ export default function MainPage() {
       content: (
         <>
           <div className="flex-1 flex flex-col rounded-4xl mt-4">
-            <div className="flex-1 md:p-6 p-3 gap-3 md:gap-6 flex flex-col items-center justify-start bg-white dark:bg-black rounded-4xl dark:shadow-[0px_0px_30px_0px_#ffffff50] shadow-[0px_0px_30px_0px_#00000050]">
+            <div className="flex-1 md:p-6 p-3 gap-3 md:gap-6 flex flex-col items-center justify-start bg-background rounded-4xl dark:shadow-[0px_0px_30px_0px_#ffffff50] shadow-[0px_0px_30px_0px_#00000050]">
               {isLoading ? (
                 <LoadingAnimation />
               ) : (

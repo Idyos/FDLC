@@ -224,7 +224,7 @@ export default function ProvaPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-            <div className="flex-1 flex flex-col bg-white dark:bg-black rounded-4xl mt-4 dark:shadow-[0px_0px_30px_0px_#ffffff25] shadow-[0px_0px_30px_0px_#00000025]">
+            <div className="flex-1 flex flex-col bg-background rounded-4xl mt-4 dark:shadow-[0px_0px_30px_0px_#ffffff25] shadow-[0px_0px_30px_0px_#00000025]">
               <ProvaTitle />
 
               {provaInfo.intervalMinutes ? (
