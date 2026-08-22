@@ -2,9 +2,9 @@ import { Heart } from "lucide-react";
 import { motion } from "framer-motion";
 
 // TODO: substitueix per l'enllaç real de donacions (Bizum, PayPal, Stripe, etc.)
-const DONATION_URL = "https://example.com/donacions";
+const DONATION_URL = "https://buy.stripe.com/14AaEX0Sr2Tl2m33mj3wQ02";
 
-const ORGANIZERS_IMAGE_SRC = "/459145412_354680424277091_5558863795687889296_n.png";
+const ORGANIZERS_IMAGE_SRC = "/IMG-20260821-WA0021.jpg";
 
 export default function DonationButton() {
   return (
@@ -24,7 +24,7 @@ export default function DonationButton() {
         className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
       />
 
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/50 to-black/10" />
+      <div className="absolute inset-0 bg-black/30" />
 
       <div className="relative z-10 flex items-center justify-between gap-4 h-full px-4 sm:px-6 text-white">
         <div className="min-w-0 text-left">
