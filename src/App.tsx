@@ -34,8 +34,8 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
         <div className="px-4 mt-6">
           <DonationButton />
         </div>
-        <PublicFooter />
       </div>
+      <PublicFooter />
       <PublicBottomNavigation />
     </>
   );
