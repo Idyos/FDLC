@@ -5,6 +5,13 @@
 
 body {
   overflow-x: hidden;
+  background-image: url("/patterns/circuit-pattern-light.png");
+  background-repeat: repeat;
+  background-size: 220px auto;
+}
+
+.dark body {
+  background-image: url("/patterns/circuit-pattern-dark.png");
 }
 
 @theme inline {
