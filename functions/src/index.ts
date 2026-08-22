@@ -4,7 +4,6 @@ import { createUserFn } from "./users/createUser";
 import { deleteUserFn } from "./users/deleteUser";
 import { getUsersFn } from "./users/getUsers";
 import { deletePenyaFn } from "./penyes/deletePenya";
-import { onImageResizedFn } from "./images/onImageResized";
 
 admin.initializeApp();
 setGlobalOptions({ maxInstances: 10 });
@@ -13,4 +12,3 @@ export const createUser = createUserFn;
 export const deleteUser = deleteUserFn;
 export const getUsers = getUsersFn;
 export const deletePenya = deletePenyaFn;
-export const onImageResized = onImageResizedFn;

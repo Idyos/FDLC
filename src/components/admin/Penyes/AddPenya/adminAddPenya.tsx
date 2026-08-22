@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import * as XLSX from 'xlsx';
-import JSZip from 'jszip';
+import type * as XLSXType from 'xlsx';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +30,7 @@ import { cn } from "@/lib/utils";
 async function extractImagesFromBuffer(buffer: ArrayBuffer): Promise<Map<number, File>> {
   const imageMap = new Map<number, File>();
   try {
+    const { default: JSZip } = await import('jszip');
     const zip = await JSZip.loadAsync(buffer);
 
     // Find the drawing path from the first sheet's rels
@@ -306,6 +306,7 @@ export default function AdminAddPenya({ triggerElement }: { triggerElement?: Rea
 
     const buffer = await file.arrayBuffer();
 
+    const XLSX: typeof XLSXType = await import('xlsx');
     const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
