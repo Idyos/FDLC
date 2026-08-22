@@ -1,6 +1,6 @@
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { PenyaInfo, PenyaProvaSummary } from "@/interfaces/interfaces";
-import { getPenyaInfo, getPenyaProves } from "@/services/database/publicDbService";
+import { getPenyaInfoRealTime, getPenyaProves } from "@/services/database/publicDbService";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -41,15 +41,9 @@ export default function PenyaPage() {
     const clearPenya = usePenyaStore((state) => state.clearPenya);
 
     useEffect(() => {
-        let cancelled = false;
+        setIsPenyaLoading(true);
 
-        const load = async () => {
-            setIsPenyaLoading(true);
-            setIsProvesLoading(true);
-
-            const penyaInfoResult = await getPenyaInfo(selectedYear, penyaId);
-            if (cancelled) return;
-
+        const unsubscribe = getPenyaInfoRealTime(selectedYear, penyaId, (penyaInfoResult) => {
             if (penyaInfoResult != null) {
                 if (penyaInfoResult.isSecret) {
                     navigate("/");
@@ -59,20 +53,28 @@ export default function PenyaPage() {
                 penyaInfo.current = penyaInfoResult;
                 document.title = `${penyaInfo.current.name} ${selectedYear}`;
                 setPenya(penyaInfoResult);
-                setIsPenyaLoading(false);
-
-                const proves = await getPenyaProves(selectedYear, penyaId);
-                if (cancelled) return;
-                setPenyaProves(proves);
-                setIsProvesLoading(false);
+                setNoPenyaAlert(false);
             } else {
                 clearPenya();
                 setNoPenyaAlert(true);
-                setIsPenyaLoading(false);
             }
-        };
+            setIsPenyaLoading(false);
+        });
 
-        load();
+        return unsubscribe;
+    }, [selectedYear, penyaId]);
+
+    // Historial de proves — one-shot, no cal temps real per una llista que
+    // només canvia quan es tanca una prova.
+    useEffect(() => {
+        let cancelled = false;
+        setIsProvesLoading(true);
+
+        getPenyaProves(selectedYear, penyaId).then((proves) => {
+            if (cancelled) return;
+            setPenyaProves(proves);
+            setIsProvesLoading(false);
+        });
 
         return () => {
             cancelled = true;

@@ -4,9 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
-import { useYear } from "@/components/shared/Contexts/YearContext";
-import { getPenyesNames } from "@/services/database/publicDbService";
-import { PenyaInfo } from "@/interfaces/interfaces";
+import { usePenyesCache } from "@/components/shared/Contexts/PenyesCacheContext";
 
 interface SideFavoritePenyesProps {
   /** Whether the sidebar is currently in its wide (hover-expanded) state. */
@@ -18,24 +16,14 @@ interface SideFavoritePenyesProps {
 export default function SideFavoritePenyes({ expanded, onOpenChange }: SideFavoritePenyesProps) {
   const { favoritePenyes, addFavoritePenya, removeFavoritePenya, clearFavoritePenyes, isFavorite, isFull } =
     useFavoritePenyes();
-  const { selectedYear } = useYear();
+  const { penyes: allPenyes } = usePenyesCache();
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [allPenyes, setAllPenyes] = useState<PenyaInfo[]>([]);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
   const hasFavorites = favoritePenyes.length > 0;
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    getPenyesNames(selectedYear).then((data) => {
-      if (!cancelled) setAllPenyes(data);
-    });
-    return () => { cancelled = true; };
-  }, [open, selectedYear]);
 
   useEffect(() => {
     if (!open) return;

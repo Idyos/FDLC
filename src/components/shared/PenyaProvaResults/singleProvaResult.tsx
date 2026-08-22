@@ -9,6 +9,8 @@ import { ParticipatesInput } from "./ParticipatesInput/participatesInput";
 import { navigateWithQuery } from "@/utils/url";
 import { useYear } from "../Contexts/YearContext";
 import { isAdmin } from "@/services/authService";
+import { usePenyesCache } from "../Contexts/PenyesCacheContext";
+import { useTheme } from "@/components/Theme/theme-provider";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: ParticipatingPenya;
@@ -21,6 +23,13 @@ export default function SingleProvaResult({ provaResultSummary, showPoints = tru
   const { selectedYear } = useYear();
 
   const prova = useProvaStore((state) => state.prova);
+  const { penyesById } = usePenyesCache();
+  const imageUrl = penyesById[provaResultSummary.penyaId]?.imageUrl;
+  const { theme } = useTheme();
+
+  // Mateix codi de color per posició que penyaSummary/penyaSummaryGrid
+  let bgColor = theme == "dark" ? "rgba(66, 66, 66, 1)" : "rgba(255, 255, 255, 1)";
+  const gradient = `linear-gradient(90deg, rgba(0, 0, 0, 0), ${bgColor} 26%)`;
 
   const prevValue = useRef(provaResultSummary.result);
   const [value, setValue] = useState(provaResultSummary.result);
@@ -85,10 +94,33 @@ export default function SingleProvaResult({ provaResultSummary, showPoints = tru
 
   return (
     <motion.div
-      className="relative w-full h-36 rounded-2xl overflow-hidden shadow-lg mb-6 cursor-pointer"
+      className="relative w-full h-36 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
       whileHover={{ scale: 1.02 }}
       onClick={handleClick}
+      style={{ background: bgColor }}
     >
+      {/* Imagen de fondo */}
+      <img
+        src={imageUrl || undefined}
+        alt="Imagen Peña"
+        loading="lazy"
+        decoding="async"
+        className="absolute inset-0 object-cover w-8/12 h-full"
+        style={imageUrl == null ? {display: "none"} : {}}
+      />
+
+      {/* Capa de overlay para oscurecer */}
+      <div
+        style={imageUrl == null ? {display: "none"} : {}}
+        className="absolute inset-0 dark:bg-black/50 bg-white/40"
+        ></div>
+
+      {/* Fondo de color */}
+      <div
+        className="absolute inset-0 h-full left-[50%] right-0"
+        style={{ background: gradient }}
+        ></div>
+
       {/* Contenido */}
       <div className="relative z-10 flex justify-between items-center h-full p-4 dark:text-white text-gray-900">
         <div className="text-left">

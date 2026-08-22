@@ -51,8 +51,8 @@ export default function AdminPenyaContextMenu({
       await deletePenya(year, penya.id);
       toast.success(`Penya "${penya.name}" eliminada.`);
       onDeleted(penya.id);
-    } catch {
-      // toast already shown by service
+    } catch (error) {
+      toast.error("Error al eliminar la penya: " + error);
     } finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);

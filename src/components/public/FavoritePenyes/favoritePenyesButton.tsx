@@ -3,31 +3,18 @@ import { X, Star, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
-import { useYear } from "@/components/shared/Contexts/YearContext";
-import { getPenyesNames } from "@/services/database/publicDbService";
-import { PenyaInfo } from "@/interfaces/interfaces";
+import { usePenyesCache } from "@/components/shared/Contexts/PenyesCacheContext";
 
 export default function FavoritePenyesButton() {
   const { favoritePenyes, addFavoritePenya, removeFavoritePenya, clearFavoritePenyes, isFavorite, isFull } =
     useFavoritePenyes();
-  const { selectedYear } = useYear();
+  const { penyes: allPenyes } = usePenyesCache();
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [allPenyes, setAllPenyes] = useState<PenyaInfo[]>([]);
 
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-
-  // Fetch all penyes once when panel opens
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    getPenyesNames(selectedYear).then((data) => {
-      if (!cancelled) setAllPenyes(data);
-    });
-    return () => { cancelled = true; };
-  }, [open, selectedYear]);
 
   // Close on click outside
   useEffect(() => {

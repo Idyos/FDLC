@@ -8,6 +8,8 @@ import { PointsInput } from "./PointsInput/pointsInput";
 import { navigateWithQuery } from "@/utils/url";
 import { useYear } from "../Contexts/YearContext";
 import { isAdmin } from "@/services/authService";
+import { usePenyesCache } from "../Contexts/PenyesCacheContext";
+import { useTheme } from "@/components/Theme/theme-provider";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: ParticipatingPenya;
@@ -18,6 +20,15 @@ export default function SingleProvaResultGrid({ provaResultSummary }: SingleProv
   const { selectedYear } = useYear();
 
   const prova = useProvaStore((state) => state.prova);
+  const { penyesById } = usePenyesCache();
+  const imageUrl = penyesById[provaResultSummary.penyaId]?.imageUrl;
+  const { theme } = useTheme();
+
+  // Mateix codi de color per posició que penyaSummary/penyaSummaryGrid
+  let bgColor = theme == "dark" ? "rgba(66, 66, 66, 1)" : "rgba(255, 255, 255, 1)";
+  if (provaResultSummary.index === 1) bgColor = theme == "dark" ? "rgba(255, 221, 51, 1)" : "rgba(255, 255, 0, 1)";
+  else if (provaResultSummary.index === 2) bgColor = "rgba(169, 169, 169, 1)";
+  else if (provaResultSummary.index === 3) bgColor = "rgba(255, 165, 0, 1)";
 
   const prevValue = useRef(provaResultSummary.result);
   const [value, setValue] = useState(provaResultSummary.result);
@@ -68,10 +79,27 @@ export default function SingleProvaResultGrid({ provaResultSummary }: SingleProv
 
   return (
     <motion.div
-      className="relative w-full h-36 rounded-2xl overflow-hidden shadow-lg mb-6 cursor-pointer"
+      className="relative w-full h-36 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
       whileHover={{ scale: 1.02 }}
       onClick={handleClick}
+      style={{ background: bgColor }}
     >
+      {/* Imagen de fondo */}
+      <img
+        src={imageUrl || undefined}
+        alt="Imagen Peña"
+        loading="lazy"
+        decoding="async"
+        className="absolute inset-0 object-cover w-full h-full"
+        style={imageUrl == null ? {display: "none"} : {}}
+      />
+
+      {/* Capa de overlay para oscurecer */}
+      <div
+        style={imageUrl == null ? {display: "none"} : {}}
+        className="absolute inset-0 dark:bg-black/50 bg-white/40"
+        ></div>
+
       {/* Contenido */}
       <div className="relative z-10 flex flex-col justify-around items-center h-full p-4 dark:text-white text-gray-900">
         <div className="text-left">

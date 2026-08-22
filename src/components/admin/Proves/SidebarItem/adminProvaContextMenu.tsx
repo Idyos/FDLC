@@ -62,8 +62,8 @@ export default function AdminProvaContextMenu({
       await deleteProva(year, prova.id);
       toast.success(`Prova "${prova.name}" eliminada.`);
       onDeleted(prova.id);
-    } catch {
-      // toast already shown by service
+    } catch (error) {
+      toast.error("Error al eliminar la prova: " + error);
     } finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);

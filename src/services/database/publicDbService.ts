@@ -2,7 +2,6 @@
 import { PenyaInfo, PenyaProvaSummary, ChallengeResult, Prova, EmptyProva, ParticipatingPenya, SubProvaConfig } from "@/interfaces/interfaces";
 import { db } from "../../firebase/firebase";
 import { collection, getDocs, getDoc, query, onSnapshot, orderBy, doc, Unsubscribe, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
-import { toast } from "sonner";
 
 export const getYears = async (
   onSuccess: (data: number[]) => void,
@@ -19,7 +18,6 @@ export const getYears = async (
       onSuccess(years);
     })
     .catch((error) => {
-      toast.error(`Error al recuperar els anys: ${error.message}`);
       console.error("Error fetching years:", error);
       if (onError) {
         onError(error);
@@ -301,6 +299,33 @@ export const getPenyaInfo = async (year: number, penyaId: string): Promise<Penya
     imageUrl: snapshot.data().imageUrl || undefined,
     description: snapshot.data().description || undefined,
   };
+};
+
+/** Real-time equivalent of getPenyaInfo — just this single penya's doc, so
+ *  PenyaPage reflects an admin edit (name/photo/secret) live without a
+ *  refresh, without paying for a listener over every penya. */
+export const getPenyaInfoRealTime = (
+  year: number,
+  penyaId: string,
+  callback: (data: PenyaInfo | null) => void
+): Unsubscribe => {
+  const penyaRef = doc(db, `Circuit/${year}/Penyes`, penyaId);
+
+  return onSnapshot(penyaRef, (snapshot) => {
+    if (!snapshot.exists()) {
+      callback(null);
+      return;
+    }
+
+    callback({
+      id: snapshot.id,
+      name: snapshot.data().name || snapshot.id,
+      position: 0,
+      isSecret: snapshot.data().isSecret || false,
+      imageUrl: snapshot.data().imageUrl || undefined,
+      description: snapshot.data().description || undefined,
+    });
+  });
 };
 
 /** One-shot read of a penya's history across every prova of the year.

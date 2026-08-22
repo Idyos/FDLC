@@ -46,7 +46,10 @@ export default function YearSelector({ compact = false, onOpenChange }: YearSele
   useEffect(() => {
     getYears(
       (fetchedYears) => setYears(fetchedYears),
-      (error) => console.error("Error fetching years:", error)
+      (error) => {
+        console.error("Error fetching years:", error);
+        toast.error("Error al recuperar els anys: " + error);
+      }
     );
   }, []);
 
@@ -84,8 +87,8 @@ export default function YearSelector({ compact = false, onOpenChange }: YearSele
       toast.success(`Any ${yearValue} creat correctament.`);
       setIsDialogOpen(false);
       setNewYear("");
-    } catch {
-      // L'error ja es notifica dins de createYear
+    } catch (error) {
+      toast.error("Error al crear l'any: " + error);
     } finally {
       setIsSubmitting(false);
     }

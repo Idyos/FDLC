@@ -2,7 +2,6 @@ import { Prova, PenyaInfo, EmptyProva, ParticipatingPenya, PenyaCreationData } f
 import { db, functions } from "../../../firebase/firebase";
 import { httpsCallable } from "firebase/functions";
 import { collection, getDocs, doc, updateDoc, writeBatch, getDoc, setDoc } from "firebase/firestore";
-import { toast } from "sonner";
 import { addImageToChallenges, addImageToPenyes, addPdfToChallenges, deleteImageFromPenyes } from "../../storageService";
 import { deleteUsersWithProva } from "../../usersService";
 
@@ -27,7 +26,6 @@ export const createYear = async (year: number): Promise<void> => {
     await setDoc(yearRef, { createdAt: new Date() });
   } catch (error) {
     console.error("Error creant l'any:", error);
-    toast.error("Error al crear l'any: " + error);
     throw error;
   }
 };
@@ -135,7 +133,6 @@ export const createProva = async (
       } catch (error) {
         // manejar error
         console.error("Error al crear la prova:", error);
-        toast.error("Error al crear la prova: " + error);
         if (onError) onError(error);
       }
 };
@@ -428,7 +425,6 @@ export const deletePenya = async (year: number, penyaId: string): Promise<void> 
     await fn({ year, penyaId });
   } catch (error) {
     console.error("Error eliminant la penya:", error);
-    toast.error("Error al eliminar la penya: " + error);
     throw error;
   }
 };
@@ -453,7 +449,6 @@ export const deleteProva = async (year: number, provaId: string): Promise<void> 
     await deleteUsersWithProva(provaId);
   } catch (error) {
     console.error("Error eliminant la prova:", error);
-    toast.error("Error al eliminar la prova: " + error);
     throw error;
   }
 };
@@ -531,7 +526,6 @@ export const updateProva = async (
     await batch.commit();
   } catch (error) {
     console.error("Error actualitzant la prova:", error);
-    toast.error("Error al actualitzar la prova: " + error);
     throw error;
   }
 };

@@ -2,6 +2,7 @@ import PenyaSummary from "@/components/public/penyaSummary";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { PenyaInfo, PenyaProvaSummary} from "@/interfaces/interfaces";
 import { getProves, getRankingRealTime } from "@/services/database/publicDbService";
+import { usePenyesCacheStore } from "@/components/shared/Contexts/PenyesCacheContext";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -54,12 +55,16 @@ export default function MainPage() {
                         <div className="w-full">
                           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
                             Les teves penyes
-                          </p>
-                          {favoriteRankings.map((item) => (
-                            <PenyaSummary key={item.id} rankingInfo={item} />
-                          ))}
+                            </p>
+                            <div className="flex flex-col gap-3 md:gap-6">
+                              {favoriteRankings.map((item) => (
+                                <PenyaSummary key={item.id} rankingInfo={item} />
+                              ))}
+                            </div>
                         </div>
-                        <Separator className="my-3" />
+                          <Separator className="mt-3" />
+                          <Separator />
+                          <Separator className="mb-3" />
                       </>
                     )}
                     <DynamicList
@@ -115,8 +120,6 @@ export default function MainPage() {
     unsubscribeRef.current = null;
     setIsLoading(true);
 
-    //Ranking — kept real-time: cheap (bounded by nº de penyes) and it's the
-    // one public screen where seeing the standings move live has real value.
     if (selectedTab === 0) {
       document.title = `Ranking ${year}`;
 
@@ -124,10 +127,10 @@ export default function MainPage() {
         previousRankingsRef.current = data;
         setRankings(data);
         setIsLoading(false);
+        usePenyesCacheStore.getState().setPenyes(year, data);
       });
       unsubscribeRef.current = unsubscribe;
     }
-    //Proves — just a schedule/list, the live detail lives in ProvaPage.
     else if (selectedTab === 1) {
       document.title = `Proves ${year}`;
       let cancelled = false;
