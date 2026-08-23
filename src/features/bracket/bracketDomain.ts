@@ -620,3 +620,48 @@ export function computeBracketPositions(
 
   return positionMap;
 }
+
+/** Per-team "last round played" + whether they won it, derived purely from the
+ *  bracket state (no totalRounds needed by the caller: distance-to-final is
+ *  self-contained, see distToFinalRoundName in bracketCreator.ts). Byes are not
+ *  a played round on purpose — only 'finished' matches count. Teams eliminated
+ *  in a decided group without reaching the final bracket get the -1 sentinel
+ *  ("Fase de grups"). Teams with nothing playable yet are simply absent from
+ *  the map — callers diff this against a previous snapshot to know what to
+ *  write/delete on the corresponding Participants doc. */
+export function computeTeamRoundInfo(
+  matches: Match[],
+  groupStage: GroupStageState | null,
+): Map<string, { lastRoundPlayed: number; hasWon: boolean }> {
+  const info = new Map<string, { lastRoundPlayed: number; hasWon: boolean }>();
+  if (matches.length === 0) {
+    if (!groupStage) return info;
+  } else {
+    const totalRounds = Math.max(...matches.map((m) => m.roundNumber));
+    const finished = matches.filter((m) => m.status === "finished");
+
+    finished.forEach((m) => {
+      const distToFinal = totalRounds - m.roundNumber;
+      m.teams.forEach((participant, slotIdx) => {
+        const teamId = participant.teamId;
+        if (!teamId) return;
+        const current = info.get(teamId);
+        if (current && current.lastRoundPlayed <= distToFinal) return; // keep the most advanced (lowest dist) round
+        info.set(teamId, { lastRoundPlayed: distToFinal, hasWon: slotIdx === m.winnerSlot });
+      });
+    });
+  }
+
+  if (groupStage) {
+    groupStage.groups.forEach((group) => {
+      if (!group.winnerTeamId) return; // group not decided yet
+      group.teamIds.forEach((teamId) => {
+        if (teamId === group.winnerTeamId) return;
+        if (info.has(teamId)) return; // already reached the final bracket
+        info.set(teamId, { lastRoundPlayed: -1, hasWon: false });
+      });
+    });
+  }
+
+  return info;
+}

@@ -10,11 +10,12 @@ import type {
 import { db } from "@/firebase/firebase";
 import {
   Timestamp,
+  deleteField,
   doc,
   getDoc,
   onSnapshot,
   serverTimestamp,
-  setDoc,
+  writeBatch,
 } from "firebase/firestore";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -233,21 +234,43 @@ export function subscribeProvaBracket(
   );
 }
 
+/** A per-penya round-progress update to denormalize onto its Participants doc
+ *  alongside the bracket write (see computeTeamRoundInfo in bracketDomain.ts).
+ *  `null` on either field means "clear it" (e.g. after regenerating the
+ *  bracket wiped that penya's progress). */
+export interface ParticipantRoundUpdate {
+  penyaId: string;
+  lastRoundPlayed: number | null;
+  hasWon: boolean | null;
+}
+
 export async function saveProvaBracket(
   year: number,
   provaId: string,
   data: StoredProvaBracketDoc,
   userId?: string,
   subProvaId?: string,
+  participantUpdates?: ParticipantRoundUpdate[],
 ): Promise<void> {
   const bracketRef = doc(db, bracketDocPath(year, provaId, subProvaId));
 
   // JSON round-trip strips undefined values, which Firestore rejects
   const sanitized = JSON.parse(JSON.stringify(data));
 
-  await setDoc(bracketRef, {
+  const batch = writeBatch(db);
+  batch.set(bracketRef, {
     ...sanitized,
     updatedAt: serverTimestamp(),
     updatedBy: userId ?? null,
   });
+
+  participantUpdates?.forEach(({ penyaId, lastRoundPlayed, hasWon }) => {
+    const participantRef = doc(db, `Circuit/${year}/Proves/${provaId}/Participants/${penyaId}`);
+    batch.update(participantRef, {
+      lastRoundPlayed: lastRoundPlayed === null ? deleteField() : lastRoundPlayed,
+      hasWon: hasWon === null ? deleteField() : hasWon,
+    });
+  });
+
+  await batch.commit();
 }

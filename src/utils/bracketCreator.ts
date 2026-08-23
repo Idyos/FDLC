@@ -119,14 +119,25 @@ function nextPowerOfK(n: number, k: number): { value: number; exponent: number }
 }
 
 
-function roundName(roundIndex: number, totalRounds: number): string {
-  const distToFinal = totalRounds - roundIndex;
+/** Nombre de ronda a partir de la distancia a la final (0 = Final, 1 = Semifinal...),
+ *  sin necesitar conocer totalRounds. Usado tanto por roundName() (etiquetas de
+ *  partido del propio bracket) como por el badge de "última ronda jugada" de
+ *  penyaProvaResult, que solo dispone de esa distancia (persistida per equip). */
+export function distToFinalRoundName(distToFinal: number): string {
   if (distToFinal === 0) return 'Final';
   if (distToFinal === 1) return 'Semifinal';
-  if (distToFinal === 2) return 'Cuartos';
-  if (distToFinal === 3) return 'Octavos';
-  if (distToFinal === 4) return 'Dieciseisavos';
-  return `Ronda ${roundIndex}`; // genérico
+  if (distToFinal === 2) return 'Quarts';
+  if (distToFinal === 3) return 'Vuitens';
+  if (distToFinal === 4) return 'Setzens';
+  if (distToFinal === 5) return 'Ronda de 32';
+  if (distToFinal === 6) return 'Ronda de 64';
+  return `Ronda prèvia`; 
+}
+
+function roundName(roundIndex: number, totalRounds: number): string {
+  const distToFinal = totalRounds - roundIndex;
+  if (distToFinal <= 6) return distToFinalRoundName(distToFinal);
+  return `Ronda ${roundIndex}`; // genérico, mismo fallback de siempre para brackets enormes
 }
 
 

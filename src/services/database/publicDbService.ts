@@ -367,6 +367,8 @@ export const getPenyaProves = async (
         summary.result = p.result && p.result !== "" ? p.result : undefined;
         summary.points = p.pointsAwarded ?? undefined;
         summary.participationTime = p.participationTime?.toDate?.() ?? null;
+        summary.lastRoundPlayed = typeof p.lastRoundPlayed === "number" ? p.lastRoundPlayed : undefined;
+        summary.hasWon = typeof p.hasWon === "boolean" ? p.hasWon : undefined;
       } else {
         summary.participates = false;
       }

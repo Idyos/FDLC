@@ -105,7 +105,7 @@ export default function ProvaPenyaSummary({ provaSummary }: ProvaSummaryProps) {
                 <Clock className="w-5 h-5" />
                 {provaSummary.participationTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </div>
-            ) : !provaSummary.participates || !provaSummary.result ? null : (
+            ) : !provaSummary.participates || (!provaSummary.result && provaSummary.lastRoundPlayed == null) ? null : (
               <PenyaProvaResult prova={provaSummary} />
             )}
           </div>

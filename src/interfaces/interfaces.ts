@@ -127,6 +127,11 @@ export class PenyaProvaSummary extends ProvaSummary {
   points?: number;
   participates: boolean;
   participationTime?: Date | null;
+  /** Rondes only: distance to the final (0 = Final, 1 = Semifinal...), or -1
+   *  for a decided group-stage loss. See distToFinalRoundName in bracketCreator.ts. */
+  lastRoundPlayed?: number;
+  /** Rondes only: whether lastRoundPlayed was won. */
+  hasWon?: boolean;
 
   constructor() {
     super();

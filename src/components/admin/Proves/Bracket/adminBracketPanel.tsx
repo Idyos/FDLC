@@ -25,6 +25,7 @@ import {
   buildFinalStageFromEntrants,
   calculateGroupStandings,
   clearMatchResult,
+  computeTeamRoundInfo,
   createGroupFinalEntrants,
   createRandomBalancedGroupStage,
   createSimpleFinalEntrants,
@@ -48,6 +49,7 @@ import type {
 import {
   getProvaBracket,
   saveProvaBracket,
+  type ParticipantRoundUpdate,
 } from "@/services/database/Admin/adminBracketsDbServices";
 import { formatTime, computeSlotStatuses } from "@/utils/scheduleFormatting";
 import { scheduleItemsAvoidingBusy, BusyInterval, ScheduleItem } from "@/utils/multiProvaScheduler";
@@ -81,6 +83,28 @@ function formatSavedAt(date: Date): string {
 
 function buildPropagatedFinal(fs: FinalStageState): FinalStageState {
   return { ...fs, bracket: { ...fs.bracket, matches: propagateBracketByes([...fs.bracket.matches]) } };
+}
+
+type RoundInfo = Map<string, { lastRoundPlayed: number; hasWon: boolean }>;
+
+/** Diffs two computeTeamRoundInfo() snapshots into the minimal set of
+ *  Participants writes needed to bring Firestore from `prev` to `next` —
+ *  including explicit clears (null) for penyes that had progress before and
+ *  don't anymore (e.g. the bracket got regenerated). */
+function computeRoundUpdates(prev: RoundInfo, next: RoundInfo): ParticipantRoundUpdate[] {
+  const updates: ParticipantRoundUpdate[] = [];
+  const allPenyaIds = new Set([...prev.keys(), ...next.keys()]);
+  allPenyaIds.forEach((penyaId) => {
+    const before = prev.get(penyaId);
+    const after = next.get(penyaId);
+    if (before?.lastRoundPlayed === after?.lastRoundPlayed && before?.hasWon === after?.hasWon) return;
+    updates.push({
+      penyaId,
+      lastRoundPlayed: after ? after.lastRoundPlayed : null,
+      hasWon: after ? after.hasWon : null,
+    });
+  });
+  return updates;
 }
 
 const SCHEDULE_LEGEND = [
@@ -132,6 +156,10 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
   const matchDurationMinutesRef = useRef<number>(0);
   const simultaneousMatchesRef = useRef<number>(1);
   const matchSchedulesRef = useRef<Record<string, string>>({});
+  // Last round-progress snapshot successfully persisted to Participants docs;
+  // diffed against on every save so only the penyes that actually changed get
+  // written (see computeRoundUpdates). Never touched for subprova brackets.
+  const lastPersistedRoundInfoRef = useRef<RoundInfo>(new Map());
 
   const [localTpmA, setLocalTpmA] = useState<string>("");
   const [localTpmB, setLocalTpmB] = useState<string>("");
@@ -170,18 +198,21 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
   useEffect(() => {
     let isCancelled = false;
     const load = async () => {
-      if (!prova.id) { setGroupStage(null); setFinalStage(null); setIsLoadingSavedBracket(false); return; }
+      if (!prova.id) { setGroupStage(null); setFinalStage(null); setIsLoadingSavedBracket(false); lastPersistedRoundInfoRef.current = new Map(); return; }
       setIsLoadingSavedBracket(true);
       try {
         const saved = await getProvaBracket(year, prova.id, subProvaId);
         if (isCancelled) return;
-        if (!saved) { setGroupStage(null); setFinalStage(null); return; }
+        if (!saved) { setGroupStage(null); setFinalStage(null); lastPersistedRoundInfoRef.current = new Map(); return; }
 
         const propagated = propagateBracketByes([...saved.finalStage.bracket.matches]);
         setGroupStage(saved.groupStage);
         setFinalStage({ ...saved.finalStage, bracket: { ...saved.finalStage.bracket, matches: propagated } });
         setThirdPlaceMatch(saved.finalStage.thirdPlaceMatch ?? syncThirdPlaceFromSemifinals(propagated, null));
         setTeamsPerMatch(saved.finalStage.bracket.teamsPerMatch ?? 2);
+        lastPersistedRoundInfoRef.current = subProvaId
+          ? new Map()
+          : computeTeamRoundInfo(propagated, saved.groupStage);
         setSavedAt(saved.updatedAt ? saved.updatedAt.toDate() : null);
         setSaveStatus("saved");
 
@@ -243,8 +274,16 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
   const doSave = async (fs: FinalStageState, tpm: ThirdPlaceMatch | null, gs: GroupStageState | null) => {
     if (!prova.id) return;
     setSaveStatus("saving");
+    // Rondes progress is only ever read from the top-level Prova's Participants
+    // docs (see publicDbService.getPenyaProves), never from a MultiProva subprova's
+    // — so skip computing/writing it there entirely.
+    const nextRoundInfo = subProvaId ? null : computeTeamRoundInfo(fs.bracket.matches, gs);
+    const participantUpdates = nextRoundInfo
+      ? computeRoundUpdates(lastPersistedRoundInfoRef.current, nextRoundInfo)
+      : undefined;
     try {
-      await saveProvaBracket(year, prova.id, buildPayload(fs, tpm, gs), user?.uid, subProvaId);
+      await saveProvaBracket(year, prova.id, buildPayload(fs, tpm, gs), user?.uid, subProvaId, participantUpdates);
+      if (nextRoundInfo) lastPersistedRoundInfoRef.current = nextRoundInfo;
       setSavedAt(new Date());
       setSaveStatus("saved");
     } catch (err) {
