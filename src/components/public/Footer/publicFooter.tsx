@@ -16,7 +16,7 @@ const sombresMembers: { name: string; img?: string }[] = [
   { name: "Marc", img: sombresImg("Marc.jpg") },
   { name: "Mariona", img: sombresImg("Mariona.jpg") },
   { name: "Marta", img: sombresImg("Marta.jpg") },
-  { name: "Martorell", img: sombresImg("Martorell.jpg") },
+  { name: "Oriol M.", img: sombresImg("Martorell.jpg") },
   // { name: "Oriol", img: sombresImg("ORIOL.jpg") },
   { name: "Panisel", img: sombresImg("Panisel.jpg") },
 ];
