@@ -144,9 +144,6 @@ export default function AdminSidebar() {
         <Sidebar>
           {/* ── Header ──────────────────────────────────────── */}
           <SidebarHeader className="gap-2 p-3">
-            <span className="text-sm font-semibold px-1">
-              Circuit {selectedYear}
-            </span>
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <YearSelector />
