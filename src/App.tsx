@@ -12,6 +12,7 @@ import PublicSideNavigation from './components/public/SideNavBar/publicSideNavig
 import PublicFooter from './components/public/Footer/publicFooter';
 import DonationButton from './components/public/donationButton';
 import LoadingAnimation from './components/shared/loadingAnim';
+import ScrollToTop from './components/shared/ScrollToTop';
 
 // Páginas públicas — cada una en su propio chunk
 const MainPage = lazy(() => import('./pages/public/MainPage/mainPage'));
@@ -47,6 +48,7 @@ export default function App() {
       <AuthProvider>
         <YearProvider>
           <FavoritePenyesProvider>
+            <ScrollToTop />
             <Suspense fallback={<LoadingAnimation />}>
               <Routes>
                 {/* Public */}
