@@ -39,6 +39,14 @@ service cloud.firestore {
         );
     }
 
+    function canEditSubProvaResults(provaId, subProvaId) {
+      return canEditResults(provaId)
+        && (
+          !('specificSubProvaId' in get(userPath()).data.permissions)
+          || get(userPath()).data.permissions.specificSubProvaId == subProvaId
+        );
+    }
+
     match /Users/{userId} {
       allow get, list: if true;
       allow create: if canUsers('create');
@@ -74,16 +82,16 @@ service cloud.firestore {
 
         match /SubProves/{subProvaId} {
           allow get, list: if true;
-          allow create, update, delete: if canProves('editInfo') || canEditResults(provaId);
+          allow create, update, delete: if canProves('editInfo') || canEditSubProvaResults(provaId, subProvaId);
 
           match /Participants/{participantId} {
             allow get, list: if true;
-            allow create, update, delete: if canEditResults(provaId);
+            allow create, update, delete: if canEditSubProvaResults(provaId, subProvaId);
           }
 
           match /Bracket/{bracketId} {
             allow get, list: if true;
-            allow create, update, delete: if canEditResults(provaId);
+            allow create, update, delete: if canEditSubProvaResults(provaId, subProvaId);
           }
         }
       }

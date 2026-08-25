@@ -10,6 +10,7 @@ export interface User {
     penyes: PenyesPermissions[];
     proves: ProvesPermissions[];
     specificProvaId?: string;
+    specificSubProvaId?: string;
     users: UsersPermissions[];
   };
 }

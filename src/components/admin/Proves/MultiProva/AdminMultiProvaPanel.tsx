@@ -37,6 +37,7 @@ import AdminSingleProvaResult from "@/components/admin/Proves/ProvaPenyaSummary/
 import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
 import { ScrollBar } from "@/components/ui/scroll-area";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { useAuth } from "@/routes/admin/AuthContext";
 
 interface Props {
   year: number;
@@ -48,6 +49,13 @@ interface Props {
 // ─── Main panel ───────────────────────────────────────────────────────────────
 
 export default function AdminMultiProvaPanel({ year, prova }: Props) {
+  const { userData } = useAuth();
+  // Un compte restringit a una subprova concreta d'aquesta prova només pot veure/editar aquella subprova.
+  const restrictedSubProvaId =
+    userData?.permissions.specificProvaId === prova.id
+      ? userData?.permissions.specificSubProvaId
+      : undefined;
+
   const [subProves, setSubProves] = useState<SubProvaConfig[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [participants, setParticipants] = useState<ParticipatingPenya[]>([]);
@@ -55,14 +63,21 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SubProvaConfig | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("time-asc");
-  
+
+  const visibleSubProves = restrictedSubProvaId
+    ? subProves.filter((s) => s.id === restrictedSubProvaId)
+    : subProves;
+
   // Load sub-provas on mount
   useEffect(() => {
     getSubProvas(year, prova.id).then((list) => {
       setSubProves(list);
-      if (list.length > 0) setSelectedId(list[0].id);
+      const visible = restrictedSubProvaId
+        ? list.filter((s) => s.id === restrictedSubProvaId)
+        : list;
+      if (visible.length > 0) setSelectedId(visible[0].id);
     });
-  }, [year, prova.id]);
+  }, [year, prova.id, restrictedSubProvaId]);
 
   // Load participants whenever selected sub-prova changes (skip for Rondes — bracket handles its own data)
   useEffect(() => {
@@ -126,15 +141,17 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
       {/* ── Left sidebar: sub-prova list ─────────────────── */}
 
       <Tabs value={selectedId ?? ""} className="max-w-[calc(100%)] mb-5">
-        {subProves.length > 0 && (
+        {visibleSubProves.length > 0 && (
           <TabsList className="ml-3 mr-3 max-w-full rounded-full">
-            <Button variant="outline" className="m-1 h-7.25 shrink-0 rounded-full" disabled={prova.isFinished}  onClick={() => setShowAddDialog(true)}>
-              <PlusCircle/>
-            </Button>
+            {!restrictedSubProvaId && (
+              <Button variant="outline" className="m-1 h-7.25 shrink-0 rounded-full" disabled={prova.isFinished}  onClick={() => setShowAddDialog(true)}>
+                <PlusCircle/>
+              </Button>
+            )}
             <ScrollAreaPrimitive.Root className="relative flex-1 min-w-0 h-full" type="auto">
               <ScrollAreaPrimitive.Viewport className="h-full w-full">
                 <div className="flex">
-                  {subProves.map((subProva) => (
+                  {visibleSubProves.map((subProva) => (
                     <ContextMenu key={subProva.id}>
                       <ContextMenuTrigger>
                         <TabsTrigger className="rounded-full" onClick={() => setSelectedId(subProva.id)} value={subProva.id}>
@@ -160,13 +177,13 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
 
         )}
         
-        {subProves.length === 0 && (
+        {visibleSubProves.length === 0 && !restrictedSubProvaId && (
           <Button variant="outline" className="m-1 h-[90%] " disabled={prova.isFinished}  onClick={() => setShowAddDialog(true)}>
             Afegir prova
           </Button>
         )}
 
-        {subProves.length > 0 && subProves.map((sp) => (
+        {visibleSubProves.length > 0 && visibleSubProves.map((sp) => (
             <TabsContent key={sp.id} value={sp.id}>
               <div className="flex-1 overflow-y-auto p-4">
                 {sp.challengeType === "Rondes" ? (

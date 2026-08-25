@@ -27,6 +27,7 @@ import { UserPlus } from "lucide-react";
 import { z } from "zod";
 import { createUser, updateUser } from "@/services/usersService";
 import { getProves } from "@/services/database/Admin/adminDbServices";
+import { getSubProvas } from "@/services/database/Admin/adminMultiProvaDbServices";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import {
   User,
@@ -37,7 +38,7 @@ import {
   provesPermissions,
   usersPermissions,
 } from "@/interfaces/userInterface";
-import type { Prova } from "@/interfaces/interfaces";
+import type { Prova, SubProvaConfig } from "@/interfaces/interfaces";
 import { cn } from "@/lib/utils";
 
 const getSchema = (isTemporary: boolean) =>
@@ -180,11 +181,17 @@ export default function AdminAddUser({
   const [selectedProves, setSelectedProves] = useState<ProvesPermissions[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<UsersPermissions[]>([]);
   const [specificProvaId, setSpecificProvaId] = useState<string>("");
+  const [specificSubProvaId, setSpecificSubProvaId] = useState<string>("");
 
   const [proves, setProves] = useState<Prova[]>([]);
+  const [subProves, setSubProves] = useState<SubProvaConfig[]>([]);
 
   const showProvaSelector =
     selectedProves.includes("editResults") && !selectedProves.includes("*");
+
+  const selectedProva = proves.find((p) => p.id === specificProvaId);
+  const showSubProvaSelector =
+    showProvaSelector && specificProvaId !== "" && selectedProva?.challengeType === "MultiProva";
 
   const showTemporaryToggle = showProvaSelector && specificProvaId !== "";
 
@@ -198,6 +205,7 @@ export default function AdminAddUser({
         setSelectedProves(existingUser.permissions.proves);
         setSelectedUsers(existingUser.permissions.users);
         setSpecificProvaId(existingUser.permissions.specificProvaId ?? "");
+        setSpecificSubProvaId(existingUser.permissions.specificSubProvaId ?? "");
       }
     } else {
       setDisplayName("");
@@ -208,7 +216,9 @@ export default function AdminAddUser({
       setSelectedProves([]);
       setSelectedUsers([]);
       setSpecificProvaId("");
+      setSpecificSubProvaId("");
       setProves([]);
+      setSubProves([]);
     }
   }, [isDialogOpen, editMode, existingUser]);
 
@@ -217,8 +227,17 @@ export default function AdminAddUser({
       getProves(selectedYear, setProves);
     } else {
       setSpecificProvaId("");
+      setSpecificSubProvaId("");
     }
   }, [showProvaSelector, selectedYear]);
+
+  useEffect(() => {
+    if (specificProvaId && selectedProva?.challengeType === "MultiProva") {
+      getSubProvas(selectedYear, specificProvaId).then(setSubProves);
+    } else {
+      setSubProves([]);
+    }
+  }, [specificProvaId, selectedProva?.challengeType, selectedYear]);
 
   useEffect(() => {
     if (!showTemporaryToggle) setIsTemporary(false);
@@ -248,6 +267,7 @@ export default function AdminAddUser({
         penyes: selectedPenyes,
         proves: selectedProves,
         ...(showProvaSelector && specificProvaId ? { specificProvaId } : {}),
+        ...(showSubProvaSelector && specificSubProvaId ? { specificSubProvaId } : {}),
         users: selectedUsers,
       },
     };
@@ -408,7 +428,13 @@ export default function AdminAddUser({
                   className="overflow-hidden"
                 >
                   <div className="ml-[92px] flex flex-col gap-1">
-                    <Select value={specificProvaId} onValueChange={setSpecificProvaId}>
+                    <Select
+                      value={specificProvaId}
+                      onValueChange={(v) => {
+                        setSpecificProvaId(v);
+                        setSpecificSubProvaId("");
+                      }}
+                    >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue placeholder="Qualsevol prova (accés global)" />
                       </SelectTrigger>
@@ -422,6 +448,37 @@ export default function AdminAddUser({
                     </Select>
                     <p className="text-xs text-muted-foreground">
                       Deixa buit per permetre editar totes les proves.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence initial={false}>
+              {showSubProvaSelector && (
+                <motion.div
+                  key="subprova-selector"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="ml-[92px] flex flex-col gap-1">
+                    <Select value={specificSubProvaId} onValueChange={setSpecificSubProvaId}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Qualsevol subprova (totes)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subProves.map((subProva) => (
+                          <SelectItem key={subProva.id} value={subProva.id}>
+                            {subProva.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Deixa buit per permetre editar totes les subproves d'aquesta multiprova.
                     </p>
                   </div>
                 </motion.div>

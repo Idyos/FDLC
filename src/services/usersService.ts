@@ -36,6 +36,7 @@ export const getUsers = async (callback: (data: User[]) => void) => {
           penyes: Array.isArray(d.permissions?.penyes) ? d.permissions.penyes : [],
           proves: Array.isArray(d.permissions?.proves) ? d.permissions.proves : [],
           specificProvaId: d.permissions?.specificProvaId ?? undefined,
+          specificSubProvaId: d.permissions?.specificSubProvaId ?? undefined,
           users: Array.isArray(d.permissions?.users) ? d.permissions.users : [],
         },
       };
@@ -73,12 +74,36 @@ export const deleteUsersWithProva = async (provaId: string): Promise<void> => {
       const updatedProves = proves.filter((p: string) => p !== "editResults");
       await updateDoc(docSnap.ref, {
         "permissions.specificProvaId": null,
+        "permissions.specificSubProvaId": deleteField(),
         "permissions.proves": updatedProves,
       });
     } else {
       // Delete completely from Auth + Firestore via Cloud Function
       await deleteUser(d.uid);
     }
+  }
+};
+
+export const deleteUsersWithSubProva = async (
+  provaId: string,
+  subProvaId: string
+): Promise<void> => {
+  const usersRef = collection(db, `Users`);
+  const snap = await getDocs(usersRef);
+
+  const affected = snap.docs.filter(
+    (d) =>
+      d.data().permissions?.specificProvaId === provaId &&
+      d.data().permissions?.specificSubProvaId === subProvaId
+  );
+
+  if (affected.length === 0) return;
+
+  for (const docSnap of affected) {
+    // The subprova itself is gone: widen the user back to the whole prova rather than deleting them.
+    await updateDoc(docSnap.ref, {
+      "permissions.specificSubProvaId": deleteField(),
+    });
   }
 };
 
@@ -169,5 +194,8 @@ export const updateUser = async (user: User): Promise<void> => {
     ...(user.permissions.specificProvaId
       ? { "permissions.specificProvaId": user.permissions.specificProvaId }
       : { "permissions.specificProvaId": deleteField() }),
+    ...(user.permissions.specificProvaId && user.permissions.specificSubProvaId
+      ? { "permissions.specificSubProvaId": user.permissions.specificSubProvaId }
+      : { "permissions.specificSubProvaId": deleteField() }),
   });
 };

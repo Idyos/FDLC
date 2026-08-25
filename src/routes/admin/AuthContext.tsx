@@ -58,6 +58,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               penyes: d.permissions?.penyes ?? [],
               proves: d.permissions?.proves ?? [],
               specificProvaId: d.permissions?.specificProvaId ?? undefined,
+              specificSubProvaId: d.permissions?.specificSubProvaId ?? undefined,
               users: d.permissions?.users ?? [],
             },
           });

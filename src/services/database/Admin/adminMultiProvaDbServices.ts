@@ -11,6 +11,7 @@ import {
 import { db } from "@/firebase/firebase";
 import { SubProvaConfig, PointsRange, ParticipatingPenya } from "@/interfaces/interfaces";
 import { generateProvaResults, deriveBracketPositions } from "./adminProvesDbServices";
+import { deleteUsersWithSubProva } from "@/services/usersService";
 import type { BusyInterval } from "@/utils/multiProvaScheduler";
 
 /** Converteix un result de Firestore (number antic o string nou) a string. */
@@ -262,6 +263,7 @@ export async function deleteSubProva(
   snap.docs.forEach((d) => batch.delete(d.ref));
   batch.delete(subProvaRef);
   await batch.commit();
+  await deleteUsersWithSubProva(provaId, subProvaId);
 }
 
 // ─── Generate results ─────────────────────────────────────────────────────────

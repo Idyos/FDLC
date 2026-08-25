@@ -23,7 +23,7 @@ const sombresMembers: { name: string; img?: string }[] = [
 
 const socialLinks = [
   {
-    label: "Envia'ns un correu",
+    label: "Correu",
     href: "mailto:javi.gauxachs@gmail.com",
     icon: Mail,
   },

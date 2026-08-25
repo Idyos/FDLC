@@ -55,6 +55,9 @@ export const createUserFn = onCall({ cors: true, region: "europe-west1" }, async
       ...(user.permissions.specificProvaId
         ? { specificProvaId: user.permissions.specificProvaId }
         : {}),
+      ...(user.permissions.specificProvaId && user.permissions.specificSubProvaId
+        ? { specificSubProvaId: user.permissions.specificSubProvaId }
+        : {}),
       users: user.permissions.users,
     },
   });
