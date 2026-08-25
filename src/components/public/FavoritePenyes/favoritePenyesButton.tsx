@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
 import { usePenyesCache } from "@/components/shared/Contexts/PenyesCacheContext";
+import { matchesSearch } from "@/utils/text";
 
 export default function FavoritePenyesButton() {
   const { favoritePenyes, addFavoritePenya, removeFavoritePenya, clearFavoritePenyes, isFavorite, isFull } =
@@ -36,7 +37,7 @@ export default function FavoritePenyesButton() {
 
   const searchResults = search.trim().length > 0
     ? allPenyes.filter(
-        (p) => p.name.toLowerCase().includes(search.toLowerCase()) && !isFavorite(p.id)
+        (p) => matchesSearch(p.name, search) && !isFavorite(p.id)
       )
     : [];
 

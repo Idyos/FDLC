@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ChevronDown, Flag, Home, LogOut, Plus, Settings, Users, Trophy } from "lucide-react";
+import { matchesSearch } from "@/utils/text";
 
 import {
   Collapsible,
@@ -132,7 +133,7 @@ export default function AdminSidebar() {
   const filteredPenyes = useMemo(
     () =>
       penyes.filter((p) =>
-        p.name.toLowerCase().includes(penyaFilter.toLowerCase())
+        matchesSearch(p.name, penyaFilter)
       ),
     [penyes, penyaFilter]
   );

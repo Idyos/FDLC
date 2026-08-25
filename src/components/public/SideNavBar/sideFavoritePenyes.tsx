@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
 import { usePenyesCache } from "@/components/shared/Contexts/PenyesCacheContext";
+import { matchesSearch } from "@/utils/text";
 
 interface SideFavoritePenyesProps {
   /** Whether the sidebar is currently in its wide (hover-expanded) state. */
@@ -54,7 +55,7 @@ export default function SideFavoritePenyes({ expanded, onOpenChange }: SideFavor
 
   const searchResults =
     search.trim().length > 0
-      ? allPenyes.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()) && !isFavorite(p.id))
+      ? allPenyes.filter((p) => matchesSearch(p.name, search) && !isFavorite(p.id))
       : [];
 
   return (

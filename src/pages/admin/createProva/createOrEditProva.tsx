@@ -18,6 +18,7 @@ import StepConfirm from "../createProva/components/steps/stepConfirm";
 import { buildChallenge } from "../createProva/challengeFactory";
 import { useProvaPreviewSync } from "../createProva/useProvaPreviewSync";
 import LoadingAnimation from "@/components/shared/loadingAnim";
+import { matchesSearch } from "@/utils/text";
 import StepPointsRange from "../createProva/components/steps/stepPointsRange";
 import { navigateWithQuery } from "@/utils/url";
 import { Button } from "@/components/ui/button";
@@ -254,7 +255,7 @@ export default function CreateOrEditProva() {
 
     // Datos visuales
     const filteredPenyes = penyes.filter(p =>
-        p.name.toLowerCase().includes(penyaSearch.toLowerCase())
+        matchesSearch(p.name, penyaSearch)
     );
 
     if (loadingProva) return <LoadingAnimation />;

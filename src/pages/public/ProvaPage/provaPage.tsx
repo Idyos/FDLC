@@ -28,6 +28,7 @@ import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
 import AdminFooter from "@/components/admin/Proves/Footer/adminFooter";
 import { EmptyProva, ParticipatingPenya, Prova } from "@/interfaces/interfaces";
 import { isAdmin } from "@/services/authService";
+import { matchesSearch } from "@/utils/text";
 import SingleProvaResultGrid from "@/components/shared/PenyaProvaResults/singleProvaResultGrid";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -131,7 +132,7 @@ export default function ProvaPage() {
 
     useEffect(() => {
         const newFilteredPenyes = penyesSearch.length == 0 ? provaInfo.penyes : provaInfo.penyes.filter((penya) =>
-            penya.name.toLowerCase().includes(penyesSearch.toLowerCase())
+            matchesSearch(penya.name, penyesSearch)
         );
         setFilteredPenyes(newFilteredPenyes);
     }, [penyesSearch, provaInfo.penyes]);
