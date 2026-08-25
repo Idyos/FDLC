@@ -18,6 +18,8 @@ import { ScrollBar } from "@/components/ui/scroll-area";
 const RESULTATS_TAB = "resultats";
 import { rankParticipants, sortPenyes, SortMode } from "@/utils/sorting";
 import { Separator } from "@/components/ui/separator";
+import DynamicList from "@/components/shared/dynamicList";
+import SingleProvaResultGrid from "@/components/shared/PenyaProvaResults/singleProvaResultGrid";
 
 interface Props {
   year: number;
@@ -125,19 +127,29 @@ export default function PublicMultiProvaPanel({ year, provaId }: Props) {
   if (subProves.length === 0)
     return (
       <p className="p-4 text-sm text-muted-foreground">
-        Aquesta multiprova encara no té subpruebas.
+        Aquesta multiprova encara no té subproves.
       </p>
     );
 
   const renderResultsList = (sp: SubProvaConfig) => (
     <>
-      {(participantsMap[sp.id] ?? []).map((p) => (
-        <SingleProvaResult
-          key={p.penyaId}
-          provaResultSummary={p}
-          challengeTypeOverride={sp.challengeType}
-        />
-      ))}
+      <DynamicList
+        items={(participantsMap[sp.id] ?? [])}
+        renderItem={(provaResultSummary) => (
+          <SingleProvaResult
+            key={provaResultSummary.penyaId}
+            provaResultSummary={provaResultSummary}
+            challengeTypeOverride={sp.challengeType}
+          />
+        )}
+        renderGridItem={(item, index) => (
+          <SingleProvaResultGrid
+            key={index}
+            provaResultSummary={item}
+            challengeTypeOverride={sp.challengeType}
+          />
+        )}
+      />
     </>
   );
 

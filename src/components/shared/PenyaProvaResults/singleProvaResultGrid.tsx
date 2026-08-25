@@ -1,4 +1,4 @@
-import { ParticipatingPenya } from "@/interfaces/interfaces";
+import { ParticipatingPenya, ProvaType } from "@/interfaces/interfaces";
 import { motion } from "framer-motion";
 import { TimeRollingInput } from "./TimeInput/timeInput";
 import { useEffect, useRef, useState } from "react";
@@ -13,9 +13,10 @@ import { useTheme } from "@/components/Theme/theme-provider";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: ParticipatingPenya;
+  challengeTypeOverride?: ProvaType;
 }
 
-export default function SingleProvaResultGrid({ provaResultSummary }: SingleProvaSummaryProp) {
+export default function SingleProvaResultGrid({ provaResultSummary, challengeTypeOverride }: SingleProvaSummaryProp) {
   const navigate = useNavigate();
   const { selectedYear } = useYear();
 
@@ -43,7 +44,7 @@ export default function SingleProvaResultGrid({ provaResultSummary }: SingleProv
   }
 
   const renderInput = () => {
-    switch (prova.challengeType) {
+    switch (challengeTypeOverride ?? prova.challengeType) {
       case "Temps":
         return (
           <TimeRollingInput
@@ -52,6 +53,13 @@ export default function SingleProvaResultGrid({ provaResultSummary }: SingleProv
           />
         );
       case "Punts":
+        return (
+          <PointsInput
+            value={value}
+            onChange={setValue}
+          />
+        );
+      case "MultiProva":
         return (
           <PointsInput
             value={value}
