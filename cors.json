@@ -2,7 +2,8 @@
   {
     "origin": [
       "http://localhost:5173",
-      "https://fdlc.javi-gauxachs.workers.dev"
+      "https://fdlc.javi-gauxachs.workers.dev",
+      "https://penyestortosa.eportstech.com"
     ],
     "method": ["GET"],
     "maxAgeSeconds": 3600,
