@@ -8,9 +8,10 @@ import { useYear } from "@/components/shared/Contexts/YearContext";
 
 interface ProvaSummaryProps {
   provaSummary: ProvaSummary;
+  index?: number;
 }
 
-export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
+export default function ProvaSummaryCard({ provaSummary, index = 0 }: ProvaSummaryProps) {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const { selectedYear } = useYear();
@@ -24,6 +25,10 @@ export default function ProvaSummaryCard({ provaSummary }: ProvaSummaryProps) {
   return (
     <motion.div
       onClick={handleClick}
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ duration: 0.4, delay: Math.min(index, 8) * 0.01 }}
       className="relative w-full h-40 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
       style={{ background: bgColor }}
       whileHover={{ scale: 1.02 }}

@@ -60,8 +60,8 @@ export default function MainPage() {
                             Les teves penyes
                             </p>
                             <div className="flex flex-col gap-3 md:gap-6">
-                              {favoriteRankings.map((item) => (
-                                <PenyaSummary key={item.id} rankingInfo={item} />
+                              {favoriteRankings.map((item, index) => (
+                                <PenyaSummary key={item.id} rankingInfo={item} index={index} />
                               ))}
                             </div>
                         </div>
@@ -73,10 +73,10 @@ export default function MainPage() {
                     <DynamicList
                       items={rankings}
                       renderItem={(item, index) => (
-                        <PenyaSummary key={index} rankingInfo={item} />
+                        <PenyaSummary key={index} rankingInfo={item} index={index} />
                       )}
                       renderGridItem={(item, index) => (
-                        <PenyaSummaryGrid key={index} rankingInfo={item} />
+                        <PenyaSummaryGrid key={index} rankingInfo={item} index={index} />
                       )}
                       breakIndex={10}
                     />
@@ -103,7 +103,7 @@ export default function MainPage() {
                 proves.length > 0 ? (
                 <>
                   {upcomingProves.map((item, index) => (
-                    <ProvaSummaryCard key={`upcoming-${index}`} provaSummary={item} />
+                    <ProvaSummaryCard key={`upcoming-${index}`} provaSummary={item} index={index} />
                   ))}
                   {pastProves.length > 0 && (
                     <>
@@ -113,7 +113,7 @@ export default function MainPage() {
                         </p>
                       )}
                       {pastProves.map((item, index) => (
-                        <ProvaSummaryCard key={`past-${index}`} provaSummary={item} />
+                        <ProvaSummaryCard key={`past-${index}`} provaSummary={item} index={index} />
                       ))}
                     </>
                   )}
@@ -170,7 +170,7 @@ export default function MainPage() {
       <div className="md:px-0 px-3">
         <SponsorBanner variant="tall" className="mt-4" />
       </div>
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence mode="wait">
         <motion.div
           className="space-y-4 flex-1 flex flex-col"
           key={selectedTab}

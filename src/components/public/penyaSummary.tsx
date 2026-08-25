@@ -8,9 +8,10 @@ import { useYear } from "@/components/shared/Contexts/YearContext";
 
 interface PenyaSummaryProps {
     rankingInfo: PenyaInfo;
+    index?: number;
 }
 
-export default function PenyaSummary({ rankingInfo }: PenyaSummaryProps) {              
+export default function PenyaSummary({ rankingInfo, index = 0 }: PenyaSummaryProps) {
   const { theme } = useTheme(); // Accede al tema y a la función para cambiarlo
 
   // Determina el color de fondo según la posición y el modo
@@ -34,6 +35,10 @@ export default function PenyaSummary({ rankingInfo }: PenyaSummaryProps) {
       <motion.div
       onClick={rankingInfo.isSecret ? undefined : handleClick}
       key={rankingInfo.id}
+      initial={{ opacity: 0, x: -35 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ duration: 0.4, delay: Math.min(index, 8) * 0.01 }}
       whileHover={{ scale: 1.02 }}
       className="relative w-full h-36 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
       style={{ background: bgColor }}
