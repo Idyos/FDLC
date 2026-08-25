@@ -17,6 +17,7 @@ import LoadingAnimation from "@/components/shared/loadingAnim";
 import PenyaTitle from "@/components/public/penyaTitle";
 import { usePenyaStore } from "@/components/shared/Contexts/PenyaContext";
 import ProvaPenyaSummary from "@/components/public/provaPenyaSummary";
+import { splitProvesByDate } from "@/utils/sorting";
 
 export default function PenyaPage() {
     const navigate = useNavigate();
@@ -81,19 +82,47 @@ export default function PenyaPage() {
         };
     }, [selectedYear, penyaId]);
 
-    const groupedByDay = penyaProves.reduce((acc, prova) => {
-        const date = prova.startDate
-            ? prova.startDate.toLocaleDateString("ca-ES", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-            })
-            : "Data desconeguda";
+    const groupByDay = (proves: PenyaProvaSummary[]) =>
+        proves.reduce((acc, prova) => {
+            const date = prova.startDate
+                ? prova.startDate.toLocaleDateString("ca-ES", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                })
+                : "Data desconeguda";
 
-        if (!acc[date]) acc[date] = [];
-        acc[date].push(prova);
-        return acc;
-    }, {} as Record<string, PenyaProvaSummary[]>);
+            if (!acc[date]) acc[date] = [];
+            acc[date].push(prova);
+            return acc;
+        }, {} as Record<string, PenyaProvaSummary[]>);
+
+    const { upcoming: upcomingProves, past: pastProves } = splitProvesByDate(penyaProves);
+    const upcomingByDay = groupByDay(upcomingProves);
+    const pastByDay = groupByDay(pastProves);
+
+    const renderDayGroups = (grouped: Record<string, PenyaProvaSummary[]>) =>
+        Object.entries(grouped).map(([day, dayProves]) => (
+            <div key={day} className="w-full">
+                {/* Separador del día */}
+                <div className="flex items-center my-4 w-full text-neutral-500 dark:text-neutral-400">
+                    <div className="flex-grow border-t border-neutral-500"></div>
+                    <span className="px-4 whitespace-nowrap">
+                        {day}
+                    </span>
+                    <div className="flex-grow border-t border-neutral-500"></div>
+                </div>
+
+                {/* Proves de ese día */}
+                {dayProves.map((provaSummary) => (
+                    <div className="pl-2 pr-2" key={provaSummary.id}>
+                        <ProvaPenyaSummary
+                            provaSummary={provaSummary}
+                        />
+                    </div>
+                ))}
+            </div>
+        ));
 
     return (
         <div className="flex-1 flex flex-col min-h-screen md:p-2">
@@ -118,29 +147,19 @@ export default function PenyaPage() {
                 <LoadingAnimation />
               ) : (
                 penyaProves.length > 0 ? (
-                Object.entries(groupedByDay).map(([day, proves]) => (
-                    <div key={day} className="w-full">
-
-                    {/* Separador del día */}
-                    <div className="flex items-center my-4 w-full text-neutral-500 dark:text-neutral-400">
-                        <div className="flex-grow border-t border-neutral-500"></div>
-                        <span className="px-4 whitespace-nowrap">
-                        {day}
-                        </span>
-                        <div className="flex-grow border-t border-neutral-500"></div>
-                    </div>
-
-                    {/* Proves de ese día */}
-                    {proves.map((provaSummary) => (
-                        <div className="pl-2 pr-2">
-                            <ProvaPenyaSummary
-                            key={provaSummary.id}
-                            provaSummary={provaSummary}
-                            />
-                        </div>
-                    ))}
-                    </div>
-                ))
+                <>
+                    {renderDayGroups(upcomingByDay)}
+                    {pastProves.length > 0 && (
+                        <>
+                            {upcomingProves.length > 0 && (
+                                <p className="w-full text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                                    Proves realitzades
+                                </p>
+                            )}
+                            {renderDayGroups(pastByDay)}
+                        </>
+                    )}
+                </>
                 ) : (
                     selectedYear === new Date().getFullYear() ? (
                     <p className="text-center text-neutral-500 dark:text-neutral-400">

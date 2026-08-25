@@ -1,5 +1,31 @@
 import { ParticipatingPenya, WinDirection } from "@/interfaces/interfaces";
 
+/** Splits proves into upcoming (today onwards, soonest first) and past
+ *  (yesterday or before, most recent first) — so schedule lists show what's
+ *  coming up next before burying it under everything already played. */
+export function splitProvesByDate<T extends { startDate?: Date }>(
+  proves: T[]
+): { upcoming: T[]; past: T[] } {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const upcoming: T[] = [];
+  const past: T[] = [];
+
+  for (const prova of proves) {
+    if (prova.startDate && prova.startDate.getTime() >= startOfToday.getTime()) {
+      upcoming.push(prova);
+    } else {
+      past.push(prova);
+    }
+  }
+
+  upcoming.sort((a, b) => (a.startDate?.getTime() ?? 0) - (b.startDate?.getTime() ?? 0));
+  past.sort((a, b) => (b.startDate?.getTime() ?? 0) - (a.startDate?.getTime() ?? 0));
+
+  return { upcoming, past };
+}
+
 export type SortMode =
   | "name-asc"
   | "name-desc"

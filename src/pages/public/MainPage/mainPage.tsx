@@ -14,6 +14,7 @@ import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesCo
 import { Separator } from "@/components/ui/separator";
 import { publicNavItems } from "@/components/public/BottomNavBar/publicNavItems";
 import SponsorBanner from "@/components/public/sponsorBanner";
+import { splitProvesByDate } from "@/utils/sorting";
 
 export default function MainPage() {
   const previousRankingsRef = useRef<PenyaInfo[]>([]);
@@ -28,6 +29,8 @@ export default function MainPage() {
 
   const favoriteRankings = rankings.filter((r) => favoritePenyes.some((f) => f.id === r.id));
   const hasFavoritesSection = favoriteRankings.length > 0 && !isLoading;
+
+  const { upcoming: upcomingProves, past: pastProves } = splitProvesByDate(proves);
 
   // Drop favorites that no longer appear in this year's ranking (e.g. the penya was removed).
   useEffect(() => {
@@ -98,9 +101,23 @@ export default function MainPage() {
                 <LoadingAnimation />
               ) : (
                 proves.length > 0 ? (
-                proves.map((item, index) => {
-                  return <ProvaSummaryCard key={index} provaSummary={item} />;
-                })
+                <>
+                  {upcomingProves.map((item, index) => (
+                    <ProvaSummaryCard key={`upcoming-${index}`} provaSummary={item} />
+                  ))}
+                  {pastProves.length > 0 && (
+                    <>
+                      {upcomingProves.length > 0 && (
+                        <p className="w-full text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                          Proves realitzades
+                        </p>
+                      )}
+                      {pastProves.map((item, index) => (
+                        <ProvaSummaryCard key={`past-${index}`} provaSummary={item} />
+                      ))}
+                    </>
+                  )}
+                </>
               ) : (
                 <p className="text-neutral-500 dark:text-neutral-400">{year === new Date().getFullYear() ? "Encara no hi han proves afegides per aquest any." : `No s'han afegit proves per a l'any ${year}.`}</p>
               ))}
