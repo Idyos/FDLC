@@ -51,6 +51,7 @@ import {
   saveProvaBracket,
   type ParticipantRoundUpdate,
 } from "@/services/database/Admin/adminBracketsDbServices";
+import { validAdvanceOptions } from "@/utils/bracketCreator";
 import { formatTime, computeSlotStatuses } from "@/utils/scheduleFormatting";
 import { scheduleItemsAvoidingBusy, BusyInterval, ScheduleItem } from "@/utils/multiProvaScheduler";
 import { fillRoundsSequentially } from "@/utils/bracketRoundScheduler";
@@ -129,6 +130,8 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
   const [thirdPlaceMatch, setThirdPlaceMatch] = useState<ThirdPlaceMatch | null>(null);
   const [isLoadingSavedBracket, setIsLoadingSavedBracket] = useState(true);
   const [teamsPerMatch, setTeamsPerMatch] = useState<number>(2);
+  const [advancePerMatch, setAdvancePerMatch] = useState<number>(1);
+  const advanceOptions = useMemo(() => validAdvanceOptions(teamsPerMatch), [teamsPerMatch]);
 
   // Schedule state (committed values synced with Firebase)
   const [matchDurationMinutes, setMatchDurationMinutes] = useState<number>(0);
@@ -210,6 +213,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
         setFinalStage({ ...saved.finalStage, bracket: { ...saved.finalStage.bracket, matches: propagated } });
         setThirdPlaceMatch(saved.finalStage.thirdPlaceMatch ?? syncThirdPlaceFromSemifinals(propagated, null));
         setTeamsPerMatch(saved.finalStage.bracket.teamsPerMatch ?? 2);
+        setAdvancePerMatch(saved.finalStage.bracket.advancePerMatch ?? 1);
         lastPersistedRoundInfoRef.current = subProvaId
           ? new Map()
           : computeTeamRoundInfo(propagated, saved.groupStage);
@@ -264,6 +268,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
       setFinalStage({ ...saved.finalStage, bracket: { ...saved.finalStage.bracket, matches: propagated } });
       setThirdPlaceMatch(saved.finalStage.thirdPlaceMatch ?? syncThirdPlaceFromSemifinals(propagated, null));
       setTeamsPerMatch(saved.finalStage.bracket.teamsPerMatch ?? 2);
+      setAdvancePerMatch(saved.finalStage.bracket.advancePerMatch ?? 1);
       setSavedAt(saved.updatedAt ? saved.updatedAt.toDate() : null);
       setSaveStatus("saved");
       const sched = saved.matchSchedules ?? {};
@@ -406,7 +411,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
   const doGenerateSimple = () => {
     if (teams.length < 2) { toast.error("Calen almenys 2 equips per generar el quadre."); return; }
     const entrants = createSimpleFinalEntrants(teams);
-    const next = buildFinalStageFromEntrants(entrants, teamsPerMatch);
+    const next = buildFinalStageFromEntrants(entrants, teamsPerMatch, advancePerMatch);
     if (!next) return;
     const propagated = buildPropagatedFinal(next);
     setGroupStage(null); groupStageRef.current = null;
@@ -424,7 +429,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
     const nextGroupStage = createRandomBalancedGroupStage(teams);
     if (!nextGroupStage) { toast.error("No es pot crear una fase de grups amb el nombre d'equips actual."); return; }
     const entrants = createGroupFinalEntrants(nextGroupStage, teams);
-    const nextFinal = buildFinalStageFromEntrants(entrants, teamsPerMatch);
+    const nextFinal = buildFinalStageFromEntrants(entrants, teamsPerMatch, advancePerMatch);
     if (!nextFinal) return;
     const propagated = buildPropagatedFinal(nextFinal);
     setGroupStage(nextGroupStage); groupStageRef.current = nextGroupStage;
@@ -677,7 +682,11 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
                 <label className="text-xs font-medium text-muted-foreground">Equips per enfrontament</label>
                 <Select
                   value={String(teamsPerMatch)}
-                  onValueChange={(v) => setTeamsPerMatch(Number(v))}
+                  onValueChange={(v) => {
+                    const k = Number(v);
+                    setTeamsPerMatch(k);
+                    if (!validAdvanceOptions(k).includes(advancePerMatch)) setAdvancePerMatch(1);
+                  }}
                   disabled={isLoadingSavedBracket}
                 >
                   <SelectTrigger className="w-20 h-8 text-sm"><SelectValue /></SelectTrigger>
@@ -688,6 +697,23 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
                   </SelectContent>
                 </Select>
               </div>
+              {advanceOptions.length > 1 && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-muted-foreground">Equips que avancen</label>
+                  <Select
+                    value={String(advancePerMatch)}
+                    onValueChange={(v) => setAdvancePerMatch(Number(v))}
+                    disabled={isLoadingSavedBracket}
+                  >
+                    <SelectTrigger className="w-20 h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent position="popper">
+                      {advanceOptions.map((a) => (
+                        <SelectItem key={a} value={String(a)}>{a}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <Button onClick={onGenerateSimple} disabled={isLoadingSavedBracket}>Generar quadre</Button>
               {teams.length >= MIN_TEAMS_FOR_GROUP_STAGE && (
                 <Button variant="outline" onClick={onGenerateGroups} disabled={isLoadingSavedBracket}>Generar amb grups</Button>

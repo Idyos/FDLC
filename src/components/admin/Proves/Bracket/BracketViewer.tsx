@@ -26,21 +26,26 @@ function getRoundLabel(m: GlootMatchData): string {
 }
 
 /** Calcula, per a cada ronda i posició dins la ronda, la coordenada Y superior
- *  de la targeta. La ronda 1 es reparteix uniformement cada S; a partir d'aquí,
- *  cada partit se centra a la mitjana dels centres dels seus K fills. Evita
- *  fórmules tancades basades en K^ronda, que resulten fràgils de mantenir. */
-function computeTops(roundsMatches: GlootMatchData[][], K: number, MH: number, S: number): number[][] {
+ *  de la targeta. La ronda 1 es reparteix uniformement cada S (alçada de fila);
+ *  a partir d'aquí, cada partit se centra a la mitjana dels centres dels seus
+ *  fills. El nombre de fills per partit (branchFactor) és quants partits de la
+ *  ronda anterior alimenten un partit d'aquesta ronda — K/advancePerMatch, no
+ *  K: amb advancePerMatch>1 un partit passa més d'un equip, així que calen
+ *  menys partits previs per omplir els K slots del següent (es dedueix
+ *  directament de la mida de cada ronda, sense necessitat de rebre'l a part). */
+function computeTops(roundsMatches: GlootMatchData[][], MH: number, S: number): number[][] {
   const tops: number[][] = [];
   if (roundsMatches.length === 0) return tops;
 
   tops[0] = roundsMatches[0].map((_, i) => HDR + i * S);
 
   for (let col = 1; col < roundsMatches.length; col += 1) {
+    const branchFactor = roundsMatches[col - 1].length / roundsMatches[col].length;
     tops[col] = roundsMatches[col].map((_, i) => {
       let sum = 0;
       let count = 0;
-      for (let s = 0; s < K; s += 1) {
-        const childTop = tops[col - 1][i * K + s];
+      for (let s = 0; s < branchFactor; s += 1) {
+        const childTop = tops[col - 1][i * branchFactor + s];
         if (childTop !== undefined) {
           sum += childTop + MH / 2;
           count += 1;
@@ -150,10 +155,15 @@ function BracketMatchCard({
             key={p.id}
             className={cn(
               "flex items-center px-2 text-xs border-b last:border-b-0 gap-1",
-              p.isWinner ? "bg-primary/10 font-semibold text-primary" : "text-foreground/60",
+              p.isWinner || p.isAdvancing
+                ? "bg-primary/10 font-semibold text-primary"
+                : "text-foreground/60",
             )}
             style={{ height: ROW_H }}
           >
+            {p.positionLabel && (
+              <span className="shrink-0 w-6 text-[10px] font-mono text-muted-foreground">{p.positionLabel}</span>
+            )}
             <span className="truncate flex-1">{p.name}</span>
             {p.editable && !readOnly && (
               <div className="w-8 shrink-0">
@@ -219,7 +229,7 @@ export function BracketViewer({
   const S = MH + CARD_GAP;
 
   const roundsMatches = rounds.map((r) => r.matches);
-  const tops = computeTops(roundsMatches, K, MH, S);
+  const tops = computeTops(roundsMatches, MH, S);
 
   const firstRoundCount = rounds[0].matches.length;
   const contentH = (firstRoundCount - 1) * S + MH;
@@ -232,15 +242,16 @@ export function BracketViewer({
     const colX = colIdx * (MW + CG);
     const midX = colX + MW + CG / 2;
     const nextColX = (colIdx + 1) * (MW + CG);
+    const branchFactor = ms.length / rounds[colIdx + 1].matches.length;
 
     ms.forEach((match, i) => {
       const top = tops[colIdx][i];
       const cy = top + MH / 2;
       connectorLines.push({ key: `h-${match.id}`, x1: colX + MW, y1: cy, x2: midX, y2: cy });
 
-      if (i % K === 0) {
+      if (i % branchFactor === 0) {
         const siblingCys: number[] = [];
-        for (let s = 0; s < K; s += 1) {
+        for (let s = 0; s < branchFactor; s += 1) {
           const siblingTop = tops[colIdx][i + s];
           if (siblingTop !== undefined) siblingCys.push(siblingTop + MH / 2);
         }
@@ -252,7 +263,7 @@ export function BracketViewer({
             x2: midX,
             y2: siblingCys[siblingCys.length - 1],
           });
-          const nextTop = tops[colIdx + 1]?.[Math.floor(i / K)];
+          const nextTop = tops[colIdx + 1]?.[Math.floor(i / branchFactor)];
           if (nextTop !== undefined) {
             const nextCy = nextTop + MH / 2;
             connectorLines.push({ key: `hn-${match.id}`, x1: midX, y1: nextCy, x2: nextColX, y2: nextCy });

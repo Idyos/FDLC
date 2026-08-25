@@ -110,13 +110,48 @@ function normalizeSlot(value: unknown): number {
   return 0;
 }
 
+/** Legacy documents stored a single `{ matchId, slot }` object (from before a
+ *  match could advance more than one team). Normalizes either shape to the
+ *  current array-of-targets-by-rank form. */
+function normalizeAdvanceTo(value: unknown): ({ matchId: string; slot: number } | null)[] | null {
+  if (Array.isArray(value)) {
+    return value.map((t) =>
+      isRecord(t) && typeof t.matchId === "string" ? { matchId: t.matchId, slot: normalizeSlot(t.slot) } : null,
+    );
+  }
+  if (isRecord(value) && typeof value.matchId === "string") {
+    return [{ matchId: value.matchId, slot: normalizeSlot(value.slot) }];
+  }
+  return null;
+}
+
+/** Legacy documents (from before a match's full ranking was tracked) only
+ *  have `winnerSlot`. Backfills `ranking` for a resolved match as
+ *  [winnerSlot, ...other real slots], which is exactly what a K=2 match's
+ *  ranking already looked like — safe to synthesize for any K since only the
+ *  A=1 (classic) case could exist before this field was introduced. */
+function normalizeRanking(match: Record<string, unknown>, winnerSlot: number | null, teams: Record<string, unknown>[]): number[] | null {
+  if (Array.isArray(match.ranking)) {
+    return match.ranking.filter((s): s is number => typeof s === "number");
+  }
+  if (winnerSlot == null || (match.status !== "finished" && match.status !== "bye")) return null;
+  const realSlots = teams
+    .map((t, idx) => (isRecord(t.source) && t.source.type !== "bye" && t.teamId ? idx : -1))
+    .filter((idx) => idx !== -1);
+  if (!realSlots.includes(winnerSlot)) return null;
+  return [winnerSlot, ...realSlots.filter((s) => s !== winnerSlot)];
+}
+
 /** `finalStage` (bracket matches, entrants, 3rd place match) has never been
- *  schema-validated on read — it's trusted as-is. This normalizes the two
- *  concerns introduced by configurable teams-per-match, so both legacy and
- *  current documents are safe to use as `FinalStageState`:
- *  - `bracket.teamsPerMatch` defaults to 2 when missing (all brackets
- *    generated before this feature were implicitly 2 teams per match).
+ *  schema-validated on read — it's trusted as-is. This normalizes the
+ *  concerns introduced by configurable teams-per-match / advance-per-match,
+ *  so both legacy and current documents are safe to use as `FinalStageState`:
+ *  - `bracket.teamsPerMatch` defaults to 2, `bracket.advancePerMatch` to 1
+ *    when missing (all brackets generated before these features existed were
+ *    implicitly 2 teams per match, 1 advancing).
  *  - Legacy string slots ("A"/"B") are converted to numeric (0/1).
+ *  - Legacy single-object `advanceTo` becomes a 1-length array; missing
+ *    `ranking` is backfilled from `winnerSlot` (see normalizeRanking).
  *  Documents are rewritten in the new shape the next time they're saved
  *  (saveProvaBracket always overwrites the full document), so this is a
  *  read-time, self-healing normalization rather than a migration script. */
@@ -132,12 +167,11 @@ function normalizeFinalStage(value: unknown): FinalStageState {
       const participant = isRecord(t) ? t : {};
       return { ...participant, slot: normalizeSlot(participant.slot ?? teamIdx) };
     });
-    const advanceTo = isRecord(match.advanceTo)
-      ? { ...match.advanceTo, slot: normalizeSlot(match.advanceTo.slot) }
-      : (match.advanceTo as null | undefined) ?? null;
+    const advanceTo = normalizeAdvanceTo(match.advanceTo);
     const winnerSlot = match.winnerSlot == null ? null : normalizeSlot(match.winnerSlot);
+    const ranking = normalizeRanking(match, winnerSlot, teams);
 
-    return { ...match, teams, advanceTo, winnerSlot, id: match.id ?? idx };
+    return { ...match, teams, advanceTo, winnerSlot, ranking, id: match.id ?? idx };
   });
 
   const teamsPerMatch =
@@ -147,9 +181,17 @@ function normalizeFinalStage(value: unknown): FinalStageState {
       ? rawBracket.teamsPerMatch
       : 2;
 
+  const advancePerMatch =
+    typeof rawBracket.advancePerMatch === "number" &&
+    rawBracket.advancePerMatch >= 1 &&
+    rawBracket.advancePerMatch < teamsPerMatch &&
+    teamsPerMatch % rawBracket.advancePerMatch === 0
+      ? rawBracket.advancePerMatch
+      : 1;
+
   return {
     ...raw,
-    bracket: { ...rawBracket, matches, teamsPerMatch },
+    bracket: { ...rawBracket, matches, teamsPerMatch, advancePerMatch },
   } as unknown as FinalStageState;
 }
 

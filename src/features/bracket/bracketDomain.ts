@@ -304,6 +304,7 @@ export function createGroupFinalEntrants(
 export function buildFinalStageFromEntrants(
   entrants: FinalEntrant[],
   teamsPerMatch: number = 2,
+  advancePerMatch: number = 1,
 ): FinalStageState | null {
   if (entrants.length < 2) {
     return null;
@@ -315,6 +316,7 @@ export function buildFinalStageFromEntrants(
     teams: toBracketTeams(entrants),
     pairingMode: "sequential",
     teamsPerMatch,
+    advancePerMatch,
   });
 
   return {
@@ -328,8 +330,8 @@ export function buildFinalStageFromEntrants(
 // Bracket match resolution helpers
 // ---------------------------------------------------------------------------
 
-/** Propagates known winners (from BYE or finished matches) to the next match's
- *  participant slot, so subsequent matches show the real team name.
+/** Propagates known advancers (from BYE or finished matches) to their target
+ *  matches' participant slots, so subsequent matches show the real team name.
  *  Runs iteratively until no more slots can be filled. */
 export function propagateBracketByes(matches: Match[]): Match[] {
   const updated = matches.map((m) => ({ ...m, teams: [...m.teams] }));
@@ -339,20 +341,26 @@ export function propagateBracketByes(matches: Match[]): Match[] {
   while (changed) {
     changed = false;
     for (const match of updated) {
-      if (!match.winnerTeamId || !match.advanceTo) continue;
-      const next = byId.get(match.advanceTo.matchId);
-      if (!next) continue;
-      const slotIdx = match.advanceTo.slot;
-      if (next.teams[slotIdx].teamId == null) {
-        const winner = match.teams.find((t) => t.teamId === match.winnerTeamId);
-        next.teams = [...next.teams];
-        next.teams[slotIdx] = {
-          ...next.teams[slotIdx],
-          teamId: match.winnerTeamId,
-          displayName: winner?.displayName ?? match.winnerTeamId,
-        };
-        changed = true;
-      }
+      const ranking = match.ranking;
+      if (!ranking || !match.advanceTo) continue;
+      match.advanceTo.forEach((target, rank) => {
+        if (!target) return;
+        const advancerSlot = ranking[rank];
+        if (advancerSlot == null) return;
+        const advancer = match.teams[advancerSlot];
+        if (!advancer?.teamId) return;
+        const next = byId.get(target.matchId);
+        if (!next) return;
+        if (next.teams[target.slot].teamId == null) {
+          next.teams = [...next.teams];
+          next.teams[target.slot] = {
+            ...next.teams[target.slot],
+            teamId: advancer.teamId,
+            displayName: advancer.displayName ?? advancer.teamId,
+          };
+          changed = true;
+        }
+      });
     }
   }
 
@@ -360,8 +368,9 @@ export function propagateBracketByes(matches: Match[]): Match[] {
 }
 
 /** Propagates a team identity change through subsequent rounds without altering
- *  existing scores. If the updated slot is the winning slot of a finished match,
- *  the winner identity is updated and propagation continues up the tree. */
+ *  existing scores. If the updated slot is one of the ranked slots of a finished
+ *  match, the corresponding advanceTo target (matched by rank) is updated too
+ *  and propagation continues up the tree. */
 function propagateTeamToSlot(
   matches: Match[],
   matchId: string,
@@ -372,37 +381,39 @@ function propagateTeamToSlot(
   const idx = matches.findIndex((m) => m.id === matchId);
   if (idx === -1) return;
 
-  const slotIdx = slot;
-  if (matches[idx].teams[slotIdx].teamId === teamId) return;
+  if (matches[idx].teams[slot].teamId === teamId) return;
 
   const match = matches[idx];
-  const updatedInWinnerSlot = match.winnerSlot === slot;
+  const rank = match.ranking?.indexOf(slot) ?? -1;
 
   matches[idx] = {
     ...match,
-    winnerTeamId: updatedInWinnerSlot ? teamId : match.winnerTeamId,
+    winnerTeamId: match.winnerSlot === slot ? teamId : match.winnerTeamId,
     teams: match.teams.map((t, i) =>
-      i === slotIdx ? { ...t, teamId, displayName } : t,
+      i === slot ? { ...t, teamId, displayName } : t,
     ),
   };
 
-  if (updatedInWinnerSlot && match.advanceTo) {
-    propagateTeamToSlot(matches, match.advanceTo.matchId, match.advanceTo.slot, teamId, displayName);
+  const target = rank !== -1 ? match.advanceTo?.[rank] : null;
+  if (target) {
+    propagateTeamToSlot(matches, target.matchId, target.slot, teamId, displayName);
   }
 }
 
 /** Records the result of a bracket match (up to K scores, one per team.length
- *  slot, null for slots without an entered score yet) and propagates the
- *  winner to the next match slot.
+ *  slot, null for slots without an entered score yet) and propagates every
+ *  advancing team (there may be more than one, see advancePerMatch) to its
+ *  target slot in the next match.
  *  - If any real (non-BYE, resolved) participant is still missing a score,
  *    the entered scores are stored but nothing is resolved.
- *  - Once every real participant has a score, the best value (per
- *    winDirection: lowest wins for "ASC", highest wins otherwise) determines
- *    the winner.
- *  - If 2+ participants tie for the best value, the match stays unresolved
- *    (scores are stored, no winner/advance) until the tie is broken.
- *  If the winner changes, the new team is propagated through subsequent
- *  rounds while preserving their existing scores and results. */
+ *  - Once every real participant has a score, they're ranked best-to-worst
+ *    (per winDirection: lowest wins for "ASC", highest wins otherwise).
+ *  - A tie straddling the advance cut-off (the boundary between who advances
+ *    and who doesn't) is ambiguous and leaves the match unresolved. For the
+ *    final match (no advanceTo — every slot gets its own placement 1..K
+ *    directly from this ranking) any tie anywhere blocks resolution.
+ *  If the ranking changes, the affected advancing teams are propagated
+ *  through subsequent rounds while preserving their existing scores. */
 export function resolveMatchResult(
   matches: Match[],
   matchId: string,
@@ -430,19 +441,22 @@ export function resolveMatchResult(
   }
 
   const ascending = winDirection === "ASC";
-  const bestSlot = realSlots.reduce((bestIdx, i) => {
-    const value = scores[i]!;
-    const bestValue = scores[bestIdx]!;
-    return (ascending ? value < bestValue : value > bestValue) ? i : bestIdx;
-  }, realSlots[0]);
-  const winners = realSlots.filter((i) => scores[i] === scores[bestSlot]);
+  const orderedSlots = [...realSlots].sort((a, b) =>
+    ascending ? scores[a]! - scores[b]! : scores[b]! - scores[a]!,
+  );
 
-  if (winners.length !== 1) {
-    updated[idx] = { ...match, status: "scheduled", winnerSlot: null, winnerTeamId: null, teams: teamsWithScores };
+  const cutoff = match.advanceTo ? match.advanceTo.length : orderedSlots.length;
+  const tieAtCutoff =
+    cutoff < orderedSlots.length && scores[orderedSlots[cutoff - 1]] === scores[orderedSlots[cutoff]];
+  const finalHasTie =
+    !match.advanceTo && orderedSlots.some((s, i) => i > 0 && scores[s] === scores[orderedSlots[i - 1]]);
+
+  if (tieAtCutoff || finalHasTie) {
+    updated[idx] = { ...match, status: "scheduled", winnerSlot: null, winnerTeamId: null, ranking: null, teams: teamsWithScores };
     return updated;
   }
 
-  const winnerSlot = winners[0];
+  const winnerSlot = orderedSlots[0];
   const newWinnerId = match.teams[winnerSlot].teamId ?? null;
 
   updated[idx] = {
@@ -450,14 +464,17 @@ export function resolveMatchResult(
     status: "finished",
     winnerSlot,
     winnerTeamId: newWinnerId,
+    ranking: orderedSlots,
     teams: teamsWithScores,
   };
 
-  const advanceTo = updated[idx].advanceTo;
-  if (advanceTo && newWinnerId) {
-    const winnerTeam = updated[idx].teams[winnerSlot];
-    propagateTeamToSlot(updated, advanceTo.matchId, advanceTo.slot, newWinnerId, winnerTeam.displayName ?? newWinnerId);
-  }
+  match.advanceTo?.forEach((target, rank) => {
+    if (!target) return;
+    const advancerSlot = orderedSlots[rank];
+    const advancer = match.teams[advancerSlot];
+    if (!advancer?.teamId) return;
+    propagateTeamToSlot(updated, target.matchId, target.slot, advancer.teamId, advancer.displayName ?? advancer.teamId);
+  });
 
   return propagateBracketByes(updated);
 }
@@ -536,9 +553,10 @@ export function syncThirdPlaceFromSemifinals(
   };
 }
 
-/** Resets a finished match back to 'scheduled' and clears the winner from the
- *  next match slot. If the next match was also finished, it is reset too
- *  (one level of cascading). */
+/** Resets a finished match back to 'scheduled' and clears the advancing teams
+ *  from their target slots in the next match (all of a match's advanceTo
+ *  targets always point at the same next match, see bracketCreator.ts). If
+ *  the next match was also finished, it is reset too (one level of cascading). */
 export function clearMatchResult(matches: Match[], matchId: string): Match[] {
   const updated = matches.map((m) => ({ ...m, teams: [...m.teams] }));
   const idx = updated.findIndex((m) => m.id === matchId);
@@ -546,18 +564,22 @@ export function clearMatchResult(matches: Match[], matchId: string): Match[] {
 
   const match = updated[idx];
 
-  // Clear the next match's participant slot that came from this match
-  if (match.advanceTo) {
-    const nextIdx = updated.findIndex((m) => m.id === match.advanceTo!.matchId);
+  const targets = (match.advanceTo ?? []).filter(
+    (t): t is { matchId: string; slot: Slot } => t != null,
+  );
+  if (targets.length > 0) {
+    const nextIdx = updated.findIndex((m) => m.id === targets[0].matchId);
     if (nextIdx !== -1) {
-      const slotIdx = match.advanceTo.slot;
+      const slotIdxs = new Set(targets.map((t) => t.slot));
+      const wasFinished = updated[nextIdx].status === "finished";
       updated[nextIdx] = {
         ...updated[nextIdx],
-        status: updated[nextIdx].status === "finished" ? "scheduled" : updated[nextIdx].status,
-        winnerSlot: updated[nextIdx].status === "finished" ? null : updated[nextIdx].winnerSlot,
-        winnerTeamId: updated[nextIdx].status === "finished" ? null : updated[nextIdx].winnerTeamId,
+        status: wasFinished ? "scheduled" : updated[nextIdx].status,
+        winnerSlot: wasFinished ? null : updated[nextIdx].winnerSlot,
+        winnerTeamId: wasFinished ? null : updated[nextIdx].winnerTeamId,
+        ranking: wasFinished ? null : updated[nextIdx].ranking,
         teams: updated[nextIdx].teams.map((t, i) =>
-          i === slotIdx ? { ...t, teamId: undefined, displayName: undefined, score: undefined } : t,
+          slotIdxs.has(i) ? { ...t, teamId: undefined, displayName: undefined, score: undefined } : t,
         ),
       };
     }
@@ -569,6 +591,7 @@ export function clearMatchResult(matches: Match[], matchId: string): Match[] {
     status: "scheduled",
     winnerSlot: null,
     winnerTeamId: null,
+    ranking: null,
     teams: match.teams.map((t) => ({ ...t, score: undefined })),
   };
 
@@ -580,40 +603,49 @@ export function clearMatchResult(matches: Match[], matchId: string): Match[] {
 // ---------------------------------------------------------------------------
 
 /** Computes teamId → final position for a finished (or partially finished)
- *  elimination bracket. Every finished match's non-winning participants
- *  (K-1 of them) tie for the same position tier: bracketSize / K^round + 1.
- *  This reproduces the classic K=2 tiers (final loser → 2, semifinal loser →
- *  3) as special cases. When the 3rd place match has been played (K=2 only),
- *  it overrides the semifinal-tier tie with a clean 3rd/4th split. */
+ *  elimination bracket.
+ *  - The final match's own `ranking` gives every one of its participants a
+ *    distinct placement 1..K directly — this is what makes a 4+ team final
+ *    resolve 1st/2nd/3rd/4th automatically without a separate playoff.
+ *  - When the 3rd place match has been played (offered for K=2 only, see
+ *    shouldHaveThirdPlaceMatch), it overrides the final's own 2-way ranking
+ *    for positions 3/4 with the dedicated semifinal-losers playoff.
+ *  - Every earlier round's non-advancing participants (all but the top
+ *    advancePerMatch of `ranking`) tie for the same position tier:
+ *    bracketSize / (teamsPerMatch/advancePerMatch)^round + 1. This
+ *    reproduces the classic K=2/A=1 tiers (semifinal loser → 3, etc.). */
 export function computeBracketPositions(
-  bracket: Pick<GeneratedBracket, "matches" | "bracketSize" | "teamsPerMatch">,
+  bracket: Pick<GeneratedBracket, "matches" | "bracketSize" | "teamsPerMatch" | "advancePerMatch">,
   thirdPlaceMatch: ThirdPlaceMatch | null | undefined,
 ): Map<string, number> {
-  const { matches, bracketSize, teamsPerMatch } = bracket;
+  const { matches, bracketSize, teamsPerMatch, advancePerMatch } = bracket;
   const positionMap = new Map<string, number>();
   if (matches.length === 0) return positionMap;
 
   const totalRounds = Math.max(...matches.map((m) => m.roundNumber));
   const finalMatch = matches.find((m) => m.roundNumber === totalRounds);
-  if (!finalMatch?.winnerTeamId) return positionMap;
+  if (!finalMatch?.ranking?.length) return positionMap;
 
-  positionMap.set(finalMatch.winnerTeamId, 1);
+  finalMatch.ranking.forEach((slotIdx, i) => {
+    const teamId = finalMatch.teams[slotIdx]?.teamId;
+    if (teamId) positionMap.set(teamId, i + 1);
+  });
 
   if (teamsPerMatch === 2 && thirdPlaceMatch?.status === "finished" && thirdPlaceMatch.winnerTeamId) {
     positionMap.set(thirdPlaceMatch.winnerTeamId, 3);
     if (thirdPlaceMatch.loserTeamId) positionMap.set(thirdPlaceMatch.loserTeamId, 4);
   }
 
-  for (let r = totalRounds; r >= 1; r -= 1) {
-    const tier = bracketSize / Math.pow(teamsPerMatch, r) + 1;
-    const roundMatches = matches.filter((m) => m.roundNumber === r && m.status === "finished");
+  const A = advancePerMatch ?? 1;
+  const S = teamsPerMatch / A;
+  for (let r = totalRounds - 1; r >= 1; r -= 1) {
+    const tier = bracketSize / Math.pow(S, r) + 1;
+    const roundMatches = matches.filter((m) => m.roundNumber === r && m.ranking?.length);
     for (const m of roundMatches) {
-      if (m.winnerSlot == null || !m.winnerTeamId) continue;
-      m.teams.forEach((participant, slotIdx) => {
-        if (slotIdx === m.winnerSlot) return;
-        const loserTeamId = participant.teamId;
-        if (!loserTeamId || positionMap.has(loserTeamId)) return;
-        positionMap.set(loserTeamId, tier);
+      m.ranking!.slice(A).forEach((slotIdx) => {
+        const teamId = m.teams[slotIdx]?.teamId;
+        if (!teamId || positionMap.has(teamId)) return;
+        positionMap.set(teamId, tier);
       });
     }
   }
