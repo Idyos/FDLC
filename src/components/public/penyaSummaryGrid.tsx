@@ -5,6 +5,7 @@ import { useTheme } from "../Theme/theme-provider";
 import { Badge } from "@/components/ui/badge"
 import { navigateWithQuery } from "@/utils/url";
 import { useYear } from "@/components/shared/Contexts/YearContext";
+import AnimatedNumber from "@/components/shared/animatedNumber";
 
 interface PenyaSummaryProps {
     rankingInfo: PenyaInfo;
@@ -57,16 +58,22 @@ export default function PenyaSummaryGrid({ rankingInfo, index = 0 }: PenyaSummar
         ></div>
 
       {/* Contenido */}
-      <div className="relative z-10 flex flex-col justify-around items-center h-full p-4 dark:text-white text-gray-900">
+      <motion.div
+        className="relative z-10 flex flex-col justify-around items-center h-full p-4 dark:text-white text-gray-900"
+        initial={{ opacity: 0, y: 10 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.3 }}
+        transition={{ duration: 0.4, delay: Math.min(index, 8) * 0.04 }}
+      >
         <div className="text-center">
           <p className="inline text-3xl font-extrabold">{rankingInfo.position}.</p>
           <p className="inline text-2xl font-bold"> {rankingInfo.isSecret ? "???" : rankingInfo.name}</p>
         </div>
 
         <Badge variant="secondary" className="text-right text-lg font-semibold rounded-4xl">
-          {rankingInfo.isSecret ? "???" : rankingInfo.totalPoints} punts
+          {rankingInfo.isSecret ? "???" : <AnimatedNumber value={rankingInfo.totalPoints ?? 0} />} punts
         </Badge>
-      </div>
+      </motion.div>
 
       {/* Flechitas de subida/bajada */}
       {/* {rankingInfo.directionChange === "up" && (
