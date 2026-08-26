@@ -69,7 +69,7 @@ export default function PenyaSummary({ rankingInfo, index = 0 }: PenyaSummaryPro
       {/* Contenido */}
       <motion.div
         className="relative z-10 flex justify-between items-center h-full p-4 dark:text-white text-gray-900"
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.3 }}
         transition={{ duration: 0.4, delay: Math.min(index, 8) * 0.04 }}

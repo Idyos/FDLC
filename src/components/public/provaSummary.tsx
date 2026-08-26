@@ -51,7 +51,7 @@ export default function ProvaSummaryCard({ provaSummary, index = 0 }: ProvaSumma
       {/* Contenido */}
       <motion.div
         className="relative flex-1 z-10 flex flex-col justify-center gap-5 items-center h-full p-4 dark:text-white text-gray-900"
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: -20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.3 }}
         transition={{ duration: 0.4, delay: Math.min(index, 8) * 0.03 }}
