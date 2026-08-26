@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { navigateWithQuery } from "@/utils/url";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import AnimatedNumber from "@/components/shared/animatedNumber";
+import AutoFitHeading from "@/components/shared/AutoFitHeading";
 
 interface PenyaSummaryProps {
     rankingInfo: PenyaInfo;
@@ -76,7 +77,9 @@ export default function PenyaSummary({ rankingInfo, index = 0 }: PenyaSummaryPro
       >
         <div className="text-left">
           <p className="text-4xl font-extrabold">{rankingInfo.position}.</p>
-          <p className="text-2xl font-bold">{rankingInfo.isSecret ? "???" : rankingInfo.name}</p>
+          <AutoFitHeading as="p" className="text-2xl font-bold">
+            {rankingInfo.isSecret ? "???" : rankingInfo.name}
+          </AutoFitHeading>
         </div>
 
         <Badge variant="secondary" className="text-right text-lg font-semibold rounded-4xl">

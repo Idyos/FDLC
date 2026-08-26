@@ -65,10 +65,10 @@ export default function PenyaSummaryGrid({ rankingInfo, index = 0 }: PenyaSummar
         viewport={{ once: true, amount: 0.3 }}
         transition={{ duration: 0.4, delay: Math.min(index, 8) * 0.04 }}
       >
-        <div className="text-center">
-          <p className="inline text-3xl font-extrabold">{rankingInfo.position}.</p>
-          <p className="inline text-2xl font-bold"> {rankingInfo.isSecret ? "???" : rankingInfo.name}</p>
-        </div>
+        <p className="text-center">
+          <span className="text-3xl font-extrabold">{rankingInfo.position}.</span>{" "}
+          <span className="text-xl font-normal">{rankingInfo.isSecret ? "???" : rankingInfo.name}</span>
+        </p>
 
         <Badge variant="secondary" className="text-right text-lg font-semibold rounded-4xl">
           {rankingInfo.isSecret ? "???" : <AnimatedNumber value={rankingInfo.totalPoints ?? 0} />} punts

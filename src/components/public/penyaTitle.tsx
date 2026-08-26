@@ -1,6 +1,7 @@
 import { motion, useAnimation } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { PenyaInfo } from "@/interfaces/interfaces";
+import AutoFitHeading from "../shared/AutoFitHeading";
 
 const COLLAPSED_H = 250;
 const LONG_PRESS_MS = 200;
@@ -104,7 +105,12 @@ export default function PenyaTitle(penyaInfo: PenyaInfo) {
       onKeyUp={onKeyUp}
       className="min-h-[250px] relative border-gray-900 dark:border-gray-100 border-4 rounded-4xl flex flex-col justify-center space-y-4 mb-4 p-12 overflow-hidden select-none cursor-pointer"
     >
-      <h1 className="text-5xl font-extrabold z-10 mb-0">{penyaInfo.name}</h1>
+      <AutoFitHeading
+        containerClassName="z-10 mb-0"
+        className="text-4xl sm:text-5xl font-extrabold"
+      >
+        {penyaInfo.name}
+      </AutoFitHeading>
 
       {penyaInfo.description?.length ? (
         <h3 className="z-10 italic mb-0">"{penyaInfo.description}"</h3>

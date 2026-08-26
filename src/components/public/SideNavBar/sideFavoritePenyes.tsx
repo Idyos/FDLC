@@ -116,7 +116,7 @@ export default function SideFavoritePenyes({ expanded, onOpenChange }: SideFavor
             <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               className="h-8 pl-8 text-sm"
-              placeholder={isFull ? "Llista plena (màx. 3)" : "Cercar penya..."}
+              placeholder={isFull ? "Llista plena (màx. 5)" : "Cercar penya..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               disabled={isFull}

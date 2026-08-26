@@ -5,6 +5,7 @@ import { useTheme } from "../Theme/theme-provider";
 import { Badge } from "@/components/ui/badge";
 import { navigateWithQuery } from "@/utils/url";
 import { useYear } from "@/components/shared/Contexts/YearContext";
+import AutoFitHeading from "@/components/shared/AutoFitHeading";
 
 interface ProvaSummaryProps {
   provaSummary: ProvaSummary;
@@ -58,7 +59,9 @@ export default function ProvaSummaryCard({ provaSummary, index = 0 }: ProvaSumma
       >
         <div className="w-full flex flex-row justify-between items-center">
           <div className="text-center w-full">
-            <p className="md:text-5xl text-4xl font-black">{provaSummary.name}</p>
+            <AutoFitHeading as="p" className="md:text-5xl text-4xl font-bold">
+              {provaSummary.name}
+            </AutoFitHeading>
             {provaSummary.startDate && (
               <Badge variant="secondary" className="text-sm font-medium rounded-4xl mt-4">
                 {(() => {

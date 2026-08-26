@@ -7,6 +7,7 @@ import { Badge } from "../ui/badge";
 import { useProvaStore } from "../shared/Contexts/ProvaContext";
 import { Navigation, Camera, ScrollText } from "lucide-react";
 import { Link } from "react-router-dom";
+import AutoFitHeading from "../shared/AutoFitHeading";
 const COLLAPSED_H = 250;
 const LONG_PRESS_MS = 200;
 
@@ -337,7 +338,12 @@ const buildTimeInfo = (startDate: Date, finishDate?: Date): string => {
             >
               {isProvaBeingPlayed(prova.startDate, prova.finishDate)}{buildTimeInfo(prova.startDate, prova.finishDate)}
             </Badge>
-            <h1 className="text-5xl font-extrabold z-10 mb-0 max-w-[80%] break-words">{prova.name}</h1>
+            <AutoFitHeading
+              containerClassName="z-10 mb-0 max-w-[80%]"
+              className="text-4xl sm:text-5xl font-bold"
+            >
+              {prova.name}
+            </AutoFitHeading>
 
             {prova.description?.length ? (
               <h3 className="z-10 italic mb-0">"{prova.description}"</h3>

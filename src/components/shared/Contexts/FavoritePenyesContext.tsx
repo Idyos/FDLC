@@ -3,7 +3,7 @@ import { FavoritePenya } from "@/interfaces/interfaces";
 import { useYear } from "@/components/shared/Contexts/YearContext";
 
 const STORAGE_KEY = "fdlc-favorite-penyes";
-const MAX_FAVORITES = 3;
+const MAX_FAVORITES = 5;
 
 type FavoritesByYear = Record<string, FavoritePenya[]>;
 

@@ -51,14 +51,14 @@ export default function FavoritePenyesButton() {
       <Button
         ref={buttonRef}
         variant="outline"
-        className="flex rounded-full items-center gap-1.5 max-w-[200px]"
+        className="flex rounded-full items-center gap-1.5 min-w-0 shrink max-w-[200px]"
         onClick={() => setOpen((v) => !v)}
       >
         <Star className="h-4 w-4 shrink-0" />
         {buttonLabel ? (
-          <span className="truncate text-sm">{buttonLabel}</span>
+          <span className="truncate text-sm min-w-0">{buttonLabel}</span>
         ) : (
-          <span className="text-sm text-muted-foreground">Penyes guardades</span>
+          <span className="truncate text-sm min-w-0 text-muted-foreground">Penyes guardades</span>
         )}
       </Button>
 
@@ -95,7 +95,7 @@ export default function FavoritePenyesButton() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               className="pl-8 h-8 text-sm"
-              placeholder={isFull ? "Llista plena (màx. 3)" : "Buscar penya per afegir..."}
+              placeholder={isFull ? "Llista plena (màx. 5)" : "Buscar penya per afegir..."}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               disabled={isFull}
