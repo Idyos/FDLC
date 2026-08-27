@@ -1,6 +1,7 @@
 import { useYear } from "@/components/shared/Contexts/YearContext";
 import { PenyaInfo, PenyaProvaSummary } from "@/interfaces/interfaces";
-import { getPenyaInfoRealTime, getPenyaProves } from "@/services/database/publicDbService";
+import { getPenyaInfoRealTime } from "@/services/database/publicDbService";
+import { usePenyaProves } from "@/components/shared/Contexts/PenyaProvesCacheContext";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -27,12 +28,9 @@ export default function PenyaPage() {
     const [noPenyaAlert, setNoPenyaAlert] = useState(false);
 
     const penyaInfo = useRef<PenyaInfo>(new PenyaInfo());
-    const [penyaProves, setPenyaProves] = useState<PenyaProvaSummary[]>([]);
 
     const [isPenyaLoading, setIsPenyaLoading] = useState(true);
 
-
-    const [isProvesLoading, setIsProvesLoading] = useState(true);
     const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
     const penyaId = searchParams.get("penyaId") || "";
@@ -66,21 +64,10 @@ export default function PenyaPage() {
     }, [selectedYear, penyaId]);
 
     // Historial de proves — one-shot, no cal temps real per una llista que
-    // només canvia quan es tanca una prova.
-    useEffect(() => {
-        let cancelled = false;
-        setIsProvesLoading(true);
-
-        getPenyaProves(selectedYear, penyaId).then((proves) => {
-            if (cancelled) return;
-            setPenyaProves(proves);
-            setIsProvesLoading(false);
-        });
-
-        return () => {
-            cancelled = true;
-        };
-    }, [selectedYear, penyaId]);
+    // només canvia quan es tanca una prova. Cachejat 30s per (any, penya):
+    // anar i tornar a la mateixa fitxa (o comparar diverses) no repeteix la
+    // lectura cada cop.
+    const { proves: penyaProves, isLoading: isProvesLoading } = usePenyaProves(selectedYear, penyaId);
 
     const groupByDay = (proves: PenyaProvaSummary[]) =>
         proves.reduce((acc, prova) => {

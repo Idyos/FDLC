@@ -87,15 +87,21 @@ export function computeRanking(penyes: PenyaInfo[], results: ChallengeResult[]):
  *  per visit/reconnect instead of 1-per-penya. Not used by the admin Dashboard,
  *  which needs the raw per-prova results anyway and wants its own edits to
  *  reflect instantly rather than after the function's round trip; it still
- *  combines getPenyesRealTime + getResultsInfoRealTime via computeRanking. */
+ *  combines getPenyesRealTime + getResultsInfoRealTime via computeRanking.
+ *
+ *  Also hands back the doc's `updatedAt` (ms since epoch, or null if the doc
+ *  doesn't exist yet) — callers that already keep this listener open can
+ *  feed it to RankingFreshnessContext as a free invalidation signal for
+ *  other caches, with no extra reads. */
 export const getRankingRealTime = (
   year: number,
-  callback: (data: PenyaInfo[]) => void
+  callback: (data: PenyaInfo[], updatedAtMs: number | null) => void
 ) => {
   const rankingRef = doc(db, `Circuit/${year}/Ranking/current`);
 
   return onSnapshot(rankingRef, (snap) => {
-    const entries = (snap.data()?.penyes ?? []) as Array<{
+    const docData = snap.data();
+    const entries = (docData?.penyes ?? []) as Array<{
       id: string;
       name: string;
       imageUrl: string | null;
@@ -113,7 +119,8 @@ export const getRankingRealTime = (
         imageUrl: e.imageUrl ?? undefined,
         totalPoints: e.totalPoints,
         directionChange: null,
-      }))
+      })),
+      docData?.updatedAt?.toMillis?.() ?? null
     );
   });
 };

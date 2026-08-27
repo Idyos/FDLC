@@ -3,6 +3,7 @@ import { useYear } from "@/components/shared/Contexts/YearContext";
 import { PenyaInfo, PenyaProvaSummary} from "@/interfaces/interfaces";
 import { getProves, getRankingRealTime } from "@/services/database/publicDbService";
 import { usePenyesCacheStore } from "@/components/shared/Contexts/PenyesCacheContext";
+import { useRankingFreshnessStore } from "@/components/shared/Contexts/RankingFreshnessContext";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -152,11 +153,14 @@ export default function MainPage() {
     rankingUnsubRef.current?.();
     rankingSubscribedYearRef.current = yr;
     setIsRankingLoading(true);
-    rankingUnsubRef.current = getRankingRealTime(yr, (data) => {
+    rankingUnsubRef.current = getRankingRealTime(yr, (data, updatedAtMs) => {
       previousRankingsRef.current = data;
       setRankings(data);
       setIsRankingLoading(false);
       usePenyesCacheStore.getState().setPenyes(yr, data);
+      if (updatedAtMs !== null) {
+        useRankingFreshnessStore.getState().setUpdatedAt(yr, updatedAtMs);
+      }
     });
   }, []);
 
