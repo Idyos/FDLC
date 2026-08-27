@@ -3,7 +3,7 @@ import { useYear } from "@/components/shared/Contexts/YearContext";
 import { PenyaInfo, PenyaProvaSummary} from "@/interfaces/interfaces";
 import { getProves, getRankingRealTime } from "@/services/database/publicDbService";
 import { usePenyesCacheStore } from "@/components/shared/Contexts/PenyesCacheContext";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import ProvaSummaryCard from "@/components/public/provaSummary";
@@ -21,24 +21,32 @@ export default function MainPage() {
   const [rankings, setRankings] = useState<PenyaInfo[]>([]);
   const [proves, setProves] = useState<PenyaProvaSummary[]>([]);
   const { selectedYear: year } = useYear();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isRankingLoading, setIsRankingLoading] = useState(true);
+  const [isProvesLoading, setIsProvesLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const { favoritePenyes, removeFavoritePenya } = useFavoritePenyes();
 
-  const unsubscribeRef = useRef<null | (() => void)>(null);
+  // Which year's proves are already sitting in `proves` — lets the effect
+  // below skip re-fetching when the user just switches tabs back and forth.
+  const provesLoadedYearRef = useRef<number | null>(null);
+
+  // Same idea for the ranking listener: which year it's currently subscribed
+  // to (or null if never subscribed yet), plus the unsubscribe fn itself.
+  const rankingSubscribedYearRef = useRef<number | null>(null);
+  const rankingUnsubRef = useRef<null | (() => void)>(null);
 
   const favoriteRankings = rankings.filter((r) => favoritePenyes.some((f) => f.id === r.id));
-  const hasFavoritesSection = favoriteRankings.length > 0 && !isLoading;
+  const hasFavoritesSection = favoriteRankings.length > 0 && !isRankingLoading;
 
   const { upcoming: upcomingProves, past: pastProves } = splitProvesByDate(proves);
 
   // Drop favorites that no longer appear in this year's ranking (e.g. the penya was removed).
   useEffect(() => {
-    if (isLoading) return;
+    if (isRankingLoading) return;
     favoritePenyes
       .filter((f) => !rankings.some((r) => r.id === f.id))
       .forEach((f) => removeFavoritePenya(f.id));
-  }, [rankings, isLoading, favoritePenyes, removeFavoritePenya]);
+  }, [rankings, isRankingLoading, favoritePenyes, removeFavoritePenya]);
 
   const steps = [
     {
@@ -48,7 +56,7 @@ export default function MainPage() {
         <>
           <div className="flex-1 flex flex-col rounded-4xl mt-4">
             <div className="flex-1 md:p-6 p-3 flex flex-col items-center justify-start bg-background rounded-4xl dark:shadow-[0px_0px_30px_0px_#ffffff50] shadow-[0px_0px_30px_0px_#00000050]">
-              {isLoading ? (
+              {isRankingLoading ? (
                 <LoadingAnimation />
               ) : (
                 rankings.length > 0 ? (
@@ -97,7 +105,7 @@ export default function MainPage() {
         <>
           <div className="flex-1 flex flex-col rounded-4xl mt-4">
             <div className="flex-1 md:p-6 p-3 gap-3 md:gap-6 flex flex-col items-center justify-start bg-background rounded-4xl dark:shadow-[0px_0px_30px_0px_#ffffff50] shadow-[0px_0px_30px_0px_#00000050]">
-              {isLoading ? (
+              {isProvesLoading ? (
                 <LoadingAnimation />
               ) : (
                 proves.length > 0 ? (
@@ -130,38 +138,68 @@ export default function MainPage() {
 
   const rawTab = Number(searchParams.get("tab") ?? 0);
   const selectedTab = Number.isNaN(rawTab) ? 0 : Math.min(Math.max(rawTab, 0), steps.length - 1);
-  
 
+  // Tab title only — no data fetching here, so switching tabs never triggers a read.
   useEffect(() => {
-    unsubscribeRef.current?.();
-    unsubscribeRef.current = null;
-    setIsLoading(true);
+    document.title = selectedTab === 0 ? `Ranking ${year}` : `Proves ${year}`;
+  }, [selectedTab, year]);
 
-    if (selectedTab === 0) {
-      document.title = `Ranking ${year}`;
+  // Opens the ranking listener for `yr` unless it's already open for that
+  // exact year — safe to call as many times as React (or StrictMode) wants.
+  const ensureRankingSubscription = useCallback((yr: number) => {
+    if (rankingSubscribedYearRef.current === yr) return;
 
-      const unsubscribe = getRankingRealTime(year, (data) => {
-        previousRankingsRef.current = data;
-        setRankings(data);
-        setIsLoading(false);
-        usePenyesCacheStore.getState().setPenyes(year, data);
-      });
-      unsubscribeRef.current = unsubscribe;
-    }
-    else if (selectedTab === 1) {
-      document.title = `Proves ${year}`;
-      let cancelled = false;
-      getProves(year).then((data) => {
-        if (cancelled) return;
-        setProves(data);
-        setIsLoading(false);
-      });
-      unsubscribeRef.current = () => { cancelled = true; };
-    }
+    rankingUnsubRef.current?.();
+    rankingSubscribedYearRef.current = yr;
+    setIsRankingLoading(true);
+    rankingUnsubRef.current = getRankingRealTime(yr, (data) => {
+      previousRankingsRef.current = data;
+      setRankings(data);
+      setIsRankingLoading(false);
+      usePenyesCacheStore.getState().setPenyes(yr, data);
+    });
+  }, []);
+
+  // Lazy: only opens the listener the first time the Ranking tab is visited.
+  // Switching away and back is a no-op (the guard above), so it stays alive
+  // across tab switches instead of being torn down and reopened.
+  useEffect(() => {
+    if (selectedTab === 0) ensureRankingSubscription(year);
+  }, [selectedTab, year, ensureRankingSubscription]);
+
+  // The only place that actually tears the listener down: real unmount. It
+  // also clears the "subscribed" marker in the same tick as the teardown —
+  // that's what keeps StrictMode's dev-only mount→cleanup→mount dance safe:
+  // if it fires this cleanup, the marker and the live listener go out of
+  // sync together, so the next mount pass correctly sees "not subscribed"
+  // and reopens it, instead of skipping re-subscription and getting stuck
+  // in the loading state forever.
+  useEffect(() => {
+    return () => {
+      rankingUnsubRef.current?.();
+      rankingUnsubRef.current = null;
+      rankingSubscribedYearRef.current = null;
+    };
+  }, []);
+
+  // Proves: one-shot fetch, but lazy (only once the tab is first visited) and
+  // cached in memory per year — switching back to this tab afterwards reuses
+  // what's already loaded instead of re-reading the whole collection.
+  useEffect(() => {
+    if (selectedTab !== 1 || provesLoadedYearRef.current === year) return;
+
+    setIsProvesLoading(true);
+    let cancelled = false;
+
+    getProves(year).then((data) => {
+      if (cancelled) return;
+      setProves(data);
+      provesLoadedYearRef.current = year;
+      setIsProvesLoading(false);
+    });
 
     return () => {
-      unsubscribeRef.current?.();
-      unsubscribeRef.current = null;
+      cancelled = true;
     };
   }, [selectedTab, year]);
 

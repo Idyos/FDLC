@@ -82,28 +82,40 @@ export function computeRanking(penyes: PenyaInfo[], results: ChallengeResult[]):
     .map((item, index) => ({ ...item, position: index + 1 }));
 }
 
+/** Public ranking, read from a single aggregated doc (Circuit/{year}/Ranking/current)
+ *  kept up to date by a Cloud Function on every Penyes/Results write — 1 read
+ *  per visit/reconnect instead of 1-per-penya. Not used by the admin Dashboard,
+ *  which needs the raw per-prova results anyway and wants its own edits to
+ *  reflect instantly rather than after the function's round trip; it still
+ *  combines getPenyesRealTime + getResultsInfoRealTime via computeRanking. */
 export const getRankingRealTime = (
   year: number,
   callback: (data: PenyaInfo[]) => void
 ) => {
-  let penyes: PenyaInfo[] = [];
-  let results: ChallengeResult[] = [];
+  const rankingRef = doc(db, `Circuit/${year}/Ranking/current`);
 
-  const emit = () => callback(computeRanking(penyes, results));
+  return onSnapshot(rankingRef, (snap) => {
+    const entries = (snap.data()?.penyes ?? []) as Array<{
+      id: string;
+      name: string;
+      imageUrl: string | null;
+      isSecret: boolean;
+      totalPoints: number;
+      position: number;
+    }>;
 
-  const unsubPenyes = getPenyesRealTime(year, (data) => {
-    penyes = data;
-    emit();
+    callback(
+      entries.map((e) => ({
+        id: e.id,
+        name: e.name,
+        position: e.position,
+        isSecret: e.isSecret,
+        imageUrl: e.imageUrl ?? undefined,
+        totalPoints: e.totalPoints,
+        directionChange: null,
+      }))
+    );
   });
-  const unsubResults = getResultsInfoRealTime(year, (data) => {
-    results = data;
-    emit();
-  });
-
-  return () => {
-    unsubPenyes();
-    unsubResults();
-  };
 };
 
 function mapProvaSummary(provesRefPath: string, docSnap: QueryDocumentSnapshot<DocumentData>): PenyaProvaSummary {

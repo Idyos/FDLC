@@ -107,6 +107,12 @@ service cloud.firestore {
         allow get, list: if true;
         allow create, update, delete: if canProves('editResults');
       }
+
+      // Mantingut per una Cloud Function (Admin SDK, no subjecte a aquestes
+      // regles) a partir de Penyes + Results. Cap client hi escriu mai.
+      match /Ranking/{rankingId} {
+        allow get, list: if true;
+      }
     }
 
     match /{document=**} {

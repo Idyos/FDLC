@@ -335,20 +335,23 @@ export const addPenyes = async (
   const existingNames = snapshot.docs.map((doc) => doc.data().name);
 
   const results: boolean[] = [];
-  const toUpload: { index: number; name: string; image: File }[] = [];
+  const toUpload: { index: number; name: string; description: string; image: File }[] = [];
 
   penyes.forEach(({ name, description, image }, index) => {
-    if (!existingNames.includes(name)) {
-      const newDocRef = doc(penyesRef, name);
-      batch.set(newDocRef, {
-        name,
-        description: description || "",
-        isSecret: false,
-      });
-      results.push(true);
-      if (image) toUpload.push({ index, name, image });
-    } else {
+    if (existingNames.includes(name)) {
       results.push(false);
+      return;
+    }
+
+    results.push(true);
+
+    // Penyes with an image get their doc written once, after the upload
+    // resolves and the URL is known — writing it twice (create, then patch
+    // imageUrl) would fire the ranking-recompute Cloud Function twice per penya.
+    if (image) {
+      toUpload.push({ index, name, description, image });
+    } else {
+      batch.set(doc(penyesRef, name), { name, description: description || "", isSecret: false });
     }
   });
 
@@ -371,7 +374,12 @@ export const addPenyes = async (
   for (const item of toUpload) {
     try {
       const url = await withTimeout(addImageToPenyes(item.image, year, item.name), UPLOAD_TIMEOUT_MS);
-      if (url) await updateDoc(doc(penyesRef, item.name), { imageUrl: url });
+      await setDoc(doc(penyesRef, item.name), {
+        name: item.name,
+        description: item.description || "",
+        isSecret: false,
+        imageUrl: url || null,
+      });
       onProgress(item.index, true);
     } catch (e) {
       console.error(`Error uploading image for ${item.name}:`, e);
