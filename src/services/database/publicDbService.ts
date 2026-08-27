@@ -214,8 +214,6 @@ export const getProvaInfoRealTime = (
             )
           : participantsRef;
 
-            console.log(participantsQuery, participantsRef);
-
       unsubParticipants = onSnapshot(participantsQuery, (snap) => {
         const validPenyes: ParticipatingPenya[] = [];
         const invalidPenyes: ParticipatingPenya[] = [];
