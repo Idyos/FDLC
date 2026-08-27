@@ -198,6 +198,7 @@ export default function MainPage() {
     getProves(year).then((data) => {
       if (cancelled) return;
       setProves(data);
+      console.log(data);
       provesLoadedYearRef.current = year;
       setIsProvesLoading(false);
     });

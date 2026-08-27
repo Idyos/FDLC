@@ -2,16 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { BracketViewer } from "./BracketViewer";
 import type { Prova } from "@/interfaces/interfaces";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Star } from "lucide-react";
 import {
   allGroupMatchesPlayed,
   calculateGroupStandings,
   propagateBracketByes,
   shouldHaveThirdPlaceMatch,
 } from "@/features/bracket/bracketDomain";
-import { toGlootMatches } from "@/features/bracket/glootAdapter";
+import { toGlootMatches, type GlootMatchData } from "@/features/bracket/glootAdapter";
 import type { BracketTeamSnapshot, FinalStageState, GroupStageState, ThirdPlaceMatch } from "@/features/bracket/types";
 import { subscribeProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";
+import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
 
 interface PublicBracketPanelProps {
   year: number;
@@ -89,6 +92,36 @@ export default function PublicBracketPanel({ year, prova, provaId, subProvaId }:
     [finalStage],
   );
 
+  const { favoritePenyes } = useFavoritePenyes();
+  const favoriteTeamIds = useMemo(() => new Set(favoritePenyes.map((f) => f.id)), [favoritePenyes]);
+
+  // Per a cada penya guardada present en aquest quadre, el seu partit més
+  // avançat (ronda més alta) — és on cal saltar en fer clic sobre el seu nom.
+  const favoriteBracketEntries = useMemo(() => {
+    const entries: { penyaId: string; name: string; matchInternalId: string }[] = [];
+    favoritePenyes.forEach((f) => {
+      let deepest: GlootMatchData | null = null;
+      let deepestRound = -Infinity;
+      for (const m of glootMatches) {
+        if (m.participants.some((p) => p.id === f.id)) {
+          const r = parseInt(m.tournamentRoundText, 10);
+          if (r > deepestRound) {
+            deepestRound = r;
+            deepest = m;
+          }
+        }
+      }
+      if (deepest) entries.push({ penyaId: f.id, name: f.name, matchInternalId: deepest.internalId });
+    });
+    return entries;
+  }, [favoritePenyes, glootMatches]);
+
+  const scrollToMatch = (internalId: string) => {
+    document
+      .getElementById(`bracket-match-${internalId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+  };
+
   const renderGroupStage = () => {
     if (!groupStage) return null;
     return (
@@ -150,11 +183,29 @@ export default function PublicBracketPanel({ year, prova, provaId, subProvaId }:
             {glootMatches.length > 0 && (
               <div className="space-y-4">
                 {groupStage && <p className="text-sm font-semibold">Quadre Final</p>}
+                {favoriteBracketEntries.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {favoriteBracketEntries.map(({ penyaId, name, matchInternalId }) => (
+                      <Button
+                        key={penyaId}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-full"
+                        onClick={() => scrollToMatch(matchInternalId)}
+                      >
+                        <Star className="w-3.5 h-3.5" />
+                        {name}
+                      </Button>
+                    ))}
+                  </div>
+                )}
                 <div className="w-full overflow-auto rounded-lg border p-4">
                   <BracketViewer
                     matches={glootMatches}
                     readOnly
                     matchSchedules={matchSchedules ?? undefined}
+                    favoriteTeamIds={favoriteTeamIds}
                   />
                 </div>
                 {finalStage && shouldHaveThirdPlaceMatch(finalStage.bracket.matches) && (

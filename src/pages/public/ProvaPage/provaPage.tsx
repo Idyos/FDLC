@@ -12,9 +12,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import DynamicList from "@/components/shared/dynamicList";
 import LoadingAnimation from "@/components/shared/loadingAnim";
-import SingleProvaResult from "@/components/shared/PenyaProvaResults/singleProvaResult";
+import PublicResultsList from "@/components/shared/PenyaProvaResults/publicResultsList";
 import AdminSingleProvaResult from "@/components/admin/Proves/ProvaPenyaSummary/adminSingleProvaResult";
 import {
   getProvaInfo,
@@ -29,15 +28,12 @@ import AdminFooter from "@/components/admin/Proves/Footer/adminFooter";
 import { EmptyProva, ParticipatingPenya, Prova } from "@/interfaces/interfaces";
 import { isAdmin } from "@/services/authService";
 import { matchesSearch } from "@/utils/text";
-import SingleProvaResultGrid from "@/components/shared/PenyaProvaResults/singleProvaResultGrid";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import AdminHoraris from "@/components/admin/Proves/Horaris/adminHoraris";
-import PublicHoraris from "@/components/public/Horaris/publicHoraris";
 import ScheduleSortSelector from "@/components/shared/ScheduleSortSelector";
 import { SortMode, sortPenyes } from "@/utils/sorting";
-import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
-import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 
 function computeSlotStatuses(
   penyes: ParticipatingPenya[],
@@ -60,51 +56,6 @@ function computeSlotStatuses(
   return out;
 }
 
-function PublicResultsList({ penyes }: { penyes: ParticipatingPenya[] }) {
-  const { favoritePenyes } = useFavoritePenyes();
-
-  const favoriteItems = penyes.filter((p) => favoritePenyes.some((f) => f.id === p.penyaId));
-  const missingFavorites = favoritePenyes.filter((f) => !penyes.some((p) => p.penyaId === f.id));
-  const hasFavoritesSection = favoritePenyes.length > 0;
-
-  if (penyes.length === 0) {
-    return <p>No s'han trobat penyes per a aquesta prova.</p>;
-  }
-
-  return (
-    <div className="w-full">
-      {hasFavoritesSection && (
-        <>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-            Les teves penyes
-          </p>
-          <div className="flex flex-col gap-3 md:gap-6">
-            {favoriteItems.map((p) => (
-              <SingleProvaResult key={p.penyaId} provaResultSummary={p} />
-            ))}
-            {missingFavorites.map((f) => (
-              <p key={f.id} className="text-sm text-muted-foreground italic px-1 py-1">
-                {f.name} no participa en aquesta prova
-              </p>
-            ))}
-          </div>
-          <Separator className="mt-3" />
-          <Separator />
-          <Separator className="mb-3" />
-        </>
-      )}
-      <DynamicList
-        items={penyes}
-        renderItem={(provaResultSummary) => (
-          <SingleProvaResult key={provaResultSummary.penyaId} provaResultSummary={provaResultSummary} />
-        )}
-        renderGridItem={(item, index) => (
-          <SingleProvaResultGrid key={index} provaResultSummary={item} />
-        )}
-      />
-    </div>
-  );
-}
 import AdminBracketPanel from "@/components/admin/Proves/Bracket/adminBracketPanel";
 import PublicBracketPanel from "@/components/admin/Proves/Bracket/PublicBracketPanel";
 import AdminMultiProvaPanel from "@/components/admin/Proves/MultiProva/AdminMultiProvaPanel";
@@ -126,6 +77,7 @@ export default function ProvaPage() {
     const [noProvaAlert, setNoProbaAlert] = useState(false);
     const [provaInfo, setProvaInfo] = useState<Prova>(new EmptyProva());
     const [isProvaLoading, setIsProvaLoading] = useState(true);
+    const [showStaleCacheRecovery, setShowStaleCacheRecovery] = useState(false);
 
     const searchParams = new URLSearchParams(location.search);
     const provaId = searchParams.get("provaId") || "";
@@ -209,6 +161,27 @@ export default function ProvaPage() {
     };
   }, [selectedYear, admin, provaId]);
 
+  // Si la càrrega es queda penjada (típicament per una caché local de
+  // Firestore en mal estat), oferim una via de sortida en lloc d'una
+  // pantalla en blanc sense cap pista de què ha passat.
+  useEffect(() => {
+    if (!isProvaLoading) {
+      setShowStaleCacheRecovery(false);
+      return;
+    }
+    const timeoutId = setTimeout(() => setShowStaleCacheRecovery(true), 10000);
+    return () => clearTimeout(timeoutId);
+  }, [isProvaLoading, selectedYear, provaId]);
+
+  const handleStaleCacheRecovery = async () => {
+    try {
+      const dbs = await indexedDB.databases?.();
+      dbs?.forEach((d) => d.name && indexedDB.deleteDatabase(d.name));
+    } finally {
+      window.location.reload();
+    }
+  };
+
     return (
         <div className="md:p-2">
         <AlertDialog open={noProvaAlert} onOpenChange={setNoProbaAlert}>
@@ -228,49 +201,44 @@ export default function ProvaPage() {
             <div className="flex-1 flex flex-col bg-background rounded-4xl mt-4 dark:shadow-[0px_0px_30px_0px_#ffffff25] shadow-[0px_0px_30px_0px_#00000025]">
               <ProvaTitle />
 
-              {provaInfo.intervalMinutes ? (
-                <Tabs defaultValue="resultats">
-                  <TabsList className="px-4 w-full gap-2">
-                    <TabsTrigger value="resultats">Resultats</TabsTrigger>
-                    <TabsTrigger value="horaris">Horaris</TabsTrigger>
-                  </TabsList>
+              {isProvaLoading && showStaleCacheRecovery ? (
+                <div className="p-8 flex flex-col items-center gap-4 text-center">
+                  <p className="text-muted-foreground">
+                    Està tardant més del compte a carregar. Pot ser un problema amb les dades desades al navegador.
+                  </p>
+                  <Button onClick={handleStaleCacheRecovery}>Netejar caché i recarregar</Button>
+                </div>
+              ) : provaInfo.intervalMinutes ? (
+                admin ? (
+                  <Tabs defaultValue="resultats">
+                    <TabsList className="px-4 w-full gap-2">
+                      <TabsTrigger value="resultats">Resultats</TabsTrigger>
+                      <TabsTrigger value="horaris">Horaris</TabsTrigger>
+                    </TabsList>
 
-                  <TabsContent value="resultats">
-                    {admin ? (
-                      <>
-                        <Input className="p-4 mb-4" type="search" value={penyesSearch} placeholder="Buscar penya..." onChange={(e) => setPenyesSearch(e.target.value)}/>
-                        <div className="grid grid-cols-[repeat(auto-fit,_minmax(300px,_1fr))] gap-3 w-full">
-                          {isProvaLoading ? (
-                            <LoadingAnimation />
-                          ) : (
-                            filteredPenyes.length > 0 ? (
-                              filteredPenyes.map((penya) => (
-                                <AdminSingleProvaResult key={penya.penyaId} provaResultSummary={penya} slotStatus={slotStatuses[penya.penyaId] ?? 'none'} />
-                              ))
-                            ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="p-3.5 flex flex-col items-end justify-start">
+                    <TabsContent value="resultats">
+                      <Input className="p-4 mb-4" type="search" value={penyesSearch} placeholder="Buscar penya..." onChange={(e) => setPenyesSearch(e.target.value)}/>
+                      <div className="grid grid-cols-[repeat(auto-fit,_minmax(300px,_1fr))] gap-3 w-full">
                         {isProvaLoading ? (
                           <LoadingAnimation />
                         ) : (
-                          <PublicResultsList penyes={provaInfo.penyes} />
+                          filteredPenyes.length > 0 ? (
+                            filteredPenyes.map((penya) => (
+                              <AdminSingleProvaResult key={penya.penyaId} provaResultSummary={penya} slotStatus={slotStatuses[penya.penyaId] ?? 'none'} />
+                            ))
+                          ) : (<p>No s'han trobat penyes per a aquesta prova.</p>)
                         )}
                       </div>
-                    )}
-                  </TabsContent>
+                    </TabsContent>
 
-                  <TabsContent value="horaris">
-                    <div className="flex justify-end mb-3">
-                      <ScheduleSortSelector
-                        sortMode={sortMode}
-                        setSortMode={setSortMode}
-                        showResultSort={provaInfo.challengeType !== "Participació"}
-                      />
-                    </div>
-                    {admin ? (
+                    <TabsContent value="horaris">
+                      <div className="flex justify-end mb-3">
+                        <ScheduleSortSelector
+                          sortMode={sortMode}
+                          setSortMode={setSortMode}
+                          showResultSort={provaInfo.challengeType !== "Participació"}
+                        />
+                      </div>
                       <AdminHoraris
                         resourceKey={provaInfo.id}
                         penyes={provaInfo.penyes}
@@ -302,11 +270,24 @@ export default function ProvaPage() {
                           });
                         }}
                       />
+                    </TabsContent>
+                  </Tabs>
+                ) : (
+                  <div className="p-3.5 flex flex-col items-end justify-start">
+                    <div className="flex justify-end mb-3 w-full">
+                      <ScheduleSortSelector
+                        sortMode={sortMode}
+                        setSortMode={setSortMode}
+                        showResultSort={provaInfo.challengeType !== "Participació"}
+                      />
+                    </div>
+                    {isProvaLoading ? (
+                      <LoadingAnimation />
                     ) : (
-                      <PublicHoraris penyes={sortPenyes(provaInfo.penyes, sortMode)} />
+                      <PublicResultsList penyes={sortPenyes(provaInfo.penyes, sortMode)} />
                     )}
-                  </TabsContent>
-                </Tabs>
+                  </div>
+                )
               ) : (
                 <>
                   {admin ? (

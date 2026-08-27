@@ -10,6 +10,8 @@ import { useYear } from "../Contexts/YearContext";
 import { isAdmin } from "@/services/authService";
 import { usePenyesCache } from "../Contexts/PenyesCacheContext";
 import { useTheme } from "@/components/Theme/theme-provider";
+import { formatTime } from "@/utils/scheduleFormatting";
+import { Clock } from "lucide-react";
 
 interface SingleProvaSummaryProp {
   provaResultSummary: ParticipatingPenya;
@@ -113,6 +115,13 @@ export default function SingleProvaResultGrid({ provaResultSummary, challengeTyp
         <div className="text-left">
           {!showNoParticipation && <p className={`inline ${prova.isFinished ? "text-4xl font-extrabold" : "text-2xl font-bold opacity-20"}`}>{provaResultSummary.index}. </p>}
           <span className="inline text-xl font-bold">{provaResultSummary.name}</span>
+
+          {provaResultSummary.participationTime && (
+            <div className="flex items-center gap-1.5 mt-1 px-2 py-1 rounded-full text-xs font-mono bg-white/80 dark:bg-black/50 text-black dark:text-white backdrop-blur-sm w-fit mx-auto">
+              <Clock className="w-3 h-3" />
+              {formatTime(provaResultSummary.participationTime)}
+            </div>
+          )}
         </div>
         <div className="flex flex-row items-center space-x-6">
           {showNoParticipation ? (

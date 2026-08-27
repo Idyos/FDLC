@@ -9,8 +9,7 @@ import {
 import PublicBracketPanel from "@/components/admin/Proves/Bracket/PublicBracketPanel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Trophy } from "lucide-react";
-import SingleProvaResult from "@/components/shared/PenyaProvaResults/singleProvaResult";
-import PublicHoraris from "@/components/public/Horaris/publicHoraris";
+import PublicResultsList from "@/components/shared/PenyaProvaResults/publicResultsList";
 import ScheduleSortSelector from "@/components/shared/ScheduleSortSelector";
 import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
 import { ScrollBar } from "@/components/ui/scroll-area";
@@ -18,8 +17,6 @@ import { ScrollBar } from "@/components/ui/scroll-area";
 const RESULTATS_TAB = "resultats";
 import { rankParticipants, sortPenyes, SortMode } from "@/utils/sorting";
 import { Separator } from "@/components/ui/separator";
-import DynamicList from "@/components/shared/dynamicList";
-import SingleProvaResultGrid from "@/components/shared/PenyaProvaResults/singleProvaResultGrid";
 
 interface Props {
   year: number;
@@ -60,13 +57,7 @@ function MultiProvaResultsList({
     participationTime: null,
   }));
 
-  return (
-    <div className="flex flex-col">
-      {asPenyes.map((p) => (
-        <SingleProvaResult key={p.penyaId} provaResultSummary={p} />
-      ))}
-    </div>
-  );
+  return <PublicResultsList penyes={asPenyes} />;
 }
 
 export default function PublicMultiProvaPanel({ year, provaId }: Props) {
@@ -132,25 +123,14 @@ export default function PublicMultiProvaPanel({ year, provaId }: Props) {
     );
 
   const renderResultsList = (sp: SubProvaConfig) => (
-    <>
-      <DynamicList
-        items={(participantsMap[sp.id] ?? [])}
-        renderItem={(provaResultSummary) => (
-          <SingleProvaResult
-            key={provaResultSummary.penyaId}
-            provaResultSummary={provaResultSummary}
-            challengeTypeOverride={sp.challengeType}
-          />
-        )}
-        renderGridItem={(item, index) => (
-          <SingleProvaResultGrid
-            key={index}
-            provaResultSummary={item}
-            challengeTypeOverride={sp.challengeType}
-          />
-        )}
-      />
-    </>
+    <PublicResultsList
+      penyes={
+        sp.intervalMinutes
+          ? sortPenyes(participantsMap[sp.id] ?? [], sortMode)
+          : (participantsMap[sp.id] ?? [])
+      }
+      challengeTypeOverride={sp.challengeType}
+    />
   );
 
   return (
@@ -210,34 +190,16 @@ export default function PublicMultiProvaPanel({ year, provaId }: Props) {
                   </>
                 )}
               </p>
-              {sp.intervalMinutes ? (
-                <Tabs defaultValue="resultats">
-                  <TabsList className="mb-3">
-                    <TabsTrigger value="resultats">Resultats</TabsTrigger>
-                    <TabsTrigger value="horaris">Horaris</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="resultats">{renderResultsList(sp)}</TabsContent>
-
-                  <TabsContent value="horaris">
-                    <div className="flex justify-end mb-3">
-                      <ScheduleSortSelector
-                        sortMode={sortMode}
-                        setSortMode={setSortMode}
-                        showResultSort={sp.challengeType !== "Participació"}
-                      />
-                    </div>
-                    <PublicHoraris
-                      penyes={sortPenyes(
-                        (participantsMap[sp.id] ?? []).filter((p) => p.participates),
-                        sortMode
-                      )}
-                    />
-                  </TabsContent>
-                </Tabs>
-              ) : (
-                renderResultsList(sp)
+              {sp.intervalMinutes && (
+                <div className="flex justify-end mb-3">
+                  <ScheduleSortSelector
+                    sortMode={sortMode}
+                    setSortMode={setSortMode}
+                    showResultSort={sp.challengeType !== "Participació"}
+                  />
+                </div>
               )}
+              {renderResultsList(sp)}
             </>
           )}
         </TabsContent>

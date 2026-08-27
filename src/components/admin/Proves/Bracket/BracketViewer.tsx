@@ -11,6 +11,9 @@ interface BracketViewerProps {
   matchSchedules?: Record<string, string>;
   onTimeChange?: (internalId: string, time: string) => void;
   slotStatuses?: Record<string, SlotStatus>;
+  /** penyaId/teamId de les penyes guardades: es marca en verd el recorregut
+   *  (targeta + línies) de qualsevol partit on encara hi participin. */
+  favoriteTeamIds?: Set<string>;
 }
 
 const ROW_H = 30; // altura per fila d'equip dins una targeta
@@ -68,6 +71,7 @@ interface BracketMatchCardProps {
   slotStatus?: SlotStatus;
   showTimeRow: boolean;
   matchHeight: number;
+  isFavoriteMatch?: boolean;
 }
 
 function BracketMatchCard({
@@ -80,6 +84,7 @@ function BracketMatchCard({
   slotStatus,
   showTimeRow,
   matchHeight,
+  isFavoriteMatch,
 }: BracketMatchCardProps) {
   const [rawScores, setRawScores] = useState<string[]>(
     () => match.participants.map((p) => (p.score != null ? String(p.score) : "")),
@@ -106,8 +111,11 @@ function BracketMatchCard({
 
   const isFinished = match.participants.some((p) => p.isWinner);
 
-  // Border: slot status (admin) takes priority over finished state
-  const borderClass = onTimeChange
+  // Border: slot status (admin) takes priority over finished state; a favorite
+  // penya present in the match takes priority over everything else.
+  const borderClass = isFavoriteMatch
+    ? "border-green-500 border-2"
+    : onTimeChange
     ? slotStatus === "overflow"
       ? "border-red-500"
       : slotStatus === "under"
@@ -123,6 +131,7 @@ function BracketMatchCard({
 
   return (
     <div
+      id={`bracket-match-${match.internalId}`}
       className={cn("absolute border rounded-md overflow-hidden bg-card shadow-sm", borderClass)}
       style={{ top, left: 0, width: MW, height: matchHeight }}
     >
@@ -199,7 +208,11 @@ export function BracketViewer({
   matchSchedules,
   onTimeChange,
   slotStatuses,
+  favoriteTeamIds,
 }: BracketViewerProps) {
+  const hasFavorite = (match: GlootMatchData) =>
+    !!favoriteTeamIds && match.participants.some((p) => favoriteTeamIds.has(p.id));
+
   const showTimeRow =
     !!onTimeChange ||
     (!!matchSchedules && Object.values(matchSchedules).some((t) => !!t));
@@ -235,7 +248,7 @@ export function BracketViewer({
   const contentH = (firstRoundCount - 1) * S + MH;
   const totalW = rounds.length * (MW + CG) - CG;
 
-  const connectorLines: { key: string; x1: number; y1: number; x2: number; y2: number }[] = [];
+  const connectorLines: { key: string; x1: number; y1: number; x2: number; y2: number; highlighted: boolean }[] = [];
 
   rounds.forEach(({ matches: ms }, colIdx) => {
     if (colIdx === rounds.length - 1) return;
@@ -247,7 +260,7 @@ export function BracketViewer({
     ms.forEach((match, i) => {
       const top = tops[colIdx][i];
       const cy = top + MH / 2;
-      connectorLines.push({ key: `h-${match.id}`, x1: colX + MW, y1: cy, x2: midX, y2: cy });
+      connectorLines.push({ key: `h-${match.id}`, x1: colX + MW, y1: cy, x2: midX, y2: cy, highlighted: hasFavorite(match) });
 
       if (i % branchFactor === 0) {
         const siblingCys: number[] = [];
@@ -256,17 +269,41 @@ export function BracketViewer({
           if (siblingTop !== undefined) siblingCys.push(siblingTop + MH / 2);
         }
         if (siblingCys.length > 0) {
+          // Barra vertical de base, sempre neutra: l'estructura de l'aspa
+          // s'ha de veure encara que cap germà sigui favorit.
           connectorLines.push({
             key: `v-${match.id}`,
             x1: midX,
             y1: siblingCys[0],
             x2: midX,
             y2: siblingCys[siblingCys.length - 1],
+            highlighted: false,
           });
+
           const nextTop = tops[colIdx + 1]?.[Math.floor(i / branchFactor)];
           if (nextTop !== undefined) {
             const nextCy = nextTop + MH / 2;
-            connectorLines.push({ key: `hn-${match.id}`, x1: midX, y1: nextCy, x2: nextColX, y2: nextCy });
+            let groupHasFavorite = false;
+
+            // Només el tram de la barra entre CADA germà favorit i el punt de
+            // fusió es pinta en verd — no tota la barra, que també cobriria
+            // germans sense cap favorita.
+            for (let s = 0; s < branchFactor; s += 1) {
+              const siblingMatch = ms[i + s];
+              const siblingTop = tops[colIdx][i + s];
+              if (siblingTop === undefined || !siblingMatch || !hasFavorite(siblingMatch)) continue;
+              groupHasFavorite = true;
+              connectorLines.push({
+                key: `vfav-${match.id}-${s}`,
+                x1: midX,
+                y1: siblingTop + MH / 2,
+                x2: midX,
+                y2: nextCy,
+                highlighted: true,
+              });
+            }
+
+            connectorLines.push({ key: `hn-${match.id}`, x1: midX, y1: nextCy, x2: nextColX, y2: nextCy, highlighted: groupHasFavorite });
           }
         }
       }
@@ -283,7 +320,12 @@ export function BracketViewer({
             height={HDR + contentH}
           >
             <g strokeWidth="1" stroke="currentColor" className="text-muted-foreground/40">
-              {connectorLines.map(({ key, x1, y1, x2, y2 }) => (
+              {connectorLines.filter((l) => !l.highlighted).map(({ key, x1, y1, x2, y2 }) => (
+                <line key={key} x1={x1} y1={y1} x2={x2} y2={y2} />
+              ))}
+            </g>
+            <g strokeWidth="2.5" stroke="currentColor" className="text-green-500">
+              {connectorLines.filter((l) => l.highlighted).map(({ key, x1, y1, x2, y2 }) => (
                 <line key={key} x1={x1} y1={y1} x2={x2} y2={y2} />
               ))}
             </g>
@@ -311,6 +353,7 @@ export function BracketViewer({
                     slotStatus={slotStatuses?.[match.internalId]}
                     showTimeRow={showTimeRow}
                     matchHeight={MH}
+                    isFavoriteMatch={hasFavorite(match)}
                   />
                 ))}
               </div>

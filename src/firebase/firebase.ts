@@ -3,6 +3,7 @@ import {
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
+  memoryLocalCache,
   connectFirestoreEmulator,
 } from "firebase/firestore";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
@@ -23,11 +24,15 @@ const app = initializeApp(firebaseConfig);
 
 // Caché persistente en IndexedDB: en reconexiones (móvil bloqueado, cambio
 // de pestaña, red inestable) los onSnapshot reutilizan lo que ya hay en
-// disco en vez de volver a leer la colección entera.
+// disco en vez de volver a leer la colección entera. En dev la desactivamos
+// (caché en memoria) porque los reinicios frecuentes del servidor y el HMR
+// la dejan en un estado inconsistente con demasiada facilidad.
 const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager(),
-  }),
+  localCache: import.meta.env.DEV
+    ? memoryLocalCache()
+    : persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
 });
 const auth = getAuth(app);
 const storage = getStorage(app);
