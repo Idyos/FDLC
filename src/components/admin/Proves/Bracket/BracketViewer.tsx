@@ -91,9 +91,11 @@ function BracketMatchCard({
   );
   const [localTime, setLocalTime] = useState(scheduledTime ?? "");
 
+  const scoreKey = match.participants.map((p) => p.score ?? "x").join(",");
   useEffect(() => {
     setRawScores(match.participants.map((p) => (p.score != null ? String(p.score) : "")));
-  }, [match.participants]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scoreKey]);
   useEffect(() => { setLocalTime(scheduledTime ?? ""); }, [scheduledTime]);
 
   const parsedScores = rawScores.map((raw) => (raw === "" ? null : parseInt(raw, 10)));
