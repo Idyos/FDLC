@@ -391,22 +391,25 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
       .filter((m) => m.status !== "bye")
       .sort((a, b) => a.roundNumber - b.roundNumber || a.position - b.position);
 
-    // Only Round 1 has known team identities ahead of time, so only Round 1 is
-    // checked against sibling sub-proves; later rounds just follow sequentially.
-    const round1Matches = schedulableMatches.filter((m) => m.roundNumber === 1);
-    const laterMatches = schedulableMatches.filter((m) => m.roundNumber > 1);
+    // A team's identity can be known ahead of time even past Round 1, when a
+    // bye advances it straight into a later round (see propagateBracketByes).
+    // Any match with at least one resolved teamId is checked against sibling
+    // sub-proves; matches where every slot is still TBD (pending a live
+    // Round 1 result) are scheduled freely, with no sibling-conflict check.
+    const knownMatches = schedulableMatches.filter((m) => m.teams.some((t) => t.teamId));
+    const unknownMatches = schedulableMatches.filter((m) => !m.teams.some((t) => t.teamId));
 
     const externalBusy = fetchExternalBusyIntervals
       ? await fetchExternalBusyIntervals()
       : new Map<string, BusyInterval[]>();
 
-    const round1Items: ScheduleItem[] = round1Matches.map((m) => ({
+    const knownItems: ScheduleItem[] = knownMatches.map((m) => ({
       itemId: m.id,
       teamIds: m.teams.map((t) => t.teamId).filter((id): id is string => !!id),
     }));
 
-    const { assignments: round1Assignments, relaxed } = scheduleItemsAvoidingBusy(
-      round1Items,
+    const { assignments: knownAssignments, relaxed } = scheduleItemsAvoidingBusy(
+      knownItems,
       localDuration,
       localSimultaneous,
       externalBusy,
@@ -414,19 +417,19 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
     );
 
     const newSchedules: Record<string, string> = {};
-    let round1EndMins = 0;
-    round1Matches.forEach((m) => {
-      const offset = round1Assignments.get(m.id) ?? 0;
+    let knownEndMins = 0;
+    knownMatches.forEach((m) => {
+      const offset = knownAssignments.get(m.id) ?? 0;
       newSchedules[m.id] = offsetToTime(offset);
-      round1EndMins = Math.max(round1EndMins, offset + localDuration);
+      knownEndMins = Math.max(knownEndMins, offset + localDuration);
     });
 
-    if (laterMatches.length > 0) {
+    if (unknownMatches.length > 0) {
       const { schedules: laterSchedules } = fillRoundsSequentially(
-        laterMatches,
+        unknownMatches,
         localDuration,
         localSimultaneous,
-        round1EndMins
+        knownEndMins
       );
       Object.entries(laterSchedules).forEach(([matchId, offset]) => {
         newSchedules[matchId] = offsetToTime(offset);
@@ -444,7 +447,7 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
     }
     if (relaxed.length > 0) {
       toast.warning(
-        `No s'ha pogut evitar el solapament amb altres subproves per a ${relaxed.length} partit(s) de Ronda 1.`
+        `No s'ha pogut evitar el solapament amb altres subproves per a ${relaxed.length} partit(s) amb equip ja conegut.`
       );
     }
     toast.success("Horaris generats correctament");
