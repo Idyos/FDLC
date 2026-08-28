@@ -12,6 +12,8 @@ import type {
   GroupMatch,
   GroupStageState,
   GroupStanding,
+  ParticipantRoundUpdate,
+  StoredProvaBracketDoc,
   ThirdPlaceMatch,
 } from "@/features/bracket/types";
 import type { WinDirection } from "@/interfaces/interfaces";
@@ -367,6 +369,12 @@ export function propagateBracketByes(matches: Match[]): Match[] {
   return updated;
 }
 
+/** Applies propagateBracketByes to a freshly-generated/rebuilt FinalStageState
+ *  (fills in any immediately-known BYE advancers before it's ever shown). */
+export function buildPropagatedFinal(fs: FinalStageState): FinalStageState {
+  return { ...fs, bracket: { ...fs.bracket, matches: propagateBracketByes([...fs.bracket.matches]) } };
+}
+
 /** Propagates a team identity change through subsequent rounds without altering
  *  existing scores. If the updated slot is one of the ranked slots of a finished
  *  match, the corresponding advanceTo target (matched by rank) is updated too
@@ -400,6 +408,35 @@ function propagateTeamToSlot(
   }
 }
 
+/** Clears the team identity (and any score) that `match` had already
+ *  propagated into its advanceTo target's slot(s), resetting that next match
+ *  too if it had already been resolved from it — used whenever `match` stops
+ *  being resolved, whether via a full clear (clearMatchResult) or a partial
+ *  de-scoring edit that drops it below allRealScored (resolveMatchResult). */
+function clearAdvanceTargetSlots(matches: Match[], match: Match): Match[] {
+  const targets = (match.advanceTo ?? []).filter(
+    (t): t is { matchId: string; slot: Slot } => t != null,
+  );
+  if (targets.length === 0) return matches;
+  const nextIdx = matches.findIndex((m) => m.id === targets[0].matchId);
+  if (nextIdx === -1) return matches;
+
+  const slotIdxs = new Set(targets.map((t) => t.slot));
+  const wasFinished = matches[nextIdx].status === "finished";
+  const updated = [...matches];
+  updated[nextIdx] = {
+    ...updated[nextIdx],
+    status: wasFinished ? "scheduled" : updated[nextIdx].status,
+    winnerSlot: wasFinished ? null : updated[nextIdx].winnerSlot,
+    winnerTeamId: wasFinished ? null : updated[nextIdx].winnerTeamId,
+    ranking: wasFinished ? null : updated[nextIdx].ranking,
+    teams: updated[nextIdx].teams.map((t, i) =>
+      slotIdxs.has(i) ? { ...t, teamId: undefined, displayName: undefined, score: undefined } : t,
+    ),
+  };
+  return updated;
+}
+
 /** Records the result of a bracket match (up to K scores, one per team.length
  *  slot, null for slots without an entered score yet) and propagates every
  *  advancing team (there may be more than one, see advancePerMatch) to its
@@ -425,9 +462,14 @@ export function resolveMatchResult(
   if (idx === -1) return updated;
 
   const match = updated[idx];
+  // Always reflects `scores` as given — a null entry means "this slot is
+  // currently blank," not "leave whatever score it had before." (Previously
+  // `s == null` returned `t` unchanged, which meant clearing a single score
+  // field silently did nothing: the very next render re-synced the input
+  // back to the old value with no error, no feedback, and no actual change.)
   const teamsWithScores = match.teams.map((t, i) => {
     const s = scores[i];
-    return s == null ? t : { ...t, score: { ...t.score, gamesWon: s } };
+    return { ...t, score: s == null ? undefined : { ...t.score, gamesWon: s } };
   });
 
   const realSlots = match.teams
@@ -436,8 +478,23 @@ export function resolveMatchResult(
   const allRealScored = realSlots.length > 0 && realSlots.every((i) => scores[i] != null);
 
   if (!allRealScored) {
-    updated[idx] = { ...match, teams: teamsWithScores };
-    return updated;
+    // A previously-finished match losing a score (whether one field or all
+    // of them got blanked) is no longer resolved — reset it and undo
+    // whatever it had already propagated forward, the same way a full clear
+    // does. Callers only reach this de-resolving path once
+    // canApplyBracketScore/canClearBracketMatch has confirmed the next match
+    // hasn't been played, so this one-level undo can't strand anything.
+    const wasFinished = match.status === "finished";
+    const withClearedTarget = wasFinished ? clearAdvanceTargetSlots(updated, match) : updated;
+    withClearedTarget[idx] = {
+      ...match,
+      teams: teamsWithScores,
+      status: wasFinished ? "scheduled" : match.status,
+      winnerSlot: wasFinished ? null : match.winnerSlot,
+      winnerTeamId: wasFinished ? null : match.winnerTeamId,
+      ranking: wasFinished ? null : match.ranking,
+    };
+    return withClearedTarget;
   }
 
   const ascending = winDirection === "ASC";
@@ -563,30 +620,10 @@ export function clearMatchResult(matches: Match[], matchId: string): Match[] {
   if (idx === -1) return updated;
 
   const match = updated[idx];
-
-  const targets = (match.advanceTo ?? []).filter(
-    (t): t is { matchId: string; slot: Slot } => t != null,
-  );
-  if (targets.length > 0) {
-    const nextIdx = updated.findIndex((m) => m.id === targets[0].matchId);
-    if (nextIdx !== -1) {
-      const slotIdxs = new Set(targets.map((t) => t.slot));
-      const wasFinished = updated[nextIdx].status === "finished";
-      updated[nextIdx] = {
-        ...updated[nextIdx],
-        status: wasFinished ? "scheduled" : updated[nextIdx].status,
-        winnerSlot: wasFinished ? null : updated[nextIdx].winnerSlot,
-        winnerTeamId: wasFinished ? null : updated[nextIdx].winnerTeamId,
-        ranking: wasFinished ? null : updated[nextIdx].ranking,
-        teams: updated[nextIdx].teams.map((t, i) =>
-          slotIdxs.has(i) ? { ...t, teamId: undefined, displayName: undefined, score: undefined } : t,
-        ),
-      };
-    }
-  }
+  const cleared = clearAdvanceTargetSlots(updated, match);
 
   // Reset the match itself
-  updated[idx] = {
+  cleared[idx] = {
     ...match,
     status: "scheduled",
     winnerSlot: null,
@@ -595,7 +632,67 @@ export function clearMatchResult(matches: Match[], matchId: string): Match[] {
     teams: match.teams.map((t) => ({ ...t, score: undefined })),
   };
 
-  return updated;
+  return cleared;
+}
+
+/** Whether `matchId`'s currently-finished result can be deleted without
+ *  needing to cascade a reset into any OTHER already-recorded result: true
+ *  only when none of the match(es) it feeds into (its `advanceTo` targets)
+ *  has already been played, and — if it's a semifinal — the 3r lloc match
+ *  hasn't been played either (deleting would silently reset that too, since
+ *  syncThirdPlaceFromSemifinals re-derives it from the semifinals' current
+ *  losers). clearMatchResult itself only cascades ONE level forward (see its
+ *  own doc comment above), so anything beyond that would leave a downstream
+ *  match's own advancement stale — this keeps "delete a result" restricted to
+ *  the safe, no-cascade case: the latest completed matches only. */
+export function canClearBracketMatch(
+  matches: Match[],
+  thirdPlaceMatch: ThirdPlaceMatch | null | undefined,
+  matchId: string,
+): boolean {
+  const match = matches.find((m) => m.id === matchId);
+  if (!match || match.status !== "finished") return false;
+
+  const feedsAPlayedMatch = (match.advanceTo ?? []).some((target) => {
+    if (!target) return false;
+    return matches.find((m) => m.id === target.matchId)?.status === "finished";
+  });
+  if (feedsAPlayedMatch) return false;
+
+  if (shouldHaveThirdPlaceMatch(matches)) {
+    const totalRounds = Math.max(...matches.map((m) => m.roundNumber));
+    if (match.roundNumber === totalRounds - 1 && thirdPlaceMatch?.status === "finished") {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/** Whether applying `scores` to `matchId` is safe to persist as-is: true
+ *  unless it would de-resolve a currently-finished match (partially or fully
+ *  clearing its score) in a way that needs canClearBracketMatch's no-cascade
+ *  check. A match that isn't currently finished, or an edit that keeps a
+ *  match fully scored (e.g. correcting a typo), is always fine — nothing
+ *  downstream depends on it changing. This is the single check both the
+ *  client-side pre-check (adminBracketPanel.tsx) and the transactional
+ *  mutation (applyBracketScoreMutation) call, so they can never disagree. */
+export function canApplyBracketScore(
+  matches: Match[],
+  thirdPlaceMatch: ThirdPlaceMatch | null | undefined,
+  matchId: string,
+  scores: (number | null)[],
+): boolean {
+  const match = matches.find((m) => m.id === matchId);
+  if (!match || match.status !== "finished") return true;
+
+  const realSlots = match.teams
+    .map((t, i) => (t.source.type !== "bye" && t.teamId ? i : -1))
+    .filter((i) => i !== -1);
+  const willBeFullyScored = realSlots.length > 0 && realSlots.every((i) => scores[i] != null);
+  if (willBeFullyScored) return true;
+
+  return canClearBracketMatch(matches, thirdPlaceMatch, matchId);
 }
 
 // ---------------------------------------------------------------------------
@@ -696,4 +793,235 @@ export function computeTeamRoundInfo(
   }
 
   return info;
+}
+
+type RoundInfo = ReturnType<typeof computeTeamRoundInfo>;
+
+/** Diffs two computeTeamRoundInfo() snapshots into the minimal set of
+ *  Participants writes needed to bring Firestore from `prev` to `next` —
+ *  including explicit clears (null) for penyes that had progress before and
+ *  don't anymore (e.g. the bracket got regenerated). */
+export function computeRoundUpdates(prev: RoundInfo, next: RoundInfo): ParticipantRoundUpdate[] {
+  const updates: ParticipantRoundUpdate[] = [];
+  const allPenyaIds = new Set([...prev.keys(), ...next.keys()]);
+  allPenyaIds.forEach((penyaId) => {
+    const before = prev.get(penyaId);
+    const after = next.get(penyaId);
+    if (before?.lastRoundPlayed === after?.lastRoundPlayed && before?.hasWon === after?.hasWon) return;
+    updates.push({
+      penyaId,
+      lastRoundPlayed: after ? after.lastRoundPlayed : null,
+      hasWon: after ? after.hasWon : null,
+    });
+  });
+  return updates;
+}
+
+// ---------------------------------------------------------------------------
+// Transactional mutation builders
+//
+// Each `apply*Mutation` below is a pure function of (current server document,
+// this edit's own inputs) that returns the next document to persist — used as
+// the callback passed to `runBracketMutation` (adminBracketsDbServices.ts),
+// which re-invokes it against a fresh `tx.get()` read on every Firestore
+// transaction retry. They MUST stay pure and deterministic (no Math.random(),
+// Date.now(), or reads of component/ref state) — that's what makes it safe
+// for Firestore to call one more than once per logical edit. Returning null
+// aborts the transaction (the thing being edited no longer exists server-side,
+// e.g. another admin regenerated the bracket concurrently).
+// ---------------------------------------------------------------------------
+
+export type BracketMutationResult = {
+  next: StoredProvaBracketDoc;
+  participantUpdates?: ParticipantRoundUpdate[];
+};
+
+export type BracketMutation = (current: StoredProvaBracketDoc) => BracketMutationResult | null;
+
+function withRoundInfo(
+  current: StoredProvaBracketDoc,
+  next: StoredProvaBracketDoc,
+  subProvaId: string | undefined,
+): BracketMutationResult {
+  // Rondes progress is only ever read from the top-level Prova's Participants
+  // docs, never from a MultiProva subprova's — so skip it entirely there.
+  if (subProvaId) return { next };
+  const prevInfo = computeTeamRoundInfo(current.finalStage.bracket.matches, current.groupStage);
+  const nextInfo = computeTeamRoundInfo(next.finalStage.bracket.matches, next.groupStage);
+  return { next, participantUpdates: computeRoundUpdates(prevInfo, nextInfo) };
+}
+
+/** A final-bracket (or 3rd place, via syncThirdPlaceFromSemifinals) match
+ *  score entry/clear. Mirrors handleBracketScoreUpdate's logic, but resolved
+ *  against the live server `current` document instead of local state. */
+export function applyBracketScoreMutation(
+  current: StoredProvaBracketDoc,
+  internalId: string,
+  scores: (number | null)[],
+  winDirection: WinDirection,
+  subProvaId: string | undefined,
+): BracketMutationResult | null {
+  const matches = current.finalStage.bracket.matches;
+  if (!matches.some((m) => m.id === internalId)) return null;
+  if (!canApplyBracketScore(matches, current.finalStage.thirdPlaceMatch, internalId, scores)) {
+    return null;
+  }
+
+  const allNull = scores.every((s) => s === null);
+  const updatedMatches = allNull
+    ? clearMatchResult(matches, internalId)
+    : resolveMatchResult(matches, internalId, scores, winDirection);
+  const thirdPlaceMatch = syncThirdPlaceFromSemifinals(updatedMatches, current.finalStage.thirdPlaceMatch ?? null);
+
+  const next: StoredProvaBracketDoc = {
+    ...current,
+    finalStage: {
+      ...current.finalStage,
+      bracket: { ...current.finalStage.bracket, matches: updatedMatches },
+      thirdPlaceMatch,
+    },
+  };
+  return withRoundInfo(current, next, subProvaId);
+}
+
+/** A single match's scheduled time. Trivial disjoint-key merge. */
+export function applyMatchTimeMutation(
+  current: StoredProvaBracketDoc,
+  internalId: string,
+  time: string,
+  subProvaId: string | undefined,
+): BracketMutationResult | null {
+  if (!current.finalStage.bracket.matches.some((m) => m.id === internalId)) return null;
+  const next: StoredProvaBracketDoc = {
+    ...current,
+    matchSchedules: { ...(current.matchSchedules ?? {}), [internalId]: time },
+  };
+  return withRoundInfo(current, next, subProvaId);
+}
+
+/** The 3rd-place match's score. Aborts if the semifinal-derived matchup has
+ *  changed since this edit was started (e.g. a concurrent semifinal result
+ *  changed who's playing for 3rd) rather than writing a score for a stale
+ *  pairing. */
+export function applyThirdPlaceScoreMutation(
+  current: StoredProvaBracketDoc,
+  teamAId: string | null,
+  teamBId: string | null,
+  scoreA: number | null,
+  scoreB: number | null,
+  subProvaId: string | undefined,
+): BracketMutationResult | null {
+  const tpm = current.finalStage.thirdPlaceMatch;
+  if (!tpm) return null;
+  if (tpm.teamA.teamId !== teamAId || tpm.teamB.teamId !== teamBId) return null;
+
+  let nextTpm: ThirdPlaceMatch;
+  if (scoreA !== null && scoreB !== null && scoreA !== scoreB) {
+    const winnerTeamId = scoreA > scoreB ? tpm.teamA.teamId : tpm.teamB.teamId;
+    const loserTeamId = scoreA > scoreB ? tpm.teamB.teamId : tpm.teamA.teamId;
+    nextTpm = { ...tpm, scoreA, scoreB, winnerTeamId, loserTeamId, status: "finished" };
+  } else {
+    nextTpm = { ...tpm, scoreA, scoreB, winnerTeamId: null, loserTeamId: null, status: "scheduled" };
+  }
+
+  const next: StoredProvaBracketDoc = {
+    ...current,
+    finalStage: { ...current.finalStage, thirdPlaceMatch: nextTpm },
+  };
+  return withRoundInfo(current, next, subProvaId);
+}
+
+/** Rebuilds the final-stage bracket from ALL of the server's current groups
+ *  (not just the one this edit targets) with `groupId`'s winner overridden —
+ *  this is what makes onWinnerChange safe to run inside a transaction: two
+ *  devices confirming different groups' winners concurrently each layer their
+ *  own group onto the other's already-committed result instead of one
+ *  clobbering the other's view of the groups it didn't touch. */
+export function applyGroupWinnerMutation(
+  current: StoredProvaBracketDoc,
+  groupId: string,
+  teamId: string | null,
+  teams: BracketTeamSnapshot[],
+  subProvaId: string | undefined,
+): BracketMutationResult | null {
+  if (!current.groupStage) return null;
+  if (!current.groupStage.groups.some((g) => g.groupId === groupId)) return null;
+
+  const nextGroupStage: GroupStageState = {
+    ...current.groupStage,
+    groups: current.groupStage.groups.map((g) =>
+      g.groupId !== groupId ? g : { ...g, winnerTeamId: teamId },
+    ),
+  };
+
+  const entrants = createGroupFinalEntrants(nextGroupStage, teams);
+  const rebuilt = buildFinalStageFromEntrants(entrants);
+  const nextFinal = rebuilt ? buildPropagatedFinal(rebuilt) : current.finalStage;
+
+  const next: StoredProvaBracketDoc = {
+    ...current,
+    mode: "groups_to_final",
+    groupStage: nextGroupStage,
+    finalStage: { ...nextFinal, thirdPlaceMatch: rebuilt ? null : current.finalStage.thirdPlaceMatch },
+  };
+  return withRoundInfo(current, next, subProvaId);
+}
+
+/** A group-stage match's score. If the suggested winner changes as a result,
+ *  cascades into the same server-side full-groups rebuild as
+ *  applyGroupWinnerMutation — reading every other group's winner from
+ *  `current`, never from a caller's possibly-stale copy. */
+export function applyGroupMatchResultMutation(
+  current: StoredProvaBracketDoc,
+  groupId: string,
+  matchId: string,
+  scoreA: number | null,
+  scoreB: number | null,
+  teams: BracketTeamSnapshot[],
+  subProvaId: string | undefined,
+): BracketMutationResult | null {
+  if (!current.groupStage) return null;
+  const group = current.groupStage.groups.find((g) => g.groupId === groupId);
+  if (!group) return null;
+  if (!group.matches.some((m) => m.matchId === matchId)) return null;
+
+  const updatedMatches: GroupMatch[] = group.matches.map((match) => {
+    if (match.matchId !== matchId) return match;
+    if (scoreA === null && scoreB === null) {
+      return { ...match, scoreA: null, scoreB: null, winnerTeamId: null, isDraw: false };
+    }
+    const isDraw = scoreA !== null && scoreB !== null && scoreA === scoreB;
+    const winnerTeamId =
+      scoreA !== null && scoreB !== null && !isDraw ? (scoreA > scoreB ? match.teamAId : match.teamBId) : null;
+    return { ...match, scoreA, scoreB, isDraw, winnerTeamId };
+  });
+
+  const standings = calculateGroupStandings(updatedMatches, group.teamIds);
+  const allPlayed = updatedMatches.every((m) => m.scoreA !== null && m.scoreB !== null);
+  const suggested = allPlayed ? getSuggestedGroupWinner(standings) : null;
+  const newWinnerId = suggested ?? group.winnerTeamId;
+  const winnersChanged = group.winnerTeamId !== newWinnerId;
+
+  const nextGroupStage: GroupStageState = {
+    ...current.groupStage,
+    groups: current.groupStage.groups.map((g) =>
+      g.groupId !== groupId ? g : { ...g, matches: updatedMatches, winnerTeamId: newWinnerId },
+    ),
+  };
+
+  if (winnersChanged) {
+    const entrants = createGroupFinalEntrants(nextGroupStage, teams);
+    const rebuilt = buildFinalStageFromEntrants(entrants);
+    const nextFinal = rebuilt ? buildPropagatedFinal(rebuilt) : current.finalStage;
+    const next: StoredProvaBracketDoc = {
+      ...current,
+      mode: "groups_to_final",
+      groupStage: nextGroupStage,
+      finalStage: { ...nextFinal, thirdPlaceMatch: rebuilt ? null : current.finalStage.thirdPlaceMatch },
+    };
+    return withRoundInfo(current, next, subProvaId);
+  }
+
+  const next: StoredProvaBracketDoc = { ...current, groupStage: nextGroupStage };
+  return withRoundInfo(current, next, subProvaId);
 }

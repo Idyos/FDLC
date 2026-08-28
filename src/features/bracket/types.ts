@@ -86,3 +86,12 @@ export interface StoredProvaBracketDoc {
   simultaneousMatches?: number | null;
   matchSchedules?: Record<string, string> | null;
 }
+
+/** A per-penya round-progress update to denormalize onto its Participants doc
+ *  alongside the bracket write. `null` on either field means "clear it" (e.g.
+ *  after regenerating the bracket wiped that penya's progress). */
+export interface ParticipantRoundUpdate {
+  penyaId: string;
+  lastRoundPlayed: number | null;
+  hasWon: boolean | null;
+}

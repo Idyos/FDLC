@@ -22,22 +22,27 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   allGroupMatchesPlayed,
+  applyBracketScoreMutation,
+  applyGroupMatchResultMutation,
+  applyGroupWinnerMutation,
+  applyMatchTimeMutation,
+  applyThirdPlaceScoreMutation,
   buildFinalStageFromEntrants,
+  buildPropagatedFinal,
   calculateGroupStandings,
-  clearMatchResult,
+  canApplyBracketScore,
+  computeRoundUpdates,
   computeTeamRoundInfo,
   createGroupFinalEntrants,
   createRandomBalancedGroupStage,
   createSimpleFinalEntrants,
-  getSuggestedGroupWinner,
   MIN_TEAMS_FOR_GROUP_STAGE,
   propagateBracketByes,
-  resolveMatchResult,
   sanitizeTeamSnapshot,
   shouldHaveThirdPlaceMatch,
   syncThirdPlaceFromSemifinals,
+  type BracketMutation,
 } from "@/features/bracket/bracketDomain";
-import type { GroupMatch } from "@/features/bracket/types";
 import { toGlootMatches } from "@/features/bracket/glootAdapter";
 import type {
   BracketTeamSnapshot,
@@ -47,9 +52,11 @@ import type {
   ThirdPlaceMatch,
 } from "@/features/bracket/types";
 import {
+  BracketMutationAbortedError,
   getProvaBracket,
+  runBracketMutation,
   saveProvaBracket,
-  type ParticipantRoundUpdate,
+  subscribeProvaBracket,
 } from "@/services/database/Admin/adminBracketsDbServices";
 import { validAdvanceOptions } from "@/utils/bracketCreator";
 import { formatTime, computeSlotStatuses } from "@/utils/scheduleFormatting";
@@ -82,31 +89,7 @@ function formatSavedAt(date: Date): string {
   return `Guardat: ${hh}:${mm}`;
 }
 
-function buildPropagatedFinal(fs: FinalStageState): FinalStageState {
-  return { ...fs, bracket: { ...fs.bracket, matches: propagateBracketByes([...fs.bracket.matches]) } };
-}
-
 type RoundInfo = Map<string, { lastRoundPlayed: number; hasWon: boolean }>;
-
-/** Diffs two computeTeamRoundInfo() snapshots into the minimal set of
- *  Participants writes needed to bring Firestore from `prev` to `next` —
- *  including explicit clears (null) for penyes that had progress before and
- *  don't anymore (e.g. the bracket got regenerated). */
-function computeRoundUpdates(prev: RoundInfo, next: RoundInfo): ParticipantRoundUpdate[] {
-  const updates: ParticipantRoundUpdate[] = [];
-  const allPenyaIds = new Set([...prev.keys(), ...next.keys()]);
-  allPenyaIds.forEach((penyaId) => {
-    const before = prev.get(penyaId);
-    const after = next.get(penyaId);
-    if (before?.lastRoundPlayed === after?.lastRoundPlayed && before?.hasWon === after?.hasWon) return;
-    updates.push({
-      penyaId,
-      lastRoundPlayed: after ? after.lastRoundPlayed : null,
-      hasWon: after ? after.hasWon : null,
-    });
-  });
-  return updates;
-}
 
 const SCHEDULE_LEGEND = [
   { color: "border-yellow-400", label: "Sense hora" },
@@ -198,15 +181,26 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
 
   // ─── Load from Firestore ─────────────────────────────────────────────────────
 
+  // Live-subscribed rather than a one-time fetch: saveProvaBracket always
+  // overwrites the full bracket document, so two devices editing different
+  // matches of the same (sub-)prova would otherwise each hold a stale local
+  // snapshot and silently stomp on each other's saves. Subscribing keeps both
+  // devices' local state converged on the latest server document between
+  // edits, closing (though not perfectly eliminating) that window.
   useEffect(() => {
-    let isCancelled = false;
-    const load = async () => {
-      if (!prova.id) { setGroupStage(null); setFinalStage(null); setIsLoadingSavedBracket(false); lastPersistedRoundInfoRef.current = new Map(); return; }
-      setIsLoadingSavedBracket(true);
-      try {
-        const saved = await getProvaBracket(year, prova.id, subProvaId);
-        if (isCancelled) return;
-        if (!saved) { setGroupStage(null); setFinalStage(null); lastPersistedRoundInfoRef.current = new Map(); return; }
+    if (!prova.id) { setGroupStage(null); setFinalStage(null); setIsLoadingSavedBracket(false); lastPersistedRoundInfoRef.current = new Map(); return; }
+    setIsLoadingSavedBracket(true);
+    const unsubscribe = subscribeProvaBracket(
+      year,
+      prova.id,
+      (saved) => {
+        if (!saved) {
+          setGroupStage(null);
+          setFinalStage(null);
+          lastPersistedRoundInfoRef.current = new Map();
+          setIsLoadingSavedBracket(false);
+          return;
+        }
 
         const propagated = propagateBracketByes([...saved.finalStage.bracket.matches]);
         setGroupStage(saved.groupStage);
@@ -228,15 +222,16 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
         setMatchSchedules(sched); matchSchedulesRef.current = sched;
         setLocalDuration(dur); pendingDuration.current = dur;
         setLocalSimultaneous(sim); pendingSimultaneous.current = sim;
-      } catch (err) {
-        if (!isCancelled) { toast.error("Error al carregar el quadre: " + err); }
-      } finally {
-        if (!isCancelled) setIsLoadingSavedBracket(false);
-      }
-    };
-    load();
-    return () => { isCancelled = true; };
-  }, [year, prova.id]);
+        setIsLoadingSavedBracket(false);
+      },
+      (err) => {
+        toast.error("Error al carregar el quadre: " + err.message);
+        setIsLoadingSavedBracket(false);
+      },
+      subProvaId,
+    );
+    return unsubscribe;
+  }, [year, prova.id, subProvaId]);
 
   // ─── Save helpers ─────────────────────────────────────────────────────────────
 
@@ -299,15 +294,64 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
     }
   };
 
+  // Transactional counterpart to doSave, used for match-result-style edits
+  // (score entry, group winner override, 3r lloc, match time) — see
+  // runBracketMutation. Unlike doSave, the write is computed against the
+  // CURRENT server document (read inside the Firestore transaction), not
+  // against local state, so two devices editing different matches/groups of
+  // the same bracket concurrently no longer silently revert each other.
+  const doTransactionalSave = async (mutate: BracketMutation) => {
+    if (!prova.id) return;
+    setSaveStatus("saving");
+    try {
+      const committed = await runBracketMutation(year, prova.id, subProvaId, user?.uid, mutate);
+      const tpm = committed.finalStage.thirdPlaceMatch ?? null;
+      const sched = committed.matchSchedules ?? {};
+      setFinalStage(committed.finalStage); finalStageRef.current = committed.finalStage;
+      setThirdPlaceMatch(tpm); thirdPlaceMatchRef.current = tpm;
+      setGroupStage(committed.groupStage); groupStageRef.current = committed.groupStage;
+      setMatchSchedules(sched); matchSchedulesRef.current = sched;
+      if (!subProvaId) {
+        lastPersistedRoundInfoRef.current = computeTeamRoundInfo(committed.finalStage.bracket.matches, committed.groupStage);
+      }
+      setSavedAt(new Date());
+      setSaveStatus("saved");
+    } catch (err) {
+      setSaveStatus("error");
+      toast.error(
+        err instanceof BracketMutationAbortedError
+          ? "Un altre dispositiu ha modificat aquest quadre. Es recarreguen les dades."
+          : "No s'ha pogut guardar el quadre. Revertint..."
+      );
+      console.error(err);
+      await revertToFirebase();
+    }
+  };
+
+  /** Applies `mutate` optimistically to local state (using the exact same pure
+   *  function the transaction will run server-side, so the two can't drift
+   *  apart) and fires the transactional save. If the local optimistic apply
+   *  is a no-op (e.g. the match/group was somehow already gone locally), the
+   *  transaction still runs and its own abort/error handling takes over. */
+  const applyLocalAndSave = (mutate: BracketMutation) => {
+    if (!finalStageRef.current) return;
+    const localDoc = buildPayload(finalStageRef.current, thirdPlaceMatchRef.current, groupStageRef.current);
+    const optimistic = mutate(localDoc);
+    if (optimistic) {
+      const tpm = optimistic.next.finalStage.thirdPlaceMatch ?? null;
+      const sched = optimistic.next.matchSchedules ?? {};
+      setFinalStage(optimistic.next.finalStage); finalStageRef.current = optimistic.next.finalStage;
+      setThirdPlaceMatch(tpm); thirdPlaceMatchRef.current = tpm;
+      setGroupStage(optimistic.next.groupStage); groupStageRef.current = optimistic.next.groupStage;
+      setMatchSchedules(sched); matchSchedulesRef.current = sched;
+    }
+    doTransactionalSave(mutate);
+  };
+
   // ─── Schedule handlers ────────────────────────────────────────────────────────
 
-  const handleMatchTimeChange = async (internalId: string, time: string) => {
-    const newSchedules = { ...matchSchedulesRef.current, [internalId]: time };
-    setMatchSchedules(newSchedules);
-    matchSchedulesRef.current = newSchedules;
-    if (finalStageRef.current) {
-      await doSave(finalStageRef.current, thirdPlaceMatchRef.current, groupStageRef.current);
-    }
+  const handleMatchTimeChange = (internalId: string, time: string) => {
+    applyLocalAndSave((current) => applyMatchTimeMutation(current, internalId, time, subProvaId));
   };
 
   const applyScheduleConfigUpdate = async () => {
@@ -466,106 +510,59 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
   };
 
   // ─── Score handlers ───────────────────────────────────────────────────────────
+  //
+  // These five (final-bracket score, group-winner override, group-match score,
+  // 3r lloc score, match time — handleMatchTimeChange above) all go through
+  // applyLocalAndSave/doTransactionalSave: they're incremental, deterministic
+  // edits that can safely be recomputed against the live server document under
+  // a Firestore transaction retry. Bracket generation and schedule config
+  // below intentionally stay on the plain-overwrite doSave path — they're
+  // deliberate whole-bracket-replacing actions (already gated by their own
+  // confirmation dialogs), and bracket generation specifically uses
+  // Math.random() (fisherYatesShuffle), which must never run inside a
+  // transaction body that Firestore might silently re-invoke on retry.
 
   const handleBracketScoreUpdate = (internalId: string, scores: (number | null)[]) => {
-    let newFinalStage: FinalStageState | null = null;
-    let newThirdPlace: ThirdPlaceMatch | null = null;
+    const current = finalStageRef.current;
+    if (
+      current &&
+      !canApplyBracketScore(current.bracket.matches, thirdPlaceMatchRef.current, internalId, scores)
+    ) {
+      toast.error("No es pot eliminar aquest resultat: ja s'ha jugat una ronda posterior.");
+      // Nothing in `finalStage` actually changed, but a fresh reference makes
+      // glootMatches recompute new participant objects, which re-triggers
+      // BracketMatchCard's rawScores sync effect — snapping the input the
+      // user just blanked back to the real, still-stored score.
+      setFinalStage((prev) => (prev ? { ...prev } : prev));
+      return;
+    }
 
-    setFinalStage((prev) => {
-      if (!prev) return prev;
-      const allNull = scores.every((s) => s === null);
-      const updatedMatches = allNull
-        ? clearMatchResult(prev.bracket.matches, internalId)
-        : resolveMatchResult(prev.bracket.matches, internalId, scores, prova.winDirection);
-      const synced = syncThirdPlaceFromSemifinals(updatedMatches, thirdPlaceMatchRef.current);
-      newThirdPlace = synced;
-      setThirdPlaceMatch(synced);
-      const next = { ...prev, bracket: { ...prev.bracket, matches: updatedMatches } };
-      newFinalStage = next;
-      return next;
-    });
-
-    if (newFinalStage) doSave(newFinalStage, newThirdPlace, groupStageRef.current);
+    applyLocalAndSave((doc) =>
+      applyBracketScoreMutation(doc, internalId, scores, prova.winDirection, subProvaId)
+    );
   };
 
   // ─── Group handlers ───────────────────────────────────────────────────────────
 
-  const rebuildFinalFromGroups = (gs: GroupStageState): FinalStageState | null => {
-    const entrants = createGroupFinalEntrants(gs, teams);
-    const next = buildFinalStageFromEntrants(entrants);
-    return next ? buildPropagatedFinal(next) : null;
-  };
-
   const onWinnerChange = (groupId: string, teamId: string | null) => {
-    const prev = groupStageRef.current;
-    if (!prev) return;
     const resolved = teamId === "__NONE__" ? null : teamId;
-    const next: GroupStageState = { ...prev, groups: prev.groups.map((g) => g.groupId !== groupId ? g : { ...g, winnerTeamId: resolved }) };
-    groupStageRef.current = next;
-    setGroupStage(next);
-    const nextFinal = rebuildFinalFromGroups(next);
-    if (nextFinal) {
-      finalStageRef.current = nextFinal; thirdPlaceMatchRef.current = null;
-      setFinalStage(nextFinal); setThirdPlaceMatch(null);
-      doSave(nextFinal, null, next);
-    } else if (finalStageRef.current) {
-      doSave(finalStageRef.current, thirdPlaceMatchRef.current, next);
-    }
+    applyLocalAndSave((current) => applyGroupWinnerMutation(current, groupId, resolved, teams, subProvaId));
   };
 
   const onMatchResultChange = (groupId: string, matchId: string, scoreA: number | null, scoreB: number | null) => {
-    const prev = groupStageRef.current;
-    if (!prev) return;
-    const prevGroup = prev.groups.find((g) => g.groupId === groupId);
-    if (!prevGroup) return;
-
-    const updatedMatches: GroupMatch[] = prevGroup.matches.map((match) => {
-      if (match.matchId !== matchId) return match;
-      if (scoreA === null && scoreB === null) return { ...match, scoreA: null, scoreB: null, winnerTeamId: null, isDraw: false };
-      const isDraw = scoreA !== null && scoreB !== null && scoreA === scoreB;
-      const winnerTeamId = scoreA !== null && scoreB !== null && !isDraw ? (scoreA > scoreB ? match.teamAId : match.teamBId) : null;
-      return { ...match, scoreA, scoreB, isDraw, winnerTeamId };
-    });
-
-    const standings = calculateGroupStandings(updatedMatches, prevGroup.teamIds);
-    const allPlayed = updatedMatches.every((m) => m.scoreA !== null && m.scoreB !== null);
-    const suggested = allPlayed ? getSuggestedGroupWinner(standings) : null;
-    const newWinnerId = suggested ?? prevGroup.winnerTeamId;
-    const winnersChanged = prevGroup.winnerTeamId !== newWinnerId;
-
-    const next: GroupStageState = { ...prev, groups: prev.groups.map((g) => g.groupId !== groupId ? g : { ...g, matches: updatedMatches, winnerTeamId: newWinnerId }) };
-    groupStageRef.current = next;
-    setGroupStage(next);
-
-    if (winnersChanged) {
-      const nextFinal = rebuildFinalFromGroups(next);
-      if (nextFinal) {
-        finalStageRef.current = nextFinal; thirdPlaceMatchRef.current = null;
-        setFinalStage(nextFinal); setThirdPlaceMatch(null);
-        doSave(nextFinal, null, next); return;
-      }
-    }
-    if (finalStageRef.current) doSave(finalStageRef.current, thirdPlaceMatchRef.current, next);
+    applyLocalAndSave((current) =>
+      applyGroupMatchResultMutation(current, groupId, matchId, scoreA, scoreB, teams, subProvaId)
+    );
   };
 
   // ─── 3rd place ────────────────────────────────────────────────────────────────
 
   const handleThirdPlaceScoreUpdate = (scoreA: number | null, scoreB: number | null) => {
-    let newTpm: ThirdPlaceMatch | null = null;
-    setThirdPlaceMatch((prev) => {
-      if (!prev) return prev;
-      let next: ThirdPlaceMatch;
-      if (scoreA !== null && scoreB !== null && scoreA !== scoreB) {
-        const winnerTeamId = scoreA > scoreB ? prev.teamA.teamId : prev.teamB.teamId;
-        const loserTeamId = scoreA > scoreB ? prev.teamB.teamId : prev.teamA.teamId;
-        next = { ...prev, scoreA, scoreB, winnerTeamId, loserTeamId, status: "finished" };
-      } else {
-        next = { ...prev, scoreA, scoreB, winnerTeamId: null, loserTeamId: null, status: "scheduled" };
-      }
-      newTpm = next;
-      return next;
-    });
-    if (finalStageRef.current) doSave(finalStageRef.current, newTpm, groupStageRef.current);
+    const tpm = thirdPlaceMatchRef.current;
+    if (!tpm) return;
+    applyLocalAndSave((current) =>
+      applyThirdPlaceScoreMutation(current, tpm.teamA.teamId, tpm.teamB.teamId, scoreA, scoreB, subProvaId)
+    );
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────────

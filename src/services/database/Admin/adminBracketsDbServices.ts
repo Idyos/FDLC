@@ -5,8 +5,10 @@ import type {
   GroupMatch,
   GroupStageState,
   GroupState,
+  ParticipantRoundUpdate,
   StoredProvaBracketDoc,
 } from "@/features/bracket/types";
+import type { BracketMutation } from "@/features/bracket/bracketDomain";
 import { db } from "@/firebase/firebase";
 import {
   Timestamp,
@@ -14,6 +16,7 @@ import {
   doc,
   getDoc,
   onSnapshot,
+  runTransaction,
   serverTimestamp,
   writeBatch,
 } from "firebase/firestore";
@@ -202,26 +205,13 @@ function bracketDocPath(year: number, provaId: string, subProvaId?: string): str
   return `Circuit/${year}/Proves/${provaId}/Bracket/current`;
 }
 
-export async function getProvaBracket(
-  year: number,
-  provaId: string,
-  subProvaId?: string,
-): Promise<StoredProvaBracketDoc | null> {
-  const bracketRef = doc(db, bracketDocPath(year, provaId, subProvaId));
-  const bracketSnap = await getDoc(bracketRef);
-
-  if (!bracketSnap.exists()) {
-    return null;
-  }
-
-  const data = bracketSnap.data();
-  if (!isRecord(data) || !isRecord(data.finalStage)) {
-    return null;
-  }
-
-  const updatedAt =
-    data.updatedAt instanceof Timestamp ? data.updatedAt : null;
-
+/** Shared by getProvaBracket, subscribeProvaBracket, and runBracketMutation —
+ *  every read path must normalize legacy documents (slot/advanceTo/ranking
+ *  backfills, see normalizeFinalStage) identically, or a mutation computed
+ *  from an un-normalized transaction read would silently misbehave. */
+function parseBracketDoc(data: unknown): StoredProvaBracketDoc | null {
+  if (!isRecord(data) || !isRecord(data.finalStage)) return null;
+  const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt : null;
   return {
     schemaVersion: 1,
     challengeType: "Rondes",
@@ -237,6 +227,17 @@ export async function getProvaBracket(
   };
 }
 
+export async function getProvaBracket(
+  year: number,
+  provaId: string,
+  subProvaId?: string,
+): Promise<StoredProvaBracketDoc | null> {
+  const bracketRef = doc(db, bracketDocPath(year, provaId, subProvaId));
+  const bracketSnap = await getDoc(bracketRef);
+  if (!bracketSnap.exists()) return null;
+  return parseBracketDoc(bracketSnap.data());
+}
+
 export function subscribeProvaBracket(
   year: number,
   provaId: string,
@@ -248,42 +249,10 @@ export function subscribeProvaBracket(
   return onSnapshot(
     bracketRef,
     (snap) => {
-      if (!snap.exists()) {
-        onData(null);
-        return;
-      }
-      const data = snap.data();
-      if (!isRecord(data) || !isRecord(data.finalStage)) {
-        onData(null);
-        return;
-      }
-      const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt : null;
-      onData({
-        schemaVersion: 1,
-        challengeType: "Rondes",
-        mode: sanitizeBracketMode(data.mode),
-        teamSnapshot: sanitizeTeamSnapshot(data.teamSnapshot),
-        groupStage: sanitizeGroupStage(data.groupStage),
-        finalStage: normalizeFinalStage(data.finalStage),
-        updatedAt,
-        updatedBy: typeof data.updatedBy === "string" ? data.updatedBy : null,
-        matchDurationMinutes: typeof data.matchDurationMinutes === "number" ? data.matchDurationMinutes : null,
-        simultaneousMatches: typeof data.simultaneousMatches === "number" ? data.simultaneousMatches : null,
-        matchSchedules: isRecord(data.matchSchedules) ? (data.matchSchedules as Record<string, string>) : null,
-      });
+      onData(snap.exists() ? parseBracketDoc(snap.data()) : null);
     },
     onError,
   );
-}
-
-/** A per-penya round-progress update to denormalize onto its Participants doc
- *  alongside the bracket write (see computeTeamRoundInfo in bracketDomain.ts).
- *  `null` on either field means "clear it" (e.g. after regenerating the
- *  bracket wiped that penya's progress). */
-export interface ParticipantRoundUpdate {
-  penyaId: string;
-  lastRoundPlayed: number | null;
-  hasWon: boolean | null;
 }
 
 export async function saveProvaBracket(
@@ -315,4 +284,59 @@ export async function saveProvaBracket(
   });
 
   await batch.commit();
+}
+
+/** Thrown when a bracket mutation can't proceed against the live server
+ *  document — either it doesn't exist, or the specific match/group the edit
+ *  targets is gone (e.g. another admin regenerated the bracket concurrently). */
+export class BracketMutationAbortedError extends Error {}
+
+/** Runs `mutate` inside a Firestore transaction against the CURRENT server
+ *  bracket document, instead of saveProvaBracket's full-overwrite-from-local-
+ *  state approach. Firestore automatically retries the transaction (re-running
+ *  `mutate` against a fresh read) if the document changed between the read and
+ *  the commit, so two near-simultaneous edits from different devices serialize
+ *  correctly instead of one silently reverting the other — this is the fix for
+ *  the concurrent-edit data loss that saveProvaBracket is prone to.
+ *
+ *  This is the first use of runTransaction in the codebase; treat it as the
+ *  reference pattern for any future concurrent-write surface rather than
+ *  reaching for writeBatch's "hope nobody collides" approach. */
+export async function runBracketMutation(
+  year: number,
+  provaId: string,
+  subProvaId: string | undefined,
+  userId: string | undefined,
+  mutate: BracketMutation,
+): Promise<StoredProvaBracketDoc> {
+  const bracketRef = doc(db, bracketDocPath(year, provaId, subProvaId));
+  let result: StoredProvaBracketDoc | null = null;
+
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(bracketRef);
+    const current = snap.exists() ? parseBracketDoc(snap.data()) : null;
+    if (!current) throw new BracketMutationAbortedError("Bracket document not found");
+
+    const outcome = mutate(current);
+    if (!outcome) throw new BracketMutationAbortedError("Mutation target no longer exists");
+
+    // JSON round-trip strips undefined values, which Firestore rejects
+    const sanitized = JSON.parse(JSON.stringify(outcome.next));
+    tx.set(bracketRef, { ...sanitized, updatedAt: serverTimestamp(), updatedBy: userId ?? null });
+
+    outcome.participantUpdates?.forEach(({ penyaId, lastRoundPlayed, hasWon }) => {
+      const participantRef = doc(db, `Circuit/${year}/Proves/${provaId}/Participants/${penyaId}`);
+      tx.update(participantRef, {
+        lastRoundPlayed: lastRoundPlayed === null ? deleteField() : lastRoundPlayed,
+        hasWon: hasWon === null ? deleteField() : hasWon,
+      });
+    });
+
+    // Not the server-resolved Timestamp (serverTimestamp() resolves async,
+    // server-side) — same client-clock approximation the callers already made
+    // via setSavedAt(new Date()) before this function existed.
+    result = outcome.next;
+  });
+
+  return result!;
 }
