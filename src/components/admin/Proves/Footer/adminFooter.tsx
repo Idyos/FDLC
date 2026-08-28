@@ -1,5 +1,6 @@
 import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
 import { useYear } from "@/components/shared/Contexts/YearContext";
+import { useAuth } from "@/routes/admin/AuthContext";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -24,6 +25,7 @@ export default function AdminFooter() {
   const setProva = useProvaStore((state) => state.setProva);
   const { selectedYear } = useYear();
   const prova = useProvaStore((state) => state.prova);
+  const { userData, loading: authLoading } = useAuth();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isRecomputing, setIsRecomputing] = useState(false);
@@ -60,6 +62,15 @@ export default function AdminFooter() {
   }, [prova, showProgress]);
 
   const hasWarning = missingNames.length > 0;
+
+  // Only users with full permissions on every prova (the "*" wildcard, not
+  // scoped to a single prova/subprova) should see the close/open/generate
+  // controls — a helper account limited to editResults on one subprova
+  // must not.
+  const hasFullProvaAccess =
+    !authLoading &&
+    (userData?.permissions.proves.includes("*") ?? true) &&
+    !userData?.permissions.specificProvaId;
 
   const onOpenProva = async () => {
     if (!prova) return;
@@ -151,6 +162,8 @@ export default function AdminFooter() {
       console.error(error);
     }
   };
+
+  if (!hasFullProvaAccess) return null;
 
   if (prova.challengeType === "Rondes") {
     return (
