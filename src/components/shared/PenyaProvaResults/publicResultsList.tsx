@@ -18,7 +18,7 @@ export default function PublicResultsList({ penyes, challengeTypeOverride }: Pro
   const hasFavoritesSection = favoritePenyes.length > 0;
 
   if (penyes.length === 0) {
-    return <p>No s'han trobat penyes per a aquesta prova.</p>;
+    return <p className="w-full">No s'han trobat penyes per a aquesta prova.</p>;
   }
 
   return (

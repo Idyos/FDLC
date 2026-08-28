@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { withBoundedRetries } from "../lib/withBoundedRetries";
 
 type RankingEntry = {
   id: string;
@@ -55,16 +56,19 @@ async function recomputeRanking(year: string): Promise<void> {
   });
 }
 
+// No `retry: true` — bounded, in-process retries (see withBoundedRetries)
+// handle transient failures instead, without Eventarc's uncapped up-to-7-day
+// retry turning a genuine bug into a runaway write loop.
 export const onPenyaWrittenFn = onDocumentWritten(
   { document: "Circuit/{year}/Penyes/{penyaId}", region: "europe-west1" },
   async (event) => {
-    await recomputeRanking(event.params.year);
+    await withBoundedRetries("onPenyaWritten", () => recomputeRanking(event.params.year));
   }
 );
 
 export const onResultsWrittenFn = onDocumentWritten(
   { document: "Circuit/{year}/Results/{resultId}", region: "europe-west1" },
   async (event) => {
-    await recomputeRanking(event.params.year);
+    await withBoundedRetries("onResultsWritten", () => recomputeRanking(event.params.year));
   }
 );

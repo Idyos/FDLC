@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { SubProvaConfig, ParticipatingPenya } from "@/interfaces/interfaces";
 import {
   subscribeSubProvas,
-  subscribeSubProvaParticipants,
   subscribeProvaFinalResults,
   type MultiProvaFinalResult,
 } from "@/services/database/publicDbService";
@@ -63,9 +62,6 @@ function MultiProvaResultsList({
 export default function PublicMultiProvaPanel({ year, provaId }: Props) {
   const [subProves, setSubProves] = useState<SubProvaConfig[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [participantsMap, setParticipantsMap] = useState<
-    Record<string, ParticipatingPenya[]>
-  >({});
   const [finalResults, setFinalResults] = useState<
     MultiProvaFinalResult[] | null | undefined
   >(undefined);
@@ -90,25 +86,6 @@ export default function PublicMultiProvaPanel({ year, provaId }: Props) {
     return unsub;
   }, [year, provaId]);
 
-  useEffect(() => {
-    if (!selectedId || selectedId === RESULTATS_TAB) return;
-    const sp = subProves.find((s) => s.id === selectedId);
-    if (!sp || sp.challengeType === "Rondes") return;
-
-    const unsub = subscribeSubProvaParticipants(
-      year,
-      provaId,
-      selectedId,
-      (participants) => {
-        setParticipantsMap((prev) => ({
-          ...prev,
-          [selectedId]: rankParticipants(participants, sp.winDirection),
-        }));
-      },
-    );
-    return unsub;
-  }, [year, provaId, selectedId, subProves]);
-
   if (loading)
     return (
       <p className="p-4 text-sm text-muted-foreground">
@@ -122,16 +99,15 @@ export default function PublicMultiProvaPanel({ year, provaId }: Props) {
       </p>
     );
 
-  const renderResultsList = (sp: SubProvaConfig) => (
-    <PublicResultsList
-      penyes={
-        sp.intervalMinutes
-          ? sortPenyes(participantsMap[sp.id] ?? [], sortMode)
-          : (participantsMap[sp.id] ?? [])
-      }
-      challengeTypeOverride={sp.challengeType}
-    />
-  );
+  const renderResultsList = (sp: SubProvaConfig) => {
+    const ranked = rankParticipants(sp.penyes ?? [], sp.winDirection);
+    return (
+      <PublicResultsList
+        penyes={sp.intervalMinutes ? sortPenyes(ranked, sortMode) : ranked}
+        challengeTypeOverride={sp.challengeType}
+      />
+    );
+  };
 
   return (
     <Tabs

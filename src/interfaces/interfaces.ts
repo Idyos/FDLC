@@ -328,6 +328,7 @@ export interface SubProvaConfig {
   order: number;
   intervalMinutes?: number;
   maxPenyesPerSlot?: number;
+  penyes?: ParticipatingPenya[];
 }
 
 export class MultiChallenge extends Prova {

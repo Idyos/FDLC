@@ -8,8 +8,9 @@ import {
   writeBatch,
   deleteField,
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { Prova, PenyaProvaFinalResultData, PenyaProvaResultData } from "@/interfaces/interfaces";
-import { db } from "@/firebase/firebase";
+import { db, functions } from "@/firebase/firebase";
 import { deleteUsersWithProva } from "@/services/usersService";
 import { getProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";
 import { calculateGroupStandings, computeBracketPositions } from "@/features/bracket/bracketDomain";
@@ -258,3 +259,12 @@ export async function generateBracketResults(year: number, provaId: string) {
   await deleteUsersWithProva(provaId);
   return results;
 }
+
+/** Manual escape hatch: re-runs the same recompute the onWrite Cloud
+ *  Functions do automatically, on demand — see recomputeProvaParticipantsFn
+ *  in functions/src/proves/updateProvaParticipants.ts. Use when the public
+ *  `penyes` field looks stale and a trigger may have failed. */
+export const recomputeProvaParticipants = async (year: number, provaId: string): Promise<void> => {
+  const fn = httpsCallable(functions, "recomputeProvaParticipants");
+  await fn({ year, provaId });
+};

@@ -2,6 +2,7 @@
 import { PenyaInfo, PenyaProvaSummary, ChallengeResult, Prova, EmptyProva, ParticipatingPenya, SubProvaConfig } from "@/interfaces/interfaces";
 import { db } from "../../firebase/firebase";
 import { collection, getDocs, getDoc, query, onSnapshot, orderBy, doc, Unsubscribe, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+import { rankParticipants } from "@/utils/sorting";
 
 export const getYears = async (
   onSuccess: (data: number[]) => void,
@@ -25,25 +26,36 @@ export const getYears = async (
     });
 }
 
-/** One-shot list of penya id/name/isSecret, for UI that only needs to search
- *  by name (e.g. the favorites picker) — no need for the ranking's totalPoints
- *  or a live listener just to populate a search box. */
+/** One-shot list of penya id/name/isSecret (e.g. the favorites picker), sourced
+ *  from the same denormalized Ranking/current doc as getRankingRealTime — the
+ *  public side must never run a collection scan over Penyes just to get names. */
 export const getPenyesNames = async (year: number): Promise<PenyaInfo[]> => {
-  const penyesRef = collection(db, `Circuit/${year}/Penyes`);
-  const snapshot = await getDocs(penyesRef);
+  const rankingRef = doc(db, `Circuit/${year}/Ranking/current`);
+  const snapshot = await getDoc(rankingRef);
+  const entries = (snapshot.data()?.penyes ?? []) as Array<{
+    id: string;
+    name: string;
+    imageUrl: string | null;
+    isSecret: boolean;
+    totalPoints: number;
+    position: number;
+  }>;
 
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    name: doc.data().name || doc.id,
-    position: 0,
-    isSecret: doc.data().isSecret || false,
-    imageUrl: doc.data().imageUrl || undefined,
+  return entries.map((e) => ({
+    id: e.id,
+    name: e.name,
+    position: e.position,
+    isSecret: e.isSecret,
+    imageUrl: e.imageUrl ?? undefined,
+    totalPoints: e.totalPoints,
   }));
 };
 
-/** Real-time list of penyes (name/image/secret) without points — the
- *  building block getRankingRealTime and the Dashboard both combine with
- *  Results, so a Results listener is never opened twice for the same screen. */
+/** Real-time list of penyes (name/image/secret) without points — ADMIN ONLY
+ *  (the Dashboard, which needs it to reflect its own writes instantly rather
+ *  than waiting on the Ranking Cloud Function's round trip; it combines this
+ *  with a Results listener via computeRanking). The public side must never
+ *  scan the Penyes collection — see getPenyesNames above. */
 export const getPenyesRealTime = (
   year: number,
   callback: (data: PenyaInfo[]) => void
@@ -163,6 +175,22 @@ export const getProves = async (year: number): Promise<PenyaProvaSummary[]> => {
   return snapshot.docs.map((docSnap) => mapProvaSummary(provesRef.path, docSnap));
 };
 
+/** Unpacks the `penyes` array the onProvaParticipantWritten /
+ *  onSubProvaParticipantWritten Cloud Functions denormalize onto a
+ *  Prova/SubProva doc (see functions/src/proves/updateProvaParticipants.ts)
+ *  back into client-shaped ParticipatingPenya objects. */
+function mapDenormalizedPenyes(raw: unknown): ParticipatingPenya[] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw.map((p) => ({
+    penyaId: p.penyaId,
+    name: p.name || "Sense nom",
+    participates: p.participates !== false,
+    result: p.result || undefined,
+    participationTime: p.participationTime?.toDate?.() ?? null,
+  }));
+}
+
 export const getProvaInfoRealTime = (
   year: number,
   provaId: string,
@@ -170,20 +198,11 @@ export const getProvaInfoRealTime = (
   callback: (data: Prova) => void
 ): Unsubscribe => {
   const provaDocRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
-  const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
   const prova = new EmptyProva();
-
-  let unsubParticipants: Unsubscribe | null = null;
-
-  const emit = () => {
-    if (prova.id) callback(prova);
-  };
 
   const unsubDoc = onSnapshot(provaDocRef, (snap) => {
     const d = snap.data();
     if (!d) return;
-
-    const oldWinDir = prova.winDirection;
 
     prova.id = snap.id;
     prova.reference = provaDocRef.path;
@@ -203,70 +222,16 @@ export const getProvaInfoRealTime = (
     prova.intervalMinutes = d.intervalMinutes ?? undefined;
     prova.maxPenyesPerSlot = d.maxPenyesPerSlot ?? undefined;
 
-    if (sort && oldWinDir !== prova.winDirection) {
-      if (unsubParticipants) unsubParticipants();
+    // Non-participating penyes never show up in the public list — matches
+    // the pre-denormalization behavior (they used to be dropped before the
+    // valid/invalid split, not just sorted last).
+    const participating = mapDenormalizedPenyes(d.penyes).filter((p) => p.participates);
+    prova.penyes = rankParticipants(participating, sort ? (prova.winDirection || "NONE") : "NONE");
 
-      const participantsQuery =
-        sort && prova.winDirection !== "NONE"
-          ? query(
-              participantsRef,
-              orderBy("result", prova.winDirection === "ASC" ? "asc" : "desc")
-            )
-          : participantsRef;
-
-      unsubParticipants = onSnapshot(participantsQuery, (snap) => {
-        const validPenyes: ParticipatingPenya[] = [];
-        const invalidPenyes: ParticipatingPenya[] = [];
-
-        snap.docs.forEach((p) => {
-          const d = p.data();
-
-          const rawResult = d.result;
-          const penya: ParticipatingPenya = {
-            penyaId: typeof d.penyaId === "string" ? d.penyaId : p.id,
-            name: typeof d.penyaName === "string" ? d.penyaName : "Sense nom",
-            participates: d.participates !== false,
-            result: rawResult == null ? undefined
-              : typeof rawResult === "number" ? (rawResult < 0 ? "" : String(rawResult))
-              : String(rawResult),
-            participationTime: d.participationTime?.toDate?.() ?? null,
-          };
-
-          if (!penya.participates) return;
-
-          if (!penya.result || penya.result === "") {
-            invalidPenyes.push(penya);
-          } else {
-            validPenyes.push(penya);
-          }
-        });
-
-        if (sort && prova.winDirection !== "NONE") {
-          validPenyes.sort((a, b) => {
-            const resA = a.result ? parseInt(a.result) : 0;
-            const resB = b.result ? parseInt(b.result) : 0;
-            return prova.winDirection === "ASC" ? resA - resB : resB - resA;
-          });
-        }
-
-        invalidPenyes.sort((a, b) => a.name.localeCompare(b.name));
-
-        const combined = [...validPenyes, ...invalidPenyes];
-        combined.forEach((penya, index) => (penya.index = index + 1));
-
-        prova.penyes = combined;
-        emit();
-      });
-    }
-
-    emit();
+    if (prova.id) callback(prova);
   });
 
-
-  return () => {
-    unsubDoc();
-    if (unsubParticipants) unsubParticipants();
-  };
+  return unsubDoc;
 };
 
 export const getResultsInfoRealTime = (
@@ -425,33 +390,10 @@ export const subscribeSubProvas = (
   const ref = collection(db, `Circuit/${year}/Proves/${provaId}/SubProves`);
   const q = query(ref, orderBy("order", "asc"));
   return onSnapshot(q, (snap) => {
-    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as SubProvaConfig));
-    callback(list);
-  });
-};
-
-export const subscribeSubProvaParticipants = (
-  year: number,
-  provaId: string,
-  subProvaId: string,
-  callback: (participants: ParticipatingPenya[]) => void
-): Unsubscribe => {
-  const ref = collection(
-    db,
-    `Circuit/${year}/Proves/${provaId}/SubProves/${subProvaId}/Participants`
-  );
-  return onSnapshot(ref, (snap) => {
-    const participants = snap.docs.map((d) => {
-      const r = d.data();
-      const raw = r.result;
-      return {
-        penyaId: r.penyaId ?? d.id,
-        name: r.penyaName ?? "",
-        participates: r.participates ?? true,
-        result: raw == null ? "" : typeof raw === "number" ? (raw < 0 ? "" : String(raw)) : String(raw),
-        participationTime: r.participationTime?.toDate?.() ?? null,
-      } as ParticipatingPenya;
+    const list = snap.docs.map((d) => {
+      const data = d.data();
+      return { id: d.id, ...data, penyes: mapDenormalizedPenyes(data.penyes) } as SubProvaConfig;
     });
-    callback(participants);
+    callback(list);
   });
 };

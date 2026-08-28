@@ -11,13 +11,13 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { generateProvaResults, generateBracketResults, openProva } from "@/services/database/Admin/adminProvesDbServices";
+import { generateProvaResults, generateBracketResults, openProva, recomputeProvaParticipants } from "@/services/database/Admin/adminProvesDbServices";
 import { generateMultiProvaResults } from "@/services/database/Admin/adminMultiProvaDbServices";
 import { navigateWithQuery } from "@/utils/url";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, LoaderCircle, Lock, LockOpen } from "lucide-react";
+import { AlertTriangle, CheckCircle2, LoaderCircle, Lock, LockOpen, RefreshCw } from "lucide-react";
 
 export default function AdminFooter() {
   const navigate = useNavigate();
@@ -26,8 +26,22 @@ export default function AdminFooter() {
   const prova = useProvaStore((state) => state.prova);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecomputing, setIsRecomputing] = useState(false);
   const [openAlert, setOpenAlert] = useState(false);
   const [missingPenyes, setMissingPenyes] = useState<string[]>([]);
+
+  const onRecompute = async () => {
+    if (!prova) return;
+    setIsRecomputing(true);
+    try {
+      await recomputeProvaParticipants(selectedYear, prova.id);
+      toast.success("Participants recalculats correctament!");
+    } catch (error: any) {
+      toast.error("Error al recalcular participants: " + error.message);
+    } finally {
+      setIsRecomputing(false);
+    }
+  };
 
   const showProgress =
     prova?.challengeType !== "Rondes" && prova?.challengeType !== "MultiProva";
@@ -141,6 +155,9 @@ export default function AdminFooter() {
   if (prova.challengeType === "Rondes") {
     return (
       <footer className="z-30 fixed bottom-0 right-0 border-t border-l bg-background/95 backdrop-blur-sm py-3 px-5 flex items-center justify-end gap-4 w-full rounded-none md:w-auto md:rounded-tl-2xl">
+        <Button variant="ghost" size="icon" title="Recalcular participants públics" onClick={onRecompute} disabled={isRecomputing}>
+          <RefreshCw className={`h-4 w-4 ${isRecomputing ? "animate-spin" : ""}`} />
+        </Button>
         {prova.isFinished ? (
           <Button variant="outline" onClick={onOpenProva}>
             <LockOpen className="h-4 w-4" />
@@ -181,6 +198,10 @@ export default function AdminFooter() {
 
       {/* FOOTER */}
       <footer className="z-30 fixed bottom-0 right-0 border-t border-l bg-background/95 backdrop-blur-sm py-3 px-5 flex items-center gap-6 w-full rounded-none md:w-auto md:rounded-tl-2xl">
+
+        <Button variant="ghost" size="icon" title="Recalcular participants públics" onClick={onRecompute} disabled={isRecomputing}>
+          <RefreshCw className={`h-4 w-4 ${isRecomputing ? "animate-spin" : ""}`} />
+        </Button>
 
         {/* Indicador de progrés */}
         {showProgress && !prova.isFinished && total > 0 && (

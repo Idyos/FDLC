@@ -13,6 +13,7 @@ import PublicFooter from './components/public/Footer/publicFooter';
 import DonationButton from './components/public/donationButton';
 import LoadingAnimation from './components/shared/loadingAnim';
 import ScrollToTop from './components/shared/ScrollToTop';
+import ErrorBoundary from './components/shared/ErrorBoundary';
 
 // Páginas públicas — cada una en su propio chunk
 const MainPage = lazy(() => import('./pages/public/MainPage/mainPage'));
@@ -49,23 +50,25 @@ export default function App() {
         <YearProvider>
           <FavoritePenyesProvider>
             <ScrollToTop />
-            <Suspense fallback={<LoadingAnimation />}>
-              <Routes>
-                {/* Public */}
-                <Route path="/" element={<PublicLayout><MainPage /></PublicLayout>} />
-                <Route path="/penya" element={<PublicLayout><PenyaPage /></PublicLayout>} />
-                <Route path="/prova" element={<PublicLayout><ProvaPage /></PublicLayout>} />
+            <ErrorBoundary>
+              <Suspense fallback={<LoadingAnimation />}>
+                <Routes>
+                  {/* Public */}
+                  <Route path="/" element={<PublicLayout><MainPage /></PublicLayout>} />
+                  <Route path="/penya" element={<PublicLayout><PenyaPage /></PublicLayout>} />
+                  <Route path="/prova" element={<PublicLayout><ProvaPage /></PublicLayout>} />
 
-                {/* Admin */}
-                <Route path="/admin/login" element={<Login />} />
-                <Route element={<AdminRoutes><AdminSidebar /></AdminRoutes>}>
-                  <Route path="/admin" element={<Dashboard />} />
-                  <Route path="/admin/prova" element={<ProvaPage />} />
-                </Route>
-                <Route path="/admin/createProva" element={<AdminRoutes><CreateOrEditProva /></AdminRoutes>} />
-                <Route path="/admin/editProva" element={<AdminRoutes><CreateOrEditProva /></AdminRoutes>} />
-              </Routes>
-            </Suspense>
+                  {/* Admin */}
+                  <Route path="/admin/login" element={<Login />} />
+                  <Route element={<AdminRoutes><AdminSidebar /></AdminRoutes>}>
+                    <Route path="/admin" element={<Dashboard />} />
+                    <Route path="/admin/prova" element={<ProvaPage />} />
+                  </Route>
+                  <Route path="/admin/createProva" element={<AdminRoutes><CreateOrEditProva /></AdminRoutes>} />
+                  <Route path="/admin/editProva" element={<AdminRoutes><CreateOrEditProva /></AdminRoutes>} />
+                </Routes>
+              </Suspense>
+            </ErrorBoundary>
           </FavoritePenyesProvider>
         </YearProvider>
       </AuthProvider>

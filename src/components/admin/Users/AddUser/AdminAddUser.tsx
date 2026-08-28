@@ -355,34 +355,23 @@ export default function AdminAddUser({
             </div>
           )}
 
-          <AnimatePresence initial={false}>
-            {showTemporaryToggle && (
-              <motion.div
-                key="temporary"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
-              >
-                <div className="flex items-center justify-between rounded-lg border px-4 py-3">
-                  <div>
-                    <Label htmlFor="isTemporary" className="cursor-pointer">
-                      Compte temporal
-                    </Label>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      S'eliminarà en tancar la prova associada
-                    </p>
-                  </div>
-                  <Switch
-                    id="isTemporary"
-                    checked={isTemporary}
-                    onCheckedChange={setIsTemporary}
-                  />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {showTemporaryToggle && (
+            <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+              <div>
+                <Label htmlFor="isTemporary" className="cursor-pointer">
+                  Compte temporal
+                </Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  S'eliminarà en tancar la prova associada
+                </p>
+              </div>
+              <Switch
+                id="isTemporary"
+                checked={isTemporary}
+                onCheckedChange={setIsTemporary}
+              />
+            </div>
+          )}
         </div>
 
         {/* Permissions section */}
@@ -454,36 +443,25 @@ export default function AdminAddUser({
               )}
             </AnimatePresence>
 
-            <AnimatePresence initial={false}>
-              {showSubProvaSelector && (
-                <motion.div
-                  key="subprova-selector"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <div className="ml-[92px] flex flex-col gap-1">
-                    <Select value={specificSubProvaId} onValueChange={setSpecificSubProvaId}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Qualsevol subprova (totes)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subProves.map((subProva) => (
-                          <SelectItem key={subProva.id} value={subProva.id}>
-                            {subProva.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Deixa buit per permetre editar totes les subproves d'aquesta multiprova.
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {showSubProvaSelector && (
+              <div className="ml-[92px] flex flex-col gap-1">
+                <Select value={specificSubProvaId} onValueChange={setSpecificSubProvaId}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Qualsevol subprova (totes)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subProves.map((subProva) => (
+                      <SelectItem key={subProva.id} value={subProva.id}>
+                        {subProva.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Deixa buit per permetre editar totes les subproves d'aquesta multiprova.
+                </p>
+              </div>
+            )}
           </div>
 
           <PermissionRow

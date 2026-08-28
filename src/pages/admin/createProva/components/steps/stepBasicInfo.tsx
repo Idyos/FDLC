@@ -7,6 +7,27 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { Ubication } from "@/interfaces/interfaces";
 import { FileText, X } from "lucide-react";
 
+/** Formats a Date for a `datetime-local` input's `value`/`min`/`max`, in
+ *  local time (not UTC, which is what toISOString gives directly). Returns
+ *  "" for anything that isn't a valid Date — an Invalid Date is a real value
+ *  react-hook-form can end up holding (e.g. a bad parse from user input),
+ *  and toISOString() throws RangeError on one instead of just failing quietly. */
+function toDatetimeLocalValue(date: unknown): string {
+  if (!(date instanceof Date) || isNaN(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+/** Same invalid-input guard for the reverse direction: a `datetime-local`
+ *  input can hand back a string that parses to an Invalid Date, which we
+ *  never want to let into form state (it would otherwise resurface as the
+ *  crash toDatetimeLocalValue above guards against, the next time this
+ *  field re-renders). */
+function parseDatetimeLocalValue(value: string): Date | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
 type Props = {
   provaImageUrl: string | null;
   onImageAdded: (f: File) => void;
@@ -141,9 +162,9 @@ export default function StepBasicInfo({ provaImageUrl, onImageAdded, provaRulesN
             <FormControl>
               <Input
                 type="datetime-local"
-                max={watchedEnd ? new Date(watchedEnd.getTime() - watchedEnd.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : undefined}
-                value={field.value ? new Date(new Date(field.value).getTime() - new Date(field.value).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""}
-                onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+                max={toDatetimeLocalValue(watchedEnd) || undefined}
+                value={toDatetimeLocalValue(field.value)}
+                onChange={(e) => field.onChange(parseDatetimeLocalValue(e.target.value))}
                 onBlur={field.onBlur}
                 name={field.name}
                 ref={field.ref}
@@ -159,11 +180,10 @@ export default function StepBasicInfo({ provaImageUrl, onImageAdded, provaRulesN
             <FormControl>
               <Input
                 type="datetime-local"
-                min={watchedStart ? new Date(watchedStart.getTime() - watchedStart.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : undefined}
-                value={field.value ? new Date(new Date(field.value).getTime() - new Date(field.value).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""}
+                min={toDatetimeLocalValue(watchedStart) || undefined}
+                value={toDatetimeLocalValue(field.value)}
                 onChange={(e) => {
-                  const v = e.target.value;
-                  const next = v ? new Date(v) : null;
+                  const next = parseDatetimeLocalValue(e.target.value);
                   const start = watchedStart;
                   if (next && start && next < start) { field.onChange(start); return; }
                   field.onChange(next);

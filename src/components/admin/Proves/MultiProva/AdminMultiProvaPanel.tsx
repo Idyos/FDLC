@@ -83,12 +83,29 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
   useEffect(() => {
     if (!selectedId) { setParticipants([]); return; }
     const sp = subProves.find((s) => s.id === selectedId);
-    if (sp?.challengeType === "Rondes") { setParticipants([]); return; }
+    if (!sp || sp.challengeType === "Rondes") { setParticipants([]); return; }
     setLoadingParticipants(true);
     getSubProvaParticipants(year, prova.id, selectedId)
-      .then((list) => setParticipants(rankParticipants(list, sp!.winDirection)))
+      .then((list) => setParticipants(rankParticipants(list, sp.winDirection)))
       .finally(() => setLoadingParticipants(false));
   }, [selectedId, year, prova.id, subProves]);
+
+  // Un compte restringit pot tenir `selectedId` apuntant a una subprova que ja
+  // no forma part de `visibleSubProves` (p. ex. just després que `userData`
+  // resolgui la restricció, o si la subprova ha estat eliminada). Sense això,
+  // el `value` controlat de <Tabs> apunta a un <TabsTrigger> que mai es
+  // renderitza.
+  useEffect(() => {
+    if (!selectedId) return;
+    const stillVisible = restrictedSubProvaId
+      ? selectedId === restrictedSubProvaId
+      : subProves.some((s) => s.id === selectedId);
+    if (stillVisible) return;
+    const fallback = restrictedSubProvaId
+      ? subProves.find((s) => s.id === restrictedSubProvaId)
+      : subProves[0];
+    setSelectedId(fallback?.id ?? null);
+  }, [selectedId, subProves, restrictedSubProvaId]);
 
 
   const handleAdd = async (config: Omit<SubProvaConfig, "id">) => {
