@@ -15,6 +15,7 @@ import { deleteUsersWithProva } from "@/services/usersService";
 import { getProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";
 import { calculateGroupStandings, computeBracketPositions } from "@/features/bracket/bracketDomain";
 import type { StoredProvaBracketDoc } from "@/features/bracket/types";
+import { assignStandardCompetitionPositions } from "@/utils/sorting";
 
 /** Derives a teamId → position map from a stored bracket doc.
  *  Returns an empty map if the final match has not been played yet. */
@@ -110,13 +111,17 @@ export async function generateProvaResults(year: number, provaId: string) {
   // 5️⃣ Combinar ambos
   const sorted = [...valid, ...invalid];
 
-  // 6️⃣ Calcular resultados finales
+  // 6️⃣ Calcular resultados finales (posicions ex aequo comparteixen posició)
+  const validPositions = assignStandardCompetitionPositions(
+    valid,
+    (a, b) => a.result === b.result
+  );
   const results: PenyaProvaFinalResultData[] = sorted.map((p, index) => {
     let position = -1;
     let pointsAwarded = 0;
 
-    if (p.participates && p.result > -1) {
-      position = index + 1;
+    if (index < valid.length) {
+      position = validPositions[index];
       const range = provaData.pointsRange.find(
         (r) => position >= r.from && position <= r.to
       );

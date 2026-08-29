@@ -34,6 +34,21 @@ export type SortMode =
   | "time-asc"
   | "time-desc";
 
+/** Assigns standard competition ("1224") ranking positions to a list already
+ *  sorted best-to-worst: items tied per `isTie` share the same position, and
+ *  the next distinct value's position skips ahead to account for the ties
+ *  (e.g. a four-way tie for 1st → the next position is 5, not 2). */
+export function assignStandardCompetitionPositions<T>(
+  sorted: T[],
+  isTie: (a: T, b: T) => boolean
+): number[] {
+  const positions: number[] = [];
+  for (let i = 0; i < sorted.length; i++) {
+    positions.push(i > 0 && isTie(sorted[i], sorted[i - 1]) ? positions[i - 1] : i + 1);
+  }
+  return positions;
+}
+
 export function rankParticipants(
   participants: ParticipatingPenya[],
   winDirection: WinDirection
@@ -41,19 +56,29 @@ export function rankParticipants(
   const valid = participants.filter((p) => p.participates && p.result && p.result !== "");
   const invalid = participants.filter((p) => !p.participates || !p.result || p.result === "");
 
+  const resultOf = (p: ParticipatingPenya) => parseInt(p.result ?? "0") || 0;
+
+  let validPositions: number[];
   if (winDirection !== "NONE") {
     valid.sort((a, b) => {
-      const resA = parseInt(a.result ?? "0") || 0;
-      const resB = parseInt(b.result ?? "0") || 0;
+      const resA = resultOf(a);
+      const resB = resultOf(b);
       return winDirection === "ASC" ? resA - resB : resB - resA;
     });
+    validPositions = assignStandardCompetitionPositions(
+      valid,
+      (a, b) => resultOf(a) === resultOf(b)
+    );
+  } else {
+    validPositions = valid.map((_, i) => i + 1);
   }
 
   invalid.sort((a, b) => a.name.localeCompare(b.name));
 
-  const combined = [...valid, ...invalid];
-  combined.forEach((p, i) => (p.index = i + 1));
-  return combined;
+  valid.forEach((p, i) => (p.index = validPositions[i]));
+  invalid.forEach((p, i) => (p.index = valid.length + i + 1));
+
+  return [...valid, ...invalid];
 }
 
 export function sortPenyes(penyes: ParticipatingPenya[], mode: SortMode): ParticipatingPenya[] {

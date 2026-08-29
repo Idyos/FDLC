@@ -11,6 +11,7 @@ import {
 import { db } from "@/firebase/firebase";
 import { SubProvaConfig, PointsRange, ParticipatingPenya } from "@/interfaces/interfaces";
 import { generateProvaResults, deriveBracketPositions } from "./adminProvesDbServices";
+import { assignStandardCompetitionPositions } from "@/utils/sorting";
 import { deleteUsersWithSubProva } from "@/services/usersService";
 import type { BusyInterval } from "@/utils/multiProvaScheduler";
 
@@ -343,9 +344,10 @@ export async function generateMultiProvaResults(
       valid.sort((a, b) => b.result - a.result);
     }
 
-    // Map position → pointsRange → points
+    // Map position → pointsRange → points (ex aequo comparteixen posició)
+    const positions = assignStandardCompetitionPositions(valid, (a, b) => a.result === b.result);
     valid.forEach((p, idx) => {
-      const position = idx + 1;
+      const position = positions[idx];
       const range = pointsRange.find((r) => position >= r.from && position <= r.to);
       const pts = range ? range.points : 0;
       if (teamPointsMap[p.penyaId]) {
