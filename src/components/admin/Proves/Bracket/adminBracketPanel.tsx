@@ -43,7 +43,7 @@ import {
   syncThirdPlaceFromSemifinals,
   type BracketMutation,
 } from "@/features/bracket/bracketDomain";
-import { toGlootMatches } from "@/features/bracket/glootAdapter";
+import { toGlootMatches, type GlootMatchData } from "@/features/bracket/glootAdapter";
 import type {
   BracketTeamSnapshot,
   FinalStageState,
@@ -59,6 +59,7 @@ import {
   subscribeProvaBracket,
 } from "@/services/database/Admin/adminBracketsDbServices";
 import { validAdvanceOptions } from "@/utils/bracketCreator";
+import { matchesSearch } from "@/utils/text";
 import { formatTime, computeSlotStatuses } from "@/utils/scheduleFormatting";
 import { scheduleItemsAvoidingBusy, BusyInterval, ScheduleItem } from "@/utils/multiProvaScheduler";
 import { fillRoundsSequentially } from "@/utils/bracketRoundScheduler";
@@ -171,6 +172,39 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
     () => (finalStage ? toGlootMatches(finalStage.bracket) : []),
     [finalStage],
   );
+
+  // ─── Team search (jump to a team's last match, same idea as the public
+  // favorites buttons, but searchable across every team instead of only the
+  // 5 saved as favorites) ────────────────────────────────────────────────────
+  const [teamSearchQuery, setTeamSearchQuery] = useState("");
+
+  const teamSearchResults = useMemo(() => {
+    const query = teamSearchQuery.trim();
+    if (!query) return [];
+    return teams.filter((t) => matchesSearch(t.name, query)).slice(0, 8);
+  }, [teams, teamSearchQuery]);
+
+  const scrollToMatch = (internalId: string) => {
+    document
+      .getElementById(`bracket-match-${internalId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+  };
+
+  const goToTeamLastMatch = (teamId: string) => {
+    let deepest: GlootMatchData | null = null;
+    let deepestRound = -Infinity;
+    for (const m of glootMatches) {
+      if (m.participants.some((p) => p.id === teamId)) {
+        const r = parseInt(m.tournamentRoundText, 10);
+        if (r > deepestRound) {
+          deepestRound = r;
+          deepest = m;
+        }
+      }
+    }
+    if (deepest) scrollToMatch(deepest.internalId);
+    setTeamSearchQuery("");
+  };
 
   const slotStatuses = useMemo(
     () => computeSlotStatuses(matchSchedules, localDuration, localSimultaneous, prova.startDate),
@@ -674,6 +708,32 @@ export default function AdminBracketPanel({ year, prova, readOnly = false, subPr
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {glootMatches.length > 0 && (
+          <div className="relative max-w-xs">
+            <Input
+              type="search"
+              placeholder="Cercar penya..."
+              value={teamSearchQuery}
+              onChange={(e) => setTeamSearchQuery(e.target.value)}
+              onBlur={() => setTimeout(() => setTeamSearchQuery(""), 150)}
+            />
+            {teamSearchResults.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md overflow-hidden">
+                {teamSearchResults.map((t) => (
+                  <button
+                    key={t.teamId}
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
+                    onClick={() => goToTeamLastMatch(t.teamId)}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {!readOnly && (
           <>
             {/* Bracket generation buttons */}
