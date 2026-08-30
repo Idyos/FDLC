@@ -79,15 +79,19 @@ export const createProva = async (
   data: Prova,
   image: File | null,
   pdf: File | null,
-  onSuccess: (data: number[]) => void,
+  onSuccess: (provaId: string) => void,
   onError?: (error: unknown) => void
 ) => {
-  const provaRef = doc(db, `Circuit/${year}/Proves/${data.name}`);
   const batch = writeBatch(db);
 
       try {
-        const url = await addImageToChallenges(image, year, data.name)
-        const rulesUrl = await addPdfToChallenges(pdf, year, data.name)
+        // ID autogenerat: el nom és només un camp de visualització i pot
+        // contenir qualsevol caràcter (inclòs "/"), a diferència de l'ID
+        // d'un document de Firestore.
+        const provaRef = doc(collection(db, `Circuit/${year}/Proves`));
+        const provaId = provaRef.id;
+        const url = await addImageToChallenges(image, year, provaId)
+        const rulesUrl = await addPdfToChallenges(pdf, year, provaId)
         batch.set(provaRef, {
           imageUrl: url ?? null,
           rulesUrl: rulesUrl ?? null,
@@ -108,7 +112,7 @@ export const createProva = async (
         data.penyes.forEach((penyaInfo) => {
           const participantRef = doc(
             db,
-            `Circuit/${year}/Proves/${data.name}/Participants/${penyaInfo.penyaId}`
+            `Circuit/${year}/Proves/${provaId}/Participants/${penyaInfo.penyaId}`
           );
 
           let participantObject: {
@@ -129,7 +133,7 @@ export const createProva = async (
         });
 
         await batch.commit();
-        onSuccess([year]);
+        onSuccess(provaId);
       } catch (error) {
         // manejar error
         console.error("Error al crear la prova:", error);

@@ -15,11 +15,11 @@ const LONG_CACHE_CONTROL = "public, max-age=604800, immutable";
  */
 const sanitizeStoragePathSegment = (segment: string): string => segment.replace(/[%#?[\]]/g, "_");
 
-export const addImageToChallenges = async (file: File | null, year: number, challengeName: string): Promise<string> => {
+export const addImageToChallenges = async (file: File | null, year: number, provaId: string): Promise<string> => {
     if (!file) return "";
 
     const optimized = await resizeImageFile(file);
-    const path = `Circuit/${year}/Proves/${sanitizeStoragePathSegment(challengeName)}/image`;
+    const path = `Circuit/${year}/Proves/${sanitizeStoragePathSegment(provaId)}/image`;
 
     const storageRef = ref(storage, path);
     const metadata = {
@@ -72,10 +72,10 @@ export const deleteImageFromPenyes = async (year: number, penyaId: string): Prom
     }
 }
 
-export const addPdfToChallenges = async (file: File | null, year: number, challengeName: string): Promise<string> => {
+export const addPdfToChallenges = async (file: File | null, year: number, provaId: string): Promise<string> => {
     if (!file) return "";
 
-    const path = `Circuit/${year}/Proves/${sanitizeStoragePathSegment(challengeName)}/rules`;
+    const path = `Circuit/${year}/Proves/${sanitizeStoragePathSegment(provaId)}/rules`;
 
     const storageRef = ref(storage, path);
     const metadata = {

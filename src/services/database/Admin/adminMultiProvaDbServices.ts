@@ -77,11 +77,12 @@ export async function addSubProva(
   config: Omit<SubProvaConfig, "id">,
   parentParticipants: ParticipatingPenya[]
 ): Promise<string> {
-  // Use name as doc ID (same convention as provas)
+  // ID autogenerat: el nom és només un camp de visualització i pot contenir
+  // qualsevol caràcter (inclòs "/"), a diferència de l'ID d'un document de Firestore.
   const subProvaRef = doc(
-    db,
-    `Circuit/${year}/Proves/${provaId}/SubProves/${config.name}`
+    collection(db, `Circuit/${year}/Proves/${provaId}/SubProves`)
   );
+  const subProvaId = subProvaRef.id;
 
   const batch = writeBatch(db);
 
@@ -98,7 +99,7 @@ export async function addSubProva(
   for (const p of parentParticipants) {
     const participantRef = doc(
       db,
-      `Circuit/${year}/Proves/${provaId}/SubProves/${config.name}/Participants/${p.penyaId}`
+      `Circuit/${year}/Proves/${provaId}/SubProves/${subProvaId}/Participants/${p.penyaId}`
     );
     batch.set(participantRef, {
       penyaId: p.penyaId,
@@ -110,7 +111,7 @@ export async function addSubProva(
   }
 
   await batch.commit();
-  return config.name;
+  return subProvaId;
 }
 
 // ─── Update result ────────────────────────────────────────────────────────────

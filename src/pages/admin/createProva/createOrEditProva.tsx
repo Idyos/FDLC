@@ -210,10 +210,10 @@ export default function CreateOrEditProva() {
         const challenge = buildChallenge(data);
 
         if(isCreating){
-          createProva(selectedYear, challenge, provaImage, provaRules, () => {
+          createProva(selectedYear, challenge, provaImage, provaRules, (newProvaId) => {
             toast.success("Prova creada correctament");
             setSettingProva(2);
-            setTimeout(() => navigateWithQuery(navigate, `/admin/prova`, { provaId: form.getValues("name"), year: selectedYear }), 2000);
+            setTimeout(() => navigateWithQuery(navigate, `/admin/prova`, { provaId: newProvaId, year: selectedYear }), 2000);
           }, (error) => {
             setSettingProva(0);
             console.error(error);
