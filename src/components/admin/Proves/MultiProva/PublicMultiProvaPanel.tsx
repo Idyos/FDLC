@@ -113,15 +113,15 @@ export default function PublicMultiProvaPanel({ year, provaId }: Props) {
     <Tabs
       value={selectedId ?? ""}
       onValueChange={setSelectedId}
-      className="max-w-full mb-5 mx-0 sm:mx-5"
+      className="max-w-[calc(100%)] mb-5 mx-0 sm:mx-5"
     >
-      <TabsList className="w-full rounded-full">
+      <TabsList className="max-w-[calc(96%)] rounded-full mx-2">
         <TabsTrigger value={RESULTATS_TAB} className="mr-2 flex-none w-auto rounded-full">
           <Trophy />
           Resultats
         </TabsTrigger> 
         <Separator orientation="vertical" color="red"/>
-        <ScrollAreaPrimitive.Root className="relative flex-1 min-w-0 h-full ml-2" type="auto">
+        <ScrollAreaPrimitive.Root className="relative flex-1 min-w-0 h-full ml-1" type="auto">
           <ScrollAreaPrimitive.Viewport className="h-full w-full">
             <div className="flex">
               {subProves.map((sp) => (

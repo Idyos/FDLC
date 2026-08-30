@@ -3,8 +3,7 @@ import { BracketViewer } from "./BracketViewer";
 import type { Prova } from "@/interfaces/interfaces";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   allGroupMatchesPlayed,
   calculateGroupStandings,
@@ -15,6 +14,10 @@ import { toGlootMatches, type GlootMatchData } from "@/features/bracket/glootAda
 import type { BracketTeamSnapshot, FinalStageState, GroupStageState, ThirdPlaceMatch } from "@/features/bracket/types";
 import { subscribeProvaBracket } from "@/services/database/Admin/adminBracketsDbServices";
 import { useFavoritePenyes } from "@/components/shared/Contexts/FavoritePenyesContext";
+import { getFavoriteColor } from "@/utils/favoriteColors";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+const FAVORITE_HINT_KEY = "fdlc-bracket-favorite-hint-seen";
 
 interface PublicBracketPanelProps {
   year: number;
@@ -93,13 +96,19 @@ export default function PublicBracketPanel({ year, prova, provaId, subProvaId }:
   );
 
   const { favoritePenyes } = useFavoritePenyes();
-  const favoriteTeamIds = useMemo(() => new Set(favoritePenyes.map((f) => f.id)), [favoritePenyes]);
+
+  // Color assignat per ordre de desat de la penya (índex al Map) — es manté
+  // estable mentre no es reordeni la llista de favorites.
+  const favoriteTeamColors = useMemo(
+    () => new Map(favoritePenyes.map((f, i) => [f.id, getFavoriteColor(i)])),
+    [favoritePenyes],
+  );
 
   // Per a cada penya guardada present en aquest quadre, el seu partit més
   // avançat (ronda més alta) — és on cal saltar en fer clic sobre el seu nom.
   const favoriteBracketEntries = useMemo(() => {
-    const entries: { penyaId: string; name: string; matchInternalId: string }[] = [];
-    favoritePenyes.forEach((f) => {
+    const entries: { penyaId: string; name: string; matchInternalId: string; color: string }[] = [];
+    favoritePenyes.forEach((f, i) => {
       let deepest: GlootMatchData | null = null;
       let deepestRound = -Infinity;
       for (const m of glootMatches) {
@@ -111,12 +120,23 @@ export default function PublicBracketPanel({ year, prova, provaId, subProvaId }:
           }
         }
       }
-      if (deepest) entries.push({ penyaId: f.id, name: f.name, matchInternalId: deepest.internalId });
+      if (deepest) entries.push({ penyaId: f.id, name: f.name, matchInternalId: deepest.internalId, color: getFavoriteColor(i) });
     });
     return entries;
   }, [favoritePenyes, glootMatches]);
 
+  const [showFavoriteHint, setShowFavoriteHint] = useState(
+    () => localStorage.getItem(FAVORITE_HINT_KEY) !== "true",
+  );
+
+  const dismissFavoriteHint = () => {
+    if (!showFavoriteHint) return;
+    localStorage.setItem(FAVORITE_HINT_KEY, "true");
+    setShowFavoriteHint(false);
+  };
+
   const scrollToMatch = (internalId: string) => {
+    dismissFavoriteHint();
     document
       .getElementById(`bracket-match-${internalId}`)
       ?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
@@ -164,9 +184,6 @@ export default function PublicBracketPanel({ year, prova, provaId, subProvaId }:
 
   return (
     <Card className="py-4">
-      <CardHeader>
-        <CardTitle>Quadre de Rondes</CardTitle>
-      </CardHeader>
       <CardContent className="space-y-6 px-0 md:px-6">
         {isLoading && (
           <p className="text-sm text-muted-foreground">Carregant quadre...</p>
@@ -184,28 +201,37 @@ export default function PublicBracketPanel({ year, prova, provaId, subProvaId }:
               <div className="space-y-4">
                 {groupStage && <p className="text-sm font-semibold">Quadre Final</p>}
                 {favoriteBracketEntries.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {favoriteBracketEntries.map(({ penyaId, name, matchInternalId }) => (
-                      <Button
-                        key={penyaId}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full"
-                        onClick={() => scrollToMatch(matchInternalId)}
-                      >
-                        <Star className="w-3.5 h-3.5" />
-                        {name}
-                      </Button>
-                    ))}
-                  </div>
+                  <TooltipProvider>
+                    <Tooltip open={showFavoriteHint}>
+                      <TooltipTrigger asChild>
+                        <div className="flex flex-wrap gap-2 w-fit md:px-0 px-3 ">
+                          {favoriteBracketEntries.map(({ penyaId, name, matchInternalId, color }) => (
+                            <Button
+                              key={penyaId}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="rounded-full border-2"
+                              style={{ borderColor: color, color, backgroundColor: `${color}1A` }}
+                              onClick={() => scrollToMatch(matchInternalId)}
+                            >
+                              {name}
+                            </Button>
+                          ))}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        Prem sobre una penya per anar al seu últim partit
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
-                <div className="w-full overflow-auto rounded-lg border p-4">
+                <div className="w-full overflow-auto rounded-lg border p-0">
                   <BracketViewer
                     matches={glootMatches}
                     readOnly
                     matchSchedules={matchSchedules ?? undefined}
-                    favoriteTeamIds={favoriteTeamIds}
+                    favoriteTeamColors={favoriteTeamColors}
                   />
                 </div>
                 {finalStage && shouldHaveThirdPlaceMatch(finalStage.bracket.matches) && (

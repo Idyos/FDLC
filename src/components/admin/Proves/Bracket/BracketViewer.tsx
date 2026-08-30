@@ -11,9 +11,10 @@ interface BracketViewerProps {
   matchSchedules?: Record<string, string>;
   onTimeChange?: (internalId: string, time: string) => void;
   slotStatuses?: Record<string, SlotStatus>;
-  /** penyaId/teamId de les penyes guardades: es marca en verd el recorregut
-   *  (targeta + línies) de qualsevol partit on encara hi participin. */
-  favoriteTeamIds?: Set<string>;
+  /** penyaId/teamId de les penyes guardades → el seu color assignat: es marca
+   *  amb aquest color el recorregut (targeta + línies) de qualsevol partit on
+   *  encara hi participin. */
+  favoriteTeamColors?: Map<string, string>;
 }
 
 const ROW_H = 30; // altura per fila d'equip dins una targeta
@@ -71,7 +72,7 @@ interface BracketMatchCardProps {
   slotStatus?: SlotStatus;
   showTimeRow: boolean;
   matchHeight: number;
-  isFavoriteMatch?: boolean;
+  favoriteColor?: string;
 }
 
 function BracketMatchCard({
@@ -84,7 +85,7 @@ function BracketMatchCard({
   slotStatus,
   showTimeRow,
   matchHeight,
-  isFavoriteMatch,
+  favoriteColor,
 }: BracketMatchCardProps) {
   const [rawScores, setRawScores] = useState<string[]>(
     () => match.participants.map((p) => (p.score != null ? String(p.score) : "")),
@@ -115,8 +116,8 @@ function BracketMatchCard({
 
   // Border: slot status (admin) takes priority over finished state; a favorite
   // penya present in the match takes priority over everything else.
-  const borderClass = isFavoriteMatch
-    ? "border-green-500 border-2"
+  const borderClass = favoriteColor
+    ? "border-2"
     : onTimeChange
     ? slotStatus === "overflow"
       ? "border-red-500"
@@ -135,7 +136,7 @@ function BracketMatchCard({
     <div
       id={`bracket-match-${match.internalId}`}
       className={cn("absolute border rounded-md overflow-hidden bg-card shadow-sm", borderClass)}
-      style={{ top, left: 0, width: MW, height: matchHeight }}
+      style={{ top, left: 0, width: MW, height: matchHeight, ...(favoriteColor ? { borderColor: favoriteColor } : {}) }}
     >
       {showTimeRow && (
         <div
@@ -210,10 +211,20 @@ export function BracketViewer({
   matchSchedules,
   onTimeChange,
   slotStatuses,
-  favoriteTeamIds,
+  favoriteTeamColors,
 }: BracketViewerProps) {
-  const hasFavorite = (match: GlootMatchData) =>
-    !!favoriteTeamIds && match.participants.some((p) => favoriteTeamIds.has(p.id));
+  // Primer favorit trobat entre els participants del partit (ordre estable
+  // segons l'ordre d'inserció del Map, que és l'ordre en què es van guardar
+  // les penyes) — si dues penyes guardades s'enfronten en el mateix partit,
+  // es tria una sola per pintar el tram, en comptes de superposar colors.
+  const favoriteColorOf = (match: GlootMatchData): string | undefined => {
+    if (!favoriteTeamColors) return undefined;
+    for (const p of match.participants) {
+      const color = favoriteTeamColors.get(p.id);
+      if (color) return color;
+    }
+    return undefined;
+  };
 
   const showTimeRow =
     !!onTimeChange ||
@@ -250,7 +261,7 @@ export function BracketViewer({
   const contentH = (firstRoundCount - 1) * S + MH;
   const totalW = rounds.length * (MW + CG) - CG;
 
-  const connectorLines: { key: string; x1: number; y1: number; x2: number; y2: number; highlighted: boolean }[] = [];
+  const connectorLines: { key: string; x1: number; y1: number; x2: number; y2: number; color?: string }[] = [];
 
   rounds.forEach(({ matches: ms }, colIdx) => {
     if (colIdx === rounds.length - 1) return;
@@ -262,7 +273,7 @@ export function BracketViewer({
     ms.forEach((match, i) => {
       const top = tops[colIdx][i];
       const cy = top + MH / 2;
-      connectorLines.push({ key: `h-${match.id}`, x1: colX + MW, y1: cy, x2: midX, y2: cy, highlighted: hasFavorite(match) });
+      connectorLines.push({ key: `h-${match.id}`, x1: colX + MW, y1: cy, x2: midX, y2: cy, color: favoriteColorOf(match) });
 
       if (i % branchFactor === 0) {
         const siblingCys: number[] = [];
@@ -279,33 +290,33 @@ export function BracketViewer({
             y1: siblingCys[0],
             x2: midX,
             y2: siblingCys[siblingCys.length - 1],
-            highlighted: false,
           });
 
           const nextTop = tops[colIdx + 1]?.[Math.floor(i / branchFactor)];
           if (nextTop !== undefined) {
             const nextCy = nextTop + MH / 2;
-            let groupHasFavorite = false;
+            let groupColor: string | undefined;
 
             // Només el tram de la barra entre CADA germà favorit i el punt de
-            // fusió es pinta en verd — no tota la barra, que també cobriria
-            // germans sense cap favorita.
+            // fusió es pinta amb el seu color — no tota la barra, que també
+            // cobriria germans sense cap favorita.
             for (let s = 0; s < branchFactor; s += 1) {
               const siblingMatch = ms[i + s];
               const siblingTop = tops[colIdx][i + s];
-              if (siblingTop === undefined || !siblingMatch || !hasFavorite(siblingMatch)) continue;
-              groupHasFavorite = true;
+              const siblingColor = siblingMatch ? favoriteColorOf(siblingMatch) : undefined;
+              if (siblingTop === undefined || !siblingColor) continue;
+              groupColor ??= siblingColor;
               connectorLines.push({
                 key: `vfav-${match.id}-${s}`,
                 x1: midX,
                 y1: siblingTop + MH / 2,
                 x2: midX,
                 y2: nextCy,
-                highlighted: true,
+                color: siblingColor,
               });
             }
 
-            connectorLines.push({ key: `hn-${match.id}`, x1: midX, y1: nextCy, x2: nextColX, y2: nextCy, highlighted: groupHasFavorite });
+            connectorLines.push({ key: `hn-${match.id}`, x1: midX, y1: nextCy, x2: nextColX, y2: nextCy, color: groupColor });
           }
         }
       }
@@ -313,7 +324,7 @@ export function BracketViewer({
   });
 
   return (
-    <div className="overflow-auto" style={{ transform: "scaleY(-1)" }}>
+    <div className="overflow-auto px-2" style={{ transform: "scaleY(-1)" }}>
       <div style={{ transform: "scaleY(-1)" }}>
         <div className="relative" style={{ width: totalW, height: HDR + contentH }}>
           <svg
@@ -322,13 +333,13 @@ export function BracketViewer({
             height={HDR + contentH}
           >
             <g strokeWidth="1" stroke="currentColor" className="text-muted-foreground/40">
-              {connectorLines.filter((l) => !l.highlighted).map(({ key, x1, y1, x2, y2 }) => (
+              {connectorLines.filter((l) => !l.color).map(({ key, x1, y1, x2, y2 }) => (
                 <line key={key} x1={x1} y1={y1} x2={x2} y2={y2} />
               ))}
             </g>
-            <g strokeWidth="2.5" stroke="currentColor" className="text-green-500">
-              {connectorLines.filter((l) => l.highlighted).map(({ key, x1, y1, x2, y2 }) => (
-                <line key={key} x1={x1} y1={y1} x2={x2} y2={y2} />
+            <g strokeWidth="2.5">
+              {connectorLines.filter((l) => l.color).map(({ key, x1, y1, x2, y2, color }) => (
+                <line key={key} x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} />
               ))}
             </g>
           </svg>
@@ -355,7 +366,7 @@ export function BracketViewer({
                     slotStatus={slotStatuses?.[match.internalId]}
                     showTimeRow={showTimeRow}
                     matchHeight={MH}
-                    isFavoriteMatch={hasFavorite(match)}
+                    favoriteColor={favoriteColorOf(match)}
                   />
                 ))}
               </div>

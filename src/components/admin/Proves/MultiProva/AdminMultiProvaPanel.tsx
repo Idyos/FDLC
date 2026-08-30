@@ -159,7 +159,7 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
 
       <Tabs value={selectedId ?? ""} className="max-w-[calc(100%)] mb-5">
         {visibleSubProves.length > 0 && (
-          <TabsList className="ml-3 mr-3 max-w-full rounded-full">
+          <TabsList className="ml-3 mr-3 max-w-[calc(95%)] rounded-full">
             {!restrictedSubProvaId && (
               <Button variant="outline" className="m-1 h-7.25 shrink-0 rounded-full" disabled={prova.isFinished}  onClick={() => setShowAddDialog(true)}>
                 <PlusCircle/>
