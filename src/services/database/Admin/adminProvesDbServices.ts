@@ -77,7 +77,7 @@ export async function generateProvaResults(year: number, provaId: string) {
     else if (typeof rawResult === "string") {
       if (rawResult === "") numResult = -1;
       else {
-        const parsed = parseInt(rawResult, 10);
+        const parsed = parseFloat(rawResult);
         numResult = Number.isNaN(parsed) ? -1 : parsed;
       }
     }

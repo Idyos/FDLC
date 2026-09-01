@@ -56,7 +56,7 @@ export function rankParticipants(
   const valid = participants.filter((p) => p.participates && p.result && p.result !== "");
   const invalid = participants.filter((p) => !p.participates || !p.result || p.result === "");
 
-  const resultOf = (p: ParticipatingPenya) => parseInt(p.result ?? "0") || 0;
+  const resultOf = (p: ParticipatingPenya) => parseFloat(p.result ?? "0") || 0;
 
   let validPositions: number[];
   if (winDirection !== "NONE") {

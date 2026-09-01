@@ -29,7 +29,7 @@ function toNumResult(raw: unknown): number {
   if (typeof raw === "number") return raw;
   if (typeof raw === "string") {
     if (raw === "") return -1;
-    const parsed = parseInt(raw, 10);
+    const parsed = parseFloat(raw);
     return Number.isNaN(parsed) ? -1 : parsed;
   }
   return -1;
