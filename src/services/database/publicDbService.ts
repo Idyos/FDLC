@@ -234,6 +234,44 @@ export const getProvaInfoRealTime = (
   return unsubDoc;
 };
 
+/** One-shot ranking for a finished "Rondes" prova, read straight from the
+ *  Participants subcollection instead of the denormalized `penyes` array.
+ *  Rondes provas never populate a `result` field (there's nothing for a
+ *  participant to type in — the bracket decides the outcome), so the
+ *  regular denormalized-`penyes` + rankParticipants() pipeline (built around
+ *  `result` as the "did this team get ranked" signal) always treats every
+ *  team as unranked once challengeType is Rondes. `position`/`pointsAwarded`
+ *  are what generateBracketResults actually denormalizes onto each
+ *  Participant doc when the bracket is closed, so this reads those directly. */
+export const getRondesProvaResults = async (
+  year: number,
+  provaId: string
+): Promise<ParticipatingPenya[]> => {
+  const participantsRef = collection(db, `Circuit/${year}/Proves/${provaId}/Participants`);
+  const snap = await getDocs(participantsRef);
+
+  const penyes: ParticipatingPenya[] = snap.docs.map((d) => {
+    const r = d.data();
+    const position = typeof r.position === "number" ? r.position : undefined;
+    return {
+      penyaId: r.penyaId ?? d.id,
+      name: r.penyaName ?? "",
+      participates: (r.participates ?? true) && !!position && position > 0,
+      result: position && position > 0 ? String(position) : "",
+      index: position,
+      participationTime: r.participationTime?.toDate?.() ?? null,
+    };
+  });
+
+  penyes.sort((a, b) => {
+    if (a.participates !== b.participates) return a.participates ? -1 : 1;
+    if (a.participates) return (a.index ?? 0) - (b.index ?? 0);
+    return a.name.localeCompare(b.name);
+  });
+
+  return penyes;
+};
+
 export const getResultsInfoRealTime = (
   year: number,
   callback: (data: ChallengeResult[]) => void

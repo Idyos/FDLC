@@ -27,6 +27,14 @@ export default function ProvaPenyaSummary({ provaSummary }: ProvaSummaryProps) {
 
   const gradient = `linear-gradient(90deg, rgba(0, 0, 0, 0), ${bgColor} 26%)`;
 
+  // Una prova de tipus Rondes mai té un `result` (el rànquing surt del
+  // quadre, no d'un valor que la penya introdueixi), així que per a aquest
+  // tipus fem servir `lastRoundPlayed` per saber si realment ha jugat.
+  const hasPlayed =
+    provaSummary.challengeType === "Rondes"
+      ? provaSummary.lastRoundPlayed != null
+      : !!provaSummary.result;
+
   const handleClick = () => {
     navigateWithQuery(navigate, "/prova", { provaId: provaSummary.id, year: selectedYear });
   };
@@ -45,7 +53,7 @@ export default function ProvaPenyaSummary({ provaSummary }: ProvaSummaryProps) {
         </div>
       )}
 
-      {provaSummary.participates && provaSummary.isFinished && !provaSummary.result && (
+      {provaSummary.participates && provaSummary.isFinished && !hasPlayed && (
         <div className="absolute z-20 inset-0 h-full w-full flex items-center justify-center dark:bg-black/60 bg-white/60">
           <h1 className="font-extrabold text-2xl">NO HA PARTICIPAT</h1>
         </div>

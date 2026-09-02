@@ -22,6 +22,7 @@ import {
   clearAllParticipationTimes,
   batchUpdateParticipationTimes,
 } from "@/services/database/Admin/adminDbServices";
+import { getRondesProvaResults } from "@/services/database/publicDbService";
 import ProvaTitle from "@/components/public/provaTitle";
 import { useProvaStore } from "@/components/shared/Contexts/ProvaContext";
 import AdminFooter from "@/components/admin/Proves/Footer/adminFooter";
@@ -78,6 +79,8 @@ export default function ProvaPage() {
     const [provaInfo, setProvaInfo] = useState<Prova>(new EmptyProva());
     const [isProvaLoading, setIsProvaLoading] = useState(true);
     const [showStaleCacheRecovery, setShowStaleCacheRecovery] = useState(false);
+    const [rondesResults, setRondesResults] = useState<ParticipatingPenya[]>([]);
+    const [isRondesResultsLoading, setIsRondesResultsLoading] = useState(false);
 
     const searchParams = new URLSearchParams(location.search);
     const provaId = searchParams.get("provaId") || "";
@@ -160,6 +163,22 @@ export default function ProvaPage() {
       if (unsubscribe) unsubscribe();
     };
   }, [selectedYear, admin, provaId]);
+
+  // La llista denormalitzada `penyes` no porta la posició del quadre (una
+  // Rondes mai té un `result` que un participant introdueixi), així que un
+  // cop tancada carreguem el rànquing real directament dels Participants.
+  useEffect(() => {
+    if (provaInfo.challengeType !== "Rondes" || !provaInfo.isFinished || !provaInfo.id) {
+      setRondesResults([]);
+      return;
+    }
+
+    setIsRondesResultsLoading(true);
+    getRondesProvaResults(selectedYear, provaInfo.id)
+      .then(setRondesResults)
+      .catch((error) => console.error("Error carregant els resultats del quadre:", error))
+      .finally(() => setIsRondesResultsLoading(false));
+  }, [selectedYear, provaInfo.challengeType, provaInfo.isFinished, provaInfo.id]);
 
   // Si la càrrega es queda penjada (típicament per una caché local de
   // Firestore en mal estat), oferim una via de sortida en lloc d'una
@@ -347,10 +366,10 @@ export default function ProvaPage() {
                           </TabsList>
                           <TabsContent value="resultats">
                             <div className="p-3.5 flex flex-col items-end justify-start">
-                              {isProvaLoading ? (
+                              {isProvaLoading || isRondesResultsLoading ? (
                                 <LoadingAnimation />
                               ) : (
-                                <PublicResultsList penyes={provaInfo.penyes} />
+                                <PublicResultsList penyes={rondesResults} challengeTypeOverride="Rondes" />
                               )}
                             </div>
                           </TabsContent>
