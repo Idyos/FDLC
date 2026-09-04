@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { rankParticipants } from "@/utils/sorting";
-import { PlusCircle, Trash2, Trash2Icon } from "lucide-react";
+import { PlusCircle, Trash2, Trash2Icon, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import {
   deleteSubProva,
   getSubProvaParticipants,
   getSubProvas,
+  hasSubProvaResults,
+  updateSubProvaConfig,
   updateSubProvaResult,
   updateSubProvaScheduleConfig,
   updateSubProvaParticipationTime,
@@ -29,6 +31,7 @@ import {
   getSiblingBusyIntervals,
 } from "@/services/database/Admin/adminMultiProvaDbServices";
 import AdminAddSubProvaDialog from "./AdminAddSubProvaDialog";
+import AdminEditSubProvaDialog from "./AdminEditSubProvaDialog";
 import AdminBracketPanel from "@/components/admin/Proves/Bracket/adminBracketPanel";
 import AdminHoraris from "@/components/admin/Proves/Horaris/adminHoraris";
 import ScheduleSortSelector from "@/components/shared/ScheduleSortSelector";
@@ -62,6 +65,9 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SubProvaConfig | null>(null);
+  const [editTarget, setEditTarget] = useState<SubProvaConfig | null>(null);
+  const [editHasResults, setEditHasResults] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>("time-asc");
 
   const visibleSubProves = restrictedSubProvaId
@@ -134,6 +140,52 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
     }
   };
 
+  const handleOpenEdit = async (sp: SubProvaConfig) => {
+    try {
+      const hasResults = await hasSubProvaResults(year, prova.id, sp);
+      setEditTarget(sp);
+      setEditHasResults(hasResults);
+      setShowEditDialog(true);
+    } catch (err: any) {
+      toast.error("Error al comprovar els resultats de la subprova: " + err.message);
+    }
+  };
+
+  const handleSaveEdit = async (patch: {
+    name: string;
+    challengeType?: SubProvaConfig["challengeType"];
+    winDirection?: SubProvaConfig["winDirection"];
+    intervalMinutes?: number;
+    maxPenyesPerSlot?: number;
+    previousChallengeType?: SubProvaConfig["challengeType"];
+  }) => {
+    if (!editTarget) return;
+    try {
+      await updateSubProvaConfig(year, prova.id, editTarget.id, patch);
+      setSubProves((prev) =>
+        prev.map((s) =>
+          s.id === editTarget.id
+            ? {
+                ...s,
+                name: patch.name,
+                ...(patch.challengeType
+                  ? {
+                      challengeType: patch.challengeType,
+                      winDirection: patch.challengeType === "Rondes" ? "ASC" : patch.winDirection ?? s.winDirection,
+                      intervalMinutes: patch.challengeType === "Rondes" ? undefined : patch.intervalMinutes,
+                      maxPenyesPerSlot: patch.challengeType === "Rondes" ? undefined : patch.maxPenyesPerSlot,
+                    }
+                  : {}),
+              }
+            : s
+        )
+      );
+      toast.success(`Subprova "${patch.name}" actualitzada.`);
+    } catch (err: any) {
+      toast.error("Error al editar la subprova: " + err.message);
+    }
+  };
+
   const renderResultsGrid = (sp: SubProvaConfig) => (
     loadingParticipants ? (
       <p className="text-sm text-muted-foreground">Carregant participants...</p>
@@ -177,10 +229,16 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
                       </ContextMenuTrigger>
                       <ContextMenuContent>
                         {!prova.isFinished && (
-                          <ContextMenuItem variant="destructive" onSelect={() => setDeleteTarget(subProva)}>
-                            <Trash2 />
-                            Eliminar
-                          </ContextMenuItem>
+                          <>
+                            <ContextMenuItem onSelect={() => handleOpenEdit(subProva)}>
+                              <Pencil />
+                              Editar
+                            </ContextMenuItem>
+                            <ContextMenuItem variant="destructive" onSelect={() => setDeleteTarget(subProva)}>
+                              <Trash2 />
+                              Eliminar
+                            </ContextMenuItem>
+                          </>
                         )}
                       </ContextMenuContent>
                     </ContextMenu>
@@ -358,6 +416,13 @@ export default function AdminMultiProvaPanel({ year, prova }: Props) {
         nextOrder={subProves.length}
         onClose={() => setShowAddDialog(false)}
         onAdd={handleAdd}
+      />
+      <AdminEditSubProvaDialog
+        open={showEditDialog}
+        subProva={editTarget}
+        hasResults={editHasResults}
+        onClose={() => setShowEditDialog(false)}
+        onSave={handleSaveEdit}
       />
     </div>
   );

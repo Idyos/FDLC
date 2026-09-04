@@ -1,6 +1,7 @@
 import {
   doc,
   getDoc,
+  deleteDoc,
   collection,
   getDocs,
   updateDoc,
@@ -9,7 +10,7 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
-import { SubProvaConfig, PointsRange, ParticipatingPenya } from "@/interfaces/interfaces";
+import { SubProvaConfig, PointsRange, ParticipatingPenya, WinDirection } from "@/interfaces/interfaces";
 import { generateProvaResults, deriveBracketPositions } from "./adminProvesDbServices";
 import { assignStandardCompetitionPositions } from "@/utils/sorting";
 import { deleteUsersWithSubProva } from "@/services/usersService";
@@ -69,6 +70,35 @@ export async function getSubProvaParticipants(
   });
 }
 
+// ─── Has results? (governs what's editable) ───────────────────────────────────
+
+/** Whether `subProva` already has at least one result marked. Used to decide
+ *  whether its `challengeType` can still be changed (only while empty — the
+ *  type drives which result shape/UI applies, so changing it after results
+ *  exist would strand or misinterpret them). */
+export async function hasSubProvaResults(
+  year: number,
+  provaId: string,
+  subProva: Pick<SubProvaConfig, "id" | "challengeType">
+): Promise<boolean> {
+  if (subProva.challengeType === "Rondes") {
+    const bracket = await getProvaBracket(year, provaId, subProva.id);
+    if (!bracket) return false;
+    const resolvedStatuses = new Set(["finished", "bye", "walkover"]);
+    const finalStageFinished =
+      bracket.finalStage.bracket.matches.some((m) => resolvedStatuses.has(m.status)) ||
+      bracket.finalStage.thirdPlaceMatch?.status === "finished";
+    const groupStageFinished =
+      bracket.groupStage?.groups.some((g) =>
+        g.matches.some((m) => m.winnerTeamId != null || m.isDraw)
+      ) ?? false;
+    return Boolean(finalStageFinished || groupStageFinished);
+  }
+
+  const participants = await getSubProvaParticipants(year, provaId, subProva.id);
+  return participants.some((p) => p.result !== "");
+}
+
 // ─── Create ──────────────────────────────────────────────────────────────────
 
 export async function addSubProva(
@@ -112,6 +142,44 @@ export async function addSubProva(
 
   await batch.commit();
   return subProvaId;
+}
+
+// ─── Update config (name / type) ───────────────────────────────────────────────
+
+/** Updates a sub-prova's editable config. `challengeType` (and the fields that
+ *  depend on it) should only be passed when `hasSubProvaResults` is false for
+ *  this sub-prova — callers gate that in the UI, not here. When the type
+ *  changes away from "Rondes", any previously generated (but result-less)
+ *  bracket doc is dropped so it doesn't linger as orphaned state. */
+export async function updateSubProvaConfig(
+  year: number,
+  provaId: string,
+  subProvaId: string,
+  patch: {
+    name: string;
+    challengeType?: SubProvaConfig["challengeType"];
+    winDirection?: WinDirection;
+    intervalMinutes?: number;
+    maxPenyesPerSlot?: number;
+    previousChallengeType?: SubProvaConfig["challengeType"];
+  }
+): Promise<void> {
+  const ref = doc(db, `Circuit/${year}/Proves/${provaId}/SubProves/${subProvaId}`);
+
+  const update: Record<string, unknown> = { name: patch.name };
+  if (patch.challengeType) {
+    update.challengeType = patch.challengeType;
+    update.winDirection = patch.challengeType === "Rondes" ? "ASC" : patch.winDirection ?? "ASC";
+    update.intervalMinutes = patch.challengeType === "Rondes" ? null : patch.intervalMinutes ?? null;
+    update.maxPenyesPerSlot = patch.challengeType === "Rondes" ? null : patch.maxPenyesPerSlot ?? null;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await updateDoc(ref, update as any);
+
+  if (patch.challengeType && patch.previousChallengeType === "Rondes" && patch.challengeType !== "Rondes") {
+    const bracketRef = doc(db, `Circuit/${year}/Proves/${provaId}/SubProves/${subProvaId}/Bracket/current`);
+    await deleteDoc(bracketRef).catch(() => {});
+  }
 }
 
 // ─── Update result ────────────────────────────────────────────────────────────
