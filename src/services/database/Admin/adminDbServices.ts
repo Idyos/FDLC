@@ -542,4 +542,49 @@ export const updateProva = async (
   }
 };
 
+/**
+ * Actualitza només la informació bàsica d'una prova (nom, descripció, ubicació,
+ * dates, enllaç d'imatges i arxius). No toca challengeType, pointsRange,
+ * winDirection, intervalMinutes, maxPenyesPerSlot ni els participants, perquè
+ * aquests camps poden alterar la plausibilitat dels resultats. Pensat per
+ * editar proves ja finalitzades (isFinished === true).
+ */
+export const updateProvaBasicInfo = async (
+  year: number,
+  provaId: string,
+  data: Pick<Prova, "name" | "description" | "startDate" | "finishDate" | "location" | "imagesLink" | "imageUrl" | "rulesUrl">,
+  image: File | null,
+  pdf: File | null
+): Promise<void> => {
+  const provaRef = doc(db, `Circuit/${year}/Proves/${provaId}`);
+
+  try {
+    let imageUrl: string | null = data.imageUrl ?? null;
+    if (image !== null) {
+      const uploaded = await addImageToChallenges(image, year, provaId);
+      imageUrl = uploaded || null;
+    }
+
+    let rulesUrl: string | null = data.rulesUrl ?? null;
+    if (pdf !== null) {
+      const uploaded = await addPdfToChallenges(pdf, year, provaId);
+      rulesUrl = uploaded || null;
+    }
+
+    await updateDoc(provaRef, {
+      name: data.name ?? "",
+      description: data.description ?? "",
+      startDate: data.startDate ?? null,
+      finishDate: data.finishDate ?? null,
+      location: data.location ?? null,
+      imagesLink: data.imagesLink ?? null,
+      imageUrl,
+      rulesUrl,
+    });
+  } catch (error) {
+    console.error("Error actualitzant la informació bàsica de la prova:", error);
+    throw error;
+  }
+};
+
 //#endregion

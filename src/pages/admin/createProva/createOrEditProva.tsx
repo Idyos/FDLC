@@ -9,7 +9,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useYear } from "@/components/shared/Contexts/YearContext";
-import { createProva, getPenyes, getProvaInfo, updateProva } from "@/services/database/Admin/adminDbServices";
+import { createProva, getPenyes, getProvaInfo, updateProva, updateProvaBasicInfo } from "@/services/database/Admin/adminDbServices";
 import { CreateChallenge, createChallengeSchema, fieldStepMap } from "../createProva/createProvaData";
 import { Prova, PenyaInfo, ProvaType, Ubication, EmptyProva, ParticipatingPenya } from "@/interfaces/interfaces";
 import StepBasicInfo from "../createProva/components/steps/stepBasicInfo";
@@ -224,7 +224,11 @@ export default function CreateOrEditProva() {
           challenge.imageUrl = provaImage ? undefined : existingImageUrl;
           challenge.rulesUrl = provaRules ? undefined : existingRulesUrl;
 
-          updateProva(selectedYear, provaId, challenge, provaImage, provaRules)
+          const updatePromise = isFinished
+            ? updateProvaBasicInfo(selectedYear, provaId, challenge, provaImage, provaRules)
+            : updateProva(selectedYear, provaId, challenge, provaImage, provaRules);
+
+          updatePromise
             .then(() => {
               toast.success("Prova actualitzada correctament");
               setSettingProva(2);
@@ -249,7 +253,11 @@ export default function CreateOrEditProva() {
 
     const onError = (errors: FieldErrors<CreateChallenge>) => {
         const first = Object.keys(errors)[0] as keyof CreateChallenge;
-        if (first && fieldStepMap[first] !== undefined) setCurrentStep(fieldStepMap[first]);
+        // Quan la prova és finalitzada només hi ha 2 passos (info bàsica i confirmació),
+        // així que qualsevol camp d'altres passos es mostra al primer (info bàsica).
+        if (first && fieldStepMap[first] !== undefined) {
+          setCurrentStep(isFinished ? 0 : fieldStepMap[first]);
+        }
         toast.error("Revisa els camps del formulari.");
     };
 
@@ -259,24 +267,8 @@ export default function CreateOrEditProva() {
     );
 
     if (loadingProva) return <LoadingAnimation />;
-    
-      if (isFinished) {
-        return (
-          <div className="max-w-lg mx-auto mt-20 flex flex-col items-center gap-4 text-center">
-            <AlertTriangle className="h-12 w-12 text-yellow-500" />
-            <h2 className="text-xl font-semibold">Prova finalitzada</h2>
-            <p className="text-muted-foreground">
-              Aquesta prova ja ha generat resultats finals i no es pot editar.
-            </p>
-            <Button variant="outline" onClick={() => navigate("/admin")}>
-              Tornar al panell
-            </Button>
-          </div>
-        );
-      }
 
-  const steps = [
-    { title: "Info. bàsica", content: (
+  const basicInfoStep = { title: "Info. bàsica", content: (
       <StepBasicInfo
         provaImageUrl={provaImageUrl}
         onImageAdded={onImageAdded}
@@ -288,7 +280,16 @@ export default function CreateOrEditProva() {
         watchedEnd={watchedEnd}
         onLocationChange={setLocation}
       />
-    )},
+    )};
+
+  const confirmStep = { title: "Confirmació", content: (
+      <StepConfirm provaInfo={provaInfo} />
+    )};
+
+  // Un cop finalitzada, la prova ja ha generat resultats: només es pot
+  // tocar la informació bàsica (no altera la plausibilitat dels resultats).
+  const steps = isFinished ? [basicInfoStep, confirmStep] : [
+    basicInfoStep,
     { title: "Tipus i penyes", content: (
       isLoading
         ? <LoadingAnimation />
@@ -308,14 +309,19 @@ export default function CreateOrEditProva() {
     { title: "Puntuacions", content: (
       <StepPointsRange challengeType={challengeType} />
     )},
-    { title: "Confirmació", content: (
-      <StepConfirm provaInfo={provaInfo} />
-    )},
-  ] as const;
+    confirmStep,
+  ];
 
   return (
     <div className="fixed inset-0 overflow-hidden pt-4 pb-4">
       <div className="max-w-4xl mx-auto h-full flex flex-col gap-3">
+      {isFinished && (
+        <div className="flex items-center gap-2 rounded-xl border border-yellow-500/50 bg-yellow-500/10 px-4 py-2 text-sm text-yellow-700 dark:text-yellow-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Aquesta prova ja ha generat resultats finals. Només es pot editar la informació bàsica.
+        </div>
+      )}
+
       <Tabs defaultValue={steps[0].title} value={steps[currentStep].title}>
         <TabsList className="rounded-3xl w-full pl-1 pr-1">
           {steps.map((s, i) => (
